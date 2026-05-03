@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Local environment and binaries
+.env
+pocketbase_0.37.4_darwin_arm64/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

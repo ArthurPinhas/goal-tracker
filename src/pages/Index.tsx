@@ -1,58 +1,19 @@
-import { useState } from "react";
-import { Milestone } from "@/types/milestone";
-import { initialMilestones } from "@/data/mockMilestones";
-import MilestoneCard from "@/components/MilestoneCard";
-import AddMilestoneDialog from "@/components/AddMilestoneDialog";
-import { Target } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { useGoals } from "@/hooks/useGoals";
+import GoalCard from "@/components/GoalCard";
+import AddGoalDialog from "@/components/AddGoalDialog";
+import { Button } from "@/components/ui/button";
+import { Target, LogOut } from "lucide-react";
 
 const Index = () => {
-  const [milestones, setMilestones] = useState<Milestone[]>(initialMilestones);
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const { goals, loading, pendingSubtasks, createGoal, editGoal, deleteGoal, addSubtask, toggleSubtask, deleteSubtask, updateSubtaskEffort } = useGoals();
 
-  const toggleSubtask = (milestoneId: string, subtaskId: string) => {
-    setMilestones((prev) =>
-      prev.map((m) =>
-        m.id === milestoneId
-          ? {
-              ...m,
-              subtasks: m.subtasks.map((s) =>
-                s.id === subtaskId ? { ...s, is_completed: !s.is_completed } : s
-              ),
-            }
-          : m
-      )
-    );
-  };
-
-  const addMilestone = (title: string, description: string) => {
-    const newMilestone: Milestone = {
-      id: `m${Date.now()}`,
-      user_id: "u1",
-      title,
-      description,
-      subtasks: [],
-    };
-    setMilestones((prev) => [...prev, newMilestone]);
-  };
-
-  const addSubtask = (milestoneId: string, title: string) => {
-    setMilestones((prev) =>
-      prev.map((m) =>
-        m.id === milestoneId
-          ? {
-              ...m,
-              subtasks: [
-                ...m.subtasks,
-                {
-                  id: `s${Date.now()}`,
-                  milestone_id: milestoneId,
-                  title,
-                  is_completed: false,
-                },
-              ],
-            }
-          : m
-      )
-    );
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
   };
 
   return (
@@ -61,21 +22,40 @@ const Index = () => {
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Target className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">Milestones</h1>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">Goal Tracker</h1>
           </div>
-          <AddMilestoneDialog onAdd={addMilestone} />
+          <div className="flex items-center gap-2">
+            <AddGoalDialog onAdd={createGoal} />
+            <Button variant="ghost" size="icon" onClick={handleLogout} title="Log out">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </header>
 
-        <div className="space-y-5">
-          {milestones.map((milestone) => (
-            <MilestoneCard
-              key={milestone.id}
-              milestone={milestone}
-              onToggleSubtask={toggleSubtask}
-              onAddSubtask={addSubtask}
-            />
-          ))}
-        </div>
+        {loading ? (
+          <p className="text-sm text-muted-foreground text-center py-12">Loading…</p>
+        ) : (
+          <div className="space-y-5">
+            {goals.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-12">
+                No goals yet. Create one to get started.
+              </p>
+            )}
+            {goals.map((goal) => (
+              <GoalCard
+                key={goal.id}
+                goal={goal}
+                pendingSubtasks={pendingSubtasks}
+                onToggleSubtask={toggleSubtask}
+                onAddSubtask={addSubtask}
+                onDelete={deleteGoal}
+                onDeleteSubtask={deleteSubtask}
+                onEdit={editGoal}
+                onSetEffort={updateSubtaskEffort}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
