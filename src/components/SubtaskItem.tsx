@@ -5,6 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Trash2, Loader2 } from "lucide-react";
 import { Subtask } from "@/types/goal";
+import { playSubtaskDone, playRemove } from "@/lib/sounds";
 
 interface SubtaskItemProps {
   subtask: Subtask;
@@ -27,6 +28,7 @@ const SubtaskItem = ({ subtask, isPending, onToggle, onDelete, onSetEffort }: Su
   const rowRef = useRef<HTMLDivElement>(null);
 
   const handleToggle = () => {
+    if (!subtask.is_completed) playSubtaskDone();
     if (!subtask.is_completed && rowRef.current) {
       const rect = rowRef.current.getBoundingClientRect();
       confetti({
@@ -114,7 +116,7 @@ const SubtaskItem = ({ subtask, isPending, onToggle, onDelete, onSetEffort }: Su
           variant="ghost"
           size="icon"
           className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-          onClick={() => onDelete(subtask.id)}
+          onClick={() => { playRemove(); onDelete(subtask.id); }}
         >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>

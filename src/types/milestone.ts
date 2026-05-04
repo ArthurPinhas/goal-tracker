@@ -3,6 +3,7 @@ export interface Subtask {
   milestone_id: string;
   title: string;
   is_completed: boolean;
+  effort: number | null;
 }
 
 export interface Milestone {

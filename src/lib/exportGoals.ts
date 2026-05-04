@@ -1,0 +1,166 @@
+import { jsPDF } from 'jspdf';
+import { Goal } from '@/types/goal';
+import { calcProgress } from '@/lib/goalUtils';
+
+const downloadBlob = (blob: Blob, filename: string) => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+const timestamp = () => new Date().toISOString().slice(0, 10);
+
+export const exportJSON = (goals: Goal[]) => {
+  const data = goals.map((g) => ({
+    title: g.title,
+    description: g.description,
+    progress: Math.round(calcProgress(g)),
+    subtasks: g.subtasks.map((s) => ({
+      title: s.title,
+      completed: s.is_completed,
+      effort: s.effort,
+    })),
+  }));
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  downloadBlob(blob, `goals-${timestamp()}.json`);
+};
+
+export const exportCSV = (goals: Goal[]) => {
+  const rows: string[] = ['Goal,Description,Progress,Subtask,Completed,Effort'];
+  for (const g of goals) {
+    const progress = `${Math.round(calcProgress(g))}%`;
+    if (g.subtasks.length === 0) {
+      rows.push([g.title, g.description, progress, '', '', ''].map((v) => `"${v.replace(/"/g, '""')}"`).join(','));
+    } else {
+      for (const s of g.subtasks) {
+        rows.push(
+          [g.title, g.description, progress, s.title, s.is_completed ? 'Yes' : 'No', s.effort?.toString() ?? '']
+            .map((v) => `"${v.replace(/"/g, '""')}"`)
+            .join(',')
+        );
+      }
+    }
+  }
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+  downloadBlob(blob, `goals-${timestamp()}.csv`);
+};
+
+export const exportPDF = (goals: Goal[]) => {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 18;
+  const contentW = pageW - margin * 2;
+  let y = margin;
+
+  const checkPage = (needed = 8) => {
+    if (y + needed > pageH - margin) {
+      doc.addPage();
+      y = margin;
+    }
+  };
+
+  // Header
+  doc.setFillColor(30, 30, 40);
+  doc.rect(0, 0, pageW, 28, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Goal Tracker — Export', margin, 17);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(180, 180, 180);
+  doc.text(new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' }), pageW - margin, 17, { align: 'right' });
+  y = 38;
+
+  for (const goal of goals) {
+    const pct = Math.round(calcProgress(goal));
+    const doneSubs = goal.subtasks.filter((s) => s.is_completed).length;
+    checkPage(20);
+
+    // Goal title bar
+    doc.setFillColor(245, 245, 250);
+    doc.roundedRect(margin, y, contentW, 10, 2, 2, 'F');
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(20, 20, 30);
+    doc.text(goal.title, margin + 3, y + 7);
+
+    // Progress badge
+    const badgeColor = pct >= 100 ? [245, 158, 11] : pct >= 50 ? [34, 197, 94] : [52, 211, 153];
+    doc.setFillColor(...(badgeColor as [number, number, number]));
+    doc.roundedRect(pageW - margin - 22, y + 1.5, 22, 7, 2, 2, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text(`${pct}%`, pageW - margin - 11, y + 6.5, { align: 'center' });
+    y += 13;
+
+    // Description
+    if (goal.description) {
+      checkPage(8);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(100, 100, 110);
+      const descLines = doc.splitTextToSize(goal.description, contentW - 4);
+      doc.text(descLines, margin + 3, y);
+      y += descLines.length * 4.5 + 2;
+    }
+
+    // Subtask count line
+    if (goal.subtasks.length > 0) {
+      checkPage(6);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120, 120, 130);
+      doc.text(`${doneSubs} / ${goal.subtasks.length} subtasks completed`, margin + 3, y);
+      y += 5;
+
+      // Progress bar
+      checkPage(6);
+      doc.setFillColor(230, 230, 235);
+      doc.roundedRect(margin + 3, y, contentW - 6, 3, 1, 1, 'F');
+      if (pct > 0) {
+        doc.setFillColor(...(badgeColor as [number, number, number]));
+        doc.roundedRect(margin + 3, y, ((contentW - 6) * pct) / 100, 3, 1, 1, 'F');
+      }
+      y += 7;
+
+      // Subtasks
+      for (const s of goal.subtasks) {
+        checkPage(6);
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(s.is_completed ? 140 : 40, s.is_completed ? 140 : 40, s.is_completed ? 150 : 50);
+
+        const mark = s.is_completed ? '✓' : '○';
+        const effortTag = s.effort ? ` [${s.effort}]` : '';
+        const label = `${mark}  ${s.title}${effortTag}`;
+        const lines = doc.splitTextToSize(label, contentW - 10);
+        doc.text(lines, margin + 6, y);
+        y += lines.length * 5;
+      }
+    } else {
+      checkPage(5);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(150, 150, 160);
+      doc.text('No subtasks yet.', margin + 3, y);
+      y += 5;
+    }
+
+    y += 6;
+  }
+
+  // Footer on last page
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(180, 180, 180);
+  doc.text('Exported from Goal Tracker', margin, pageH - 8);
+  doc.text(`${goals.length} goal${goals.length !== 1 ? 's' : ''}`, pageW - margin, pageH - 8, { align: 'right' });
+
+  doc.save(`goals-${timestamp()}.pdf`);
+};

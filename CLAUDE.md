@@ -34,6 +34,8 @@ Handled entirely by PocketBase built-in auth. No custom user collection needed.
 | user | relation | links to auth user |
 | name | text | required |
 | description | text | optional |
+| archived | bool | default false |
+| sort_order | number | for drag-and-drop ordering |
 | created | auto | PocketBase generates |
 
 ### Subtasks (PocketBase collection)
@@ -52,35 +54,121 @@ Handled entirely by PocketBase built-in auth. No custom user collection needed.
 
 ---
 
-## Feature List — V1 Scope
+## Current Project State (as of 2026-05-04)
 
-### Auth
+V1 is **fully shipped and functional**. PocketBase is connected, all CRUD works, auth works.
+
+### What's built and live
+
+**Auth**
 - Register with email + password
 - Login / Logout
-- Each user sees only their own goals (PocketBase rules handle this)
+- Each user sees only their own goals (PocketBase API rules)
 
-### Goals
-- Create a goal (name + description)
-- Edit a goal
-- Delete a goal (also deletes its subtasks)
-- Progress bar — auto-calculated from subtasks, updates live
+**Goals**
+- Create, edit, delete
+- Archive / restore / permanently delete archived goals
+- Drag-and-drop reorder (Framer Motion `Reorder`, persisted to PocketBase `sort_order`)
+- Progress bar — weighted by effort if set, equal weight otherwise
+- Search across goal title, description, and subtask names
+- Filter tabs: All / Active / Done / Archived
 
-### Subtasks
-- Add a subtask to a goal
-- Mark a subtask complete / incomplete (toggle)
-- Delete a subtask
-- Optional effort points (1–5) — hidden by default, user can expand/toggle per subtask
+**Subtasks**
+- Add, toggle complete/incomplete, delete
+- Optional effort points (1–5) — power-user toggle per subtask
+- Optimistic UI for toggle (instant feedback, revert on error)
 
-### Celebration UI (this is a core feature, not a nice-to-have)
-- Subtask completed → small confetti burst on that row + checkmark animates in smoothly
-- Progress bar fills with smooth animation, color shifts as progress increases (e.g. blue → green → gold near 100%)
-- Reaching 50% → toast notification with a random motivational message (e.g. "Halfway there, keep going!")
-- Reaching 100% → full screen confetti explosion + goal card enters a special "completed" visual state (glow, trophy icon, distinct color)
+**Celebration UI**
+- Lottie animation overlay on goal completion (`CelebrationOverlay`)
+- Canvas confetti on subtask complete
+- Framer Motion animations throughout (card enter/exit, progress bar, sidebar ring)
+- react-hot-toast notifications with motivational quotes
+- Sound effects (`src/lib/sounds.ts`) — toggleable, persisted to localStorage
 
-### Celebration UI — preferred libraries
-- `canvas-confetti` — for confetti effects
-- `framer-motion` — for smooth animations
-- `react-hot-toast` — for toast notifications
+**UI / UX**
+- Sticky header slides in when main header scrolls out of view (`StickyHeader`)
+- Sidebar with progress ring + stats (goals completed, avg progress, subtasks done) — desktop only (`GoalSidebar`)
+- Skeleton loading cards (`SkeletonGoalCard`)
+- Save status indicator (Saving… / Saved / Error) in bottom-right corner
+- Cmd/Ctrl+N keyboard shortcut to open new goal dialog
+- Ambient animated orbs in header and page background
+- Motivational quote in header — rotates on refresh
+
+**Export**
+- Export all goals as JSON, CSV, or PDF
+- PDF is formatted with progress bar, subtask list, colour-coded badges
+- Accessible via Export button in the sidebar (`ExportDialog`)
+
+**Infrastructure**
+- PWA icons added (apple-touch-icon, 192, 512)
+- Vite PWA plugin configured
+- PocketBase client singleton at `src/lib/pocketbase.ts`
+- `src/lib/goalUtils.ts` — `calcProgress` and `getProgressColor` utilities
+- `src/types/goal.ts` — canonical type definitions (`Goal`, `Subtask`)
+
+---
+
+## Folder Structure
+
+```
+src/
+  components/
+    ui/               — Shadcn UI primitives
+    AddGoalDialog     — Create goal modal
+    AddSubtaskDialog  — Add subtask modal
+    ArchiveSection    — Archived goals list
+    CelebrationOverlay— Lottie full-screen celebration
+    EditGoalDialog    — Edit goal modal
+    ExportDialog      — Export modal (JSON/CSV/PDF)
+    GoalCard          — Goal card with subtasks
+    GoalProgress      — Progress bar component
+    GoalSidebar       — Desktop stats sidebar
+    MilestoneCard     — Legacy (Lovable) — unused
+    SkeletonGoalCard  — Loading placeholder
+    StickyHeader      — Scroll-activated header
+    SubtaskItem       — Individual subtask row
+  hooks/
+    useAuth           — Auth state (PocketBase)
+    useGoals          — All goal + subtask CRUD
+  lib/
+    exportGoals       — JSON/CSV/PDF export logic
+    goalUtils         — calcProgress, getProgressColor
+    pocketbase        — PocketBase client singleton
+    sounds            — Sound effect helpers
+    utils             — Tailwind cn() helper
+  pages/
+    Index             — Main goals page
+    Login             — Login page
+    Register          — Register page
+    NotFound          — 404
+  types/
+    goal              — Goal, Subtask interfaces
+    milestone         — Legacy (Lovable) — unused
+  assets/
+    celebration.json  — Lottie animation data
+```
+
+---
+
+## V2 Roadmap (Not Yet Built)
+
+These are planned for after V1 stabilises. Do not build until discussed.
+
+| Feature | Notes |
+|---|---|
+| Goal categories / folders | Group goals into projects above the goal level |
+| Due dates on goals | Optional deadline with overdue visual state |
+| Email export / scheduled email digest | Send goals summary to user's email (needs SMTP or Resend) |
+| Sub-subtasks (task nesting) | 3-level hierarchy: Category → Goal → Subtask → Task |
+| Goal templates | Save a goal structure and reuse it |
+| Analytics dashboard | Completion rate over time, streaks, most active days |
+| Sharing goals | Share read-only link to a goal with others |
+| Dark/light theme toggle | Currently dark-only |
+| PWA offline mode | Full offline support with background sync |
+| Mobile app | React Native or Capacitor wrapper |
+| Docker / Synology deploy | Self-host PocketBase + frontend as Docker stack |
+| Subtask comments / notes | Per-subtask notes field |
+| Recurring goals | Reset on schedule (daily habits, weekly reviews) |
 
 ---
 
@@ -91,49 +179,7 @@ Handled entirely by PocketBase built-in auth. No custom user collection needed.
 3. **Celebration UI is core** — The rewarding feel is the whole point of the app. Don't skip or simplify it.
 4. **PocketBase handles everything backend** — No separate Node/Express/Fastify server. PocketBase IS the backend.
 5. **No Redux or heavy state management** — React state + PocketBase SDK is enough for this scale.
-
----
-
-## Current Project State
-
-- Scaffolded by Lovable (barebones UI, TypeScript + React + Vite + Tailwind + Shadcn)
-- Code is on GitHub and available locally
-- `src/data/mockMilestones.ts` exists — this is fake placeholder data from Lovable, will be replaced by real PocketBase data
-- PocketBase binary is inside the project folder (`pocketbase_0.37.4_...`)
-- **PocketBase is NOT yet configured** — no collections created yet, no auth set up
-- **Frontend is NOT yet connected to PocketBase** — still using mock data
-- App name in Lovable was "Milestone Mapper" — we are renaming concept to "Goal Tracker"
-
----
-
-## Folder Structure (Current — from Lovable)
-
-```
-src/
-  components/   — UI building blocks
-  data/         — mockMilestones.ts (placeholder, to be removed)
-  hooks/        — reusable logic hooks
-  lib/          — utility helpers
-  pages/        — screen-level components
-  types/        — TypeScript type definitions
-  App.tsx
-  main.tsx
-```
-
----
-
-## What To Build Next (Prioritised)
-
-1. **Start PocketBase locally** — run the binary, open admin UI at http://127.0.0.1:8090/_/
-2. **Create PocketBase collections** — Goals and Subtasks with the schema above
-3. **Set up PocketBase auth rules** — users can only read/write their own goals and subtasks
-4. **Install PocketBase JS SDK** — `npm install pocketbase`
-5. **Create a PocketBase client file** — `src/lib/pocketbase.ts` — single instance, points to local URL via env variable
-6. **Replace mock data with real PocketBase calls** — fetch goals for logged-in user
-7. **Build auth screens** — Login and Register pages
-8. **Wire up goal CRUD** — create, edit, delete
-9. **Wire up subtask CRUD** — add, toggle, delete
-10. **Add celebration UI** — confetti, animations, toasts
+6. **Export is client-side only** — No server involvement for export. JSON/CSV/PDF all generated in the browser.
 
 ---
 
@@ -174,15 +220,3 @@ Create a `.env` file in the project root (already in `.gitignore`):
 ```
 VITE_POCKETBASE_URL=http://127.0.0.1:8090
 ```
-
----
-
-## Out of Scope for V1 (Do Not Build Yet)
-
-- Goal categories or parent folders above goals
-- Due dates or deadlines on goals
-- Sharing goals with other users
-- Mobile app
-- Push notifications
-- Analytics or dashboards
-- Docker / Synology deployment

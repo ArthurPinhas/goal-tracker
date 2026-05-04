@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
+import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -12,7 +13,31 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [
+    react(),
+    mode === "development" && componentTagger(),
+    VitePWA({
+      registerType: "autoUpdate",
+      includeAssets: ["icon.svg", "icon-192.png", "icon-512.png", "apple-touch-icon.png"],
+      manifest: {
+        name: "Goal Tracker",
+        short_name: "Goals",
+        description: "Track goals, break them into steps, celebrate every win.",
+        theme_color: "#34d399",
+        background_color: "#141820",
+        display: "standalone",
+        orientation: "portrait",
+        start_url: "/",
+        icons: [
+          { src: "icon-192.png", sizes: "192x192", type: "image/png" },
+          { src: "icon-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },
+        ],
+      },
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,json}"],
+      },
+    }),
+  ].filter(Boolean),
   build: {
     rollupOptions: {
       output: {
@@ -20,6 +45,7 @@ export default defineConfig(({ mode }) => ({
           'framer-motion': ['framer-motion'],
           vendor: ['react', 'react-dom', 'react-router-dom'],
           pocketbase: ['pocketbase'],
+          lottie: ['lottie-react'],
         },
       },
     },

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { playPop } from "@/lib/sounds";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,7 @@ const AddSubtaskDialog = ({ onAdd }: AddSubtaskDialogProps) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+    playPop();
     onAdd(title.trim());
     setTitle("");
     setOpen(false);

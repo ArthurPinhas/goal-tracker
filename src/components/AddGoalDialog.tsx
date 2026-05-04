@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { playPop } from "@/lib/sounds";
 import {
   Dialog,
   DialogContent,
@@ -14,16 +15,22 @@ import { Plus } from "lucide-react";
 
 interface AddGoalDialogProps {
   onAdd: (title: string, description: string) => void;
+  triggerClassName?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-const AddGoalDialog = ({ onAdd }: AddGoalDialogProps) => {
-  const [open, setOpen] = useState(false);
+const AddGoalDialog = ({ onAdd, triggerClassName, open: controlledOpen, onOpenChange: controlledOnOpenChange }: AddGoalDialogProps) => {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+    playPop();
     onAdd(title.trim(), description.trim());
     setTitle("");
     setDescription("");
@@ -33,7 +40,7 @@ const AddGoalDialog = ({ onAdd }: AddGoalDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="gap-2">
+        <Button className={`gap-2 ${triggerClassName ?? ''}`}>
           <Plus className="h-4 w-4" />
           New Goal
         </Button>
