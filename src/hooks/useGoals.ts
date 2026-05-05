@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import pb from '@/lib/pocketbase';
 import { Goal, Subtask } from '@/types/goal';
@@ -9,12 +9,22 @@ type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 const isNetworkError = (err: unknown): boolean =>
   err instanceof Error && (err.message === 'Failed to fetch' || err.message.includes('NetworkError'));
 
+const normalizeEmoji = (raw: unknown): string | null => {
+  if (typeof raw !== 'string') return null;
+  const t = raw.trim();
+  return t || null;
+};
+
+const normalizeNotes = (raw: unknown): string => (typeof raw === 'string' ? raw : '');
+
 const mapGoalRecord = (r: {
   id: string;
   user: string;
   name: string;
   description: string;
   due_date?: string | null;
+  emoji?: string | null;
+  notes?: string | null;
   expand?: Record<string, Subtask[]>;
 }): Goal => ({
   id: r.id,
@@ -22,12 +32,15 @@ const mapGoalRecord = (r: {
   title: r.name,
   description: r.description,
   due_date: normalizeDueDate(r.due_date),
+  emoji: normalizeEmoji(r.emoji),
+  notes: normalizeNotes(r.notes),
   subtasks: (r.expand?.['subtasks_via_goal'] ?? []).map((s) => ({
     id: s.id,
     goal_id: (s as unknown as { goal: string }).goal,
     title: (s as unknown as { name: string }).name,
     is_completed: (s as unknown as { completed: boolean }).completed,
-    effort: (s as unknown as { effort: number | null }).effort || null,
+    effort: (s as unknown as { effort: number | null }).effort ?? null,
+    notes: normalizeNotes((s as unknown as { notes?: string | null }).notes),
   })),
 });
 
@@ -72,7 +85,7 @@ export function useGoals() {
       .finally(() => setLoading(false));
   }, []);
 
-  const fetchArchivedGoals = async () => {
+  const fetchArchivedGoals = useCallback(async () => {
     setArchivedLoading(true);
     try {
       const records = await pb.collection('goals').getFullList({
@@ -85,15 +98,23 @@ export function useGoals() {
     } finally {
       setArchivedLoading(false);
     }
-  };
+  }, []);
 
-  const createGoal = async (name: string, description: string, due_date: string | null = null) => {
+  const createGoal = async (
+    name: string,
+    description: string,
+    due_date: string | null = null,
+    emoji: string | null = null,
+    notes: string = ''
+  ) => {
     try {
       markSaving();
       await pb.collection('goals').create({
         name,
         description,
         due_date: due_date || null,
+        emoji: emoji || null,
+        notes: notes || null,
         user: pb.authStore.record?.id,
         /** Sort ascending; negatives order before reorder indices (0…n−1), so new goals appear at the top. */
         sort_order: -Date.now(),
@@ -106,13 +127,28 @@ export function useGoals() {
     }
   };
 
-  const editGoal = async (goalId: string, name: string, description: string, due_date: string | null) => {
+  const editGoal = async (
+    goalId: string,
+    name: string,
+    description: string,
+    due_date: string | null,
+    emoji: string | null = null,
+    notes: string = ''
+  ) => {
     try {
       markSaving();
-      await pb.collection('goals').update(goalId, { name, description, due_date: due_date || null });
+      await pb.collection('goals').update(goalId, {
+        name,
+        description,
+        due_date: due_date || null,
+        emoji: emoji || null,
+        notes: notes || null,
+      });
       setGoals((prev) =>
         prev.map((g) =>
-          g.id === goalId ? { ...g, title: name, description, due_date: due_date ?? null } : g
+          g.id === goalId
+            ? { ...g, title: name, description, due_date: due_date ?? null, emoji: emoji ?? null, notes }
+            : g
         )
       );
       markSaved();
@@ -181,10 +217,15 @@ export function useGoals() {
     }
   };
 
-  const addSubtask = async (goalId: string, name: string) => {
+  const addSubtask = async (goalId: string, name: string, notes: string = '') => {
     try {
       markSaving();
-      await pb.collection('subtasks').create({ name, goal: goalId, completed: false });
+      await pb.collection('subtasks').create({
+        name,
+        goal: goalId,
+        completed: false,
+        notes: notes || null,
+      });
       await fetchGoals();
       markSaved();
     } catch (err) {
@@ -247,6 +288,21 @@ export function useGoals() {
     }
   };
 
+  const updateSubtaskNotes = async (subtaskId: string, subNotes: string) => {
+    try {
+      markSaving();
+      await pb.collection('subtasks').update(subtaskId, { notes: subNotes || null });
+      setGoals((prev) => prev.map((g) => ({
+        ...g,
+        subtasks: g.subtasks.map((s) => (s.id === subtaskId ? { ...s, notes: subNotes } : s)),
+      })));
+      markSaved();
+    } catch (err) {
+      markError();
+      toast.error(isNetworkError(err) ? 'No connection. Notes not saved.' : 'Failed to save notes.');
+    }
+  };
+
   const reorderGoals = async (ordered: Goal[]) => {
     try {
       markSaving();
@@ -265,7 +321,7 @@ export function useGoals() {
     archivedGoals, archivedLoading,
     createGoal, editGoal, deleteGoal, archiveGoal,
     restoreGoal, deleteArchivedGoal, fetchArchivedGoals,
-    addSubtask, toggleSubtask, deleteSubtask, updateSubtaskEffort,
+    addSubtask, toggleSubtask, deleteSubtask, updateSubtaskEffort, updateSubtaskNotes,
     reorderGoals,
   };
 }

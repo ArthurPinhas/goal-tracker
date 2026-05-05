@@ -128,6 +128,19 @@ export const playGoalDone = () => {
   ], t + 0.35, 0.015, 1.4);
 };
 
+// ─── Emoji picked / suggestion accepted — tiny sparkle ────────────────────
+export const playEmojiSpark = () => {
+  if (!isSoundEnabled()) return;
+  const c = getCtx();
+  if (!c) return;
+  const comp = makeCompressor(c);
+  const t = c.currentTime;
+  playOscGroup(c, comp, [
+    { freq: 990, gain: 0.09, type: 'sine', freqEnd: 1320 },
+    { freq: 1320, gain: 0.04, type: 'sine', freqEnd: 1760 },
+  ], t, 0.004, 0.07);
+};
+
 // ─── Add goal/subtask — airy rising pop ───────────────────────────────────
 export const playPop = () => {
   if (!isSoundEnabled()) return;

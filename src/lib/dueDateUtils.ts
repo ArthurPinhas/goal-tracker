@@ -1,4 +1,4 @@
-import { addDays } from 'date-fns';
+import { differenceInCalendarDays, startOfDay } from 'date-fns';
 import type { Goal } from '@/types/goal';
 import { calcProgress } from '@/lib/goalUtils';
 
@@ -6,7 +6,10 @@ export type DueUrgency = 'none' | 'soon' | 'overdue';
 
 export function normalizeDueDate(raw: unknown): string | null {
   if (raw == null || raw === '') return null;
-  const s = String(raw);
+  if (typeof raw === 'object' && raw instanceof Date && !Number.isNaN(raw.getTime())) {
+    return toLocalDayString(raw);
+  }
+  const s = String(raw).trim();
   const d = s.length >= 10 ? s.slice(0, 10) : s;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
   return d;
@@ -30,17 +33,31 @@ export function isIncompleteForDueDate(goal: Goal): boolean {
   return calcProgress(goal) < 100;
 }
 
+/**
+ * Compares due date to **local calendar today** using pure calendar-day math (not string sorting).
+ * Prevents subtle TZ / formatting issues that could mis-flag a future due date as overdue.
+ */
 export function getDueUrgency(dueDate: string | null, incomplete: boolean): DueUrgency {
   if (!dueDate || !incomplete) return 'none';
-  const todayStr = toLocalDayString(new Date());
-  /** Lexical order matches calendar order for canonical `YYYY-MM-DD` strings — avoids TZ edge cases vs `differenceInCalendarDays`. */
-  if (dueDate < todayStr) return 'overdue';
-  const weekOutStr = toLocalDayString(addDays(parseLocalDay(todayStr), 7));
-  if (dueDate <= weekOutStr) return 'soon';
+  const due = startOfDay(parseLocalDay(dueDate));
+  const today = startOfDay(new Date());
+  if (Number.isNaN(due.getTime())) return 'none';
+  const diff = differenceInCalendarDays(due, today);
+  if (diff < 0) return 'overdue';
+  if (diff <= 7) return 'soon';
   return 'none';
 }
 
 export function formatDueChip(isoDay: string): string {
   const due = parseLocalDay(isoDay);
   return due.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/** True if the due date is today in the local calendar (not overdue “soon” window — literally today). */
+export function isDueDateToday(dueDate: string | null): boolean {
+  if (!dueDate) return false;
+  const due = startOfDay(parseLocalDay(dueDate));
+  const today = startOfDay(new Date());
+  if (Number.isNaN(due.getTime())) return false;
+  return differenceInCalendarDays(due, today) === 0;
 }

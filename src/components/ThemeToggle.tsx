@@ -25,7 +25,7 @@ const ThemeToggle = ({ className, variant = 'default' }: ThemeToggleProps) => {
       variant="ghost"
       size="icon"
       className={cn(
-        'h-9 w-9 shrink-0',
+        'h-9 w-9 shrink-0 rounded-lg transition-colors duration-200 active:scale-[0.97]',
         variant === 'header' && 'text-white/50 hover:text-white hover:bg-white/10',
         className
       )}

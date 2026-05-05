@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
+import toast from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useGoals } from "@/hooks/useGoals";
+import { useDueNotifications } from "@/hooks/useDueNotifications";
 import { Goal } from "@/types/goal";
 import { calcProgress } from "@/lib/goalUtils";
 import GoalCard from "@/components/GoalCard";
@@ -12,12 +14,18 @@ import CelebrationOverlay from "@/components/CelebrationOverlay";
 import StickyHeader from "@/components/StickyHeader";
 import GoalSidebar from "@/components/GoalSidebar";
 import ThemeToggle from "@/components/ThemeToggle";
+import { DueNotificationToggle } from "@/components/DueNotificationToggle";
+import { showDueReminderInAppToast } from "@/components/DueReminderInAppToast";
+import { PageSideParticles } from "@/components/PageSideParticles";
+import { EmptyState } from "@/components/EmptyState";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Target, LogOut, Search, Volume2, VolumeX, Check, Loader2, AlertCircle, Archive, RotateCcw, CheckSquare, Trash2, CalendarDays } from "lucide-react";
+import { Target, LogOut, Search, Volume2, VolumeX, Check, Loader2, AlertCircle, Archive, RotateCcw, CheckSquare, Trash2, CalendarDays, SearchX, Sparkles, Trophy } from "lucide-react";
 import { isSoundEnabled, toggleSound } from "@/lib/sounds";
 import { formatDueChip, getDueUrgency, isIncompleteForDueDate } from "@/lib/dueDateUtils";
+import { smoothOut, springContent } from "@/lib/motion";
 import {
   Select,
   SelectContent,
@@ -40,19 +48,18 @@ const QUOTES = [
 const quote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
 
 const HEADER_ORBS = [
-  { w: 160, h: 110, left: '6%',  top: '-30%', color: '#34d399', opacity: 0.13, duration: 9,  delay: 0 },
-  { w: 200, h: 150, left: '42%', top: '-40%', color: '#a78bfa', opacity: 0.10, duration: 13, delay: 2 },
-  { w: 110, h: 90,  left: '74%', top: '0%',   color: '#60a5fa', opacity: 0.12, duration: 10, delay: 1 },
-  { w: 240, h: 130, left: '-6%', top: '20%',  color: '#8b5cf6', opacity: 0.07, duration: 12, delay: 3 },
-  { w: 90,  h: 90,  left: '90%', top: '-20%', color: '#34d399', opacity: 0.09, duration: 11, delay: 1.5 },
+  { w: 118, h: 82, left: '6%',  top: '-30%', color: '#34d399', opacity: 0.13, duration: 9,  delay: 0 },
+  { w: 138, h: 102, left: '42%', top: '-40%', color: '#a78bfa', opacity: 0.11, duration: 13, delay: 2 },
+  { w: 78, h: 62,  left: '74%', top: '0%',   color: '#60a5fa', opacity: 0.12, duration: 10, delay: 1 },
+  { w: 148, h: 92, left: '-6%', top: '20%',  color: '#8b5cf6', opacity: 0.095, duration: 12, delay: 3 },
+  { w: 74,  h: 74,  left: '90%', top: '-20%', color: '#34d399', opacity: 0.11, duration: 11, delay: 1.5 },
 ];
 
-// Subtle ambient orbs for the full page — low opacity, large blur, edge-positioned
+/* Fixed-page wash: smaller / softer than before — side *particles* carry the sparkle */
 const PAGE_ORBS = [
-  { w: 420, h: 360, left: '-90px', top: '20%',   color: '#34d399', opacity: 0.04, duration: 20, delay: 0 },
-  { w: 380, h: 320, left: 'auto',  top: '32%',   right: '-70px', color: '#a78bfa', opacity: 0.04, duration: 25, delay: 3 },
-  { w: 340, h: 290, left: '2%',    top: 'auto',  bottom: '18%',  color: '#60a5fa', opacity: 0.03, duration: 22, delay: 6 },
-  { w: 360, h: 300, left: 'auto',  top: 'auto',  right: '1%', bottom: '12%', color: '#8b5cf6', opacity: 0.035, duration: 18, delay: 9 },
+  { w: 200, h: 168, left: '-56px', top: '22%', color: '#34d399', opacity: 0.038, duration: 24, delay: 0 },
+  { w: 185, h: 158, left: 'auto',  top: '34%', right: '-52px', color: '#a78bfa', opacity: 0.034, duration: 30, delay: 4 },
+  { w: 165, h: 138, left: '2%',    top: 'auto',  bottom: '16%',  color: '#60a5fa', opacity: 0.03, duration: 26, delay: 7 },
 ];
 
 type Filter = 'all' | 'active' | 'done' | 'archived';
@@ -81,7 +88,7 @@ function matchesDueFilter(goal: Goal, df: DueFilter): boolean {
 const Index = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { goals, loading, pendingSubtasks, saveStatus, archivedGoals, archivedLoading, createGoal, editGoal, deleteGoal, archiveGoal, restoreGoal, deleteArchivedGoal, fetchArchivedGoals, addSubtask, toggleSubtask, deleteSubtask, updateSubtaskEffort, reorderGoals } = useGoals();
+  const { goals, loading, pendingSubtasks, saveStatus, archivedGoals, archivedLoading, createGoal, editGoal, deleteGoal, archiveGoal, restoreGoal, deleteArchivedGoal, fetchArchivedGoals, addSubtask, toggleSubtask, deleteSubtask, updateSubtaskEffort, updateSubtaskNotes, reorderGoals } = useGoals();
   const [orderedGoals, setOrderedGoals] = useState<Goal[]>([]);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
@@ -95,16 +102,23 @@ const Index = () => {
   const prevProgresses = useRef<Record<string, number>>({});
   const headerRef = useRef<HTMLDivElement>(null);
   const reorderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dueNotify = useDueNotifications(goals, {
+    onDelivered: ({ title, body }) => {
+      showDueReminderInAppToast(title, body);
+    },
+  });
 
   // Sticky header: show when main header scrolls out of view
   useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
     const observer = new IntersectionObserver(
       ([entry]) => setShowStickyHeader(!entry.isIntersecting),
       { threshold: 0 }
     );
-    if (headerRef.current) observer.observe(headerRef.current);
+    observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [loading, orderedGoals.length]);
 
   useEffect(() => {
     orderedGoals.forEach((goal) => {
@@ -152,7 +166,7 @@ const Index = () => {
       archivedFetched.current = true;
       fetchArchivedGoals();
     }
-  }, [filter]);
+  }, [filter, fetchArchivedGoals]);
 
   // Cmd/Ctrl+N opens new goal dialog
   useEffect(() => {
@@ -175,7 +189,12 @@ const Index = () => {
     return (
       g.title.toLowerCase().includes(searchLower) ||
       g.description?.toLowerCase().includes(searchLower) ||
-      g.subtasks.some((s) => s.title.toLowerCase().includes(searchLower))
+      (g.notes && g.notes.toLowerCase().includes(searchLower)) ||
+      g.subtasks.some(
+        (s) =>
+          s.title.toLowerCase().includes(searchLower) ||
+          (s.notes && s.notes.toLowerCase().includes(searchLower))
+      )
     );
   };
 
@@ -212,11 +231,29 @@ const Index = () => {
     onDeleteSubtask: deleteSubtask,
     onEdit: editGoal,
     onSetEffort: updateSubtaskEffort,
+    onUpdateSubtaskNotes: updateSubtaskNotes,
   };
+
+  const dueReminderToggle = (
+    <DueNotificationToggle
+      variant="header"
+      enabled={dueNotify.notificationsEnabled}
+      onEnable={async () => {
+        const r = await dueNotify.setDueNotificationsOn();
+        if (r === "denied") toast.error("Allow notifications in your browser to get due-date reminders.");
+        if (r === "unsupported") toast.error("Notifications are not available in this environment.");
+        if (r === "ok") {
+          toast.success("Reminders on—you’ll also see a message in this page when something is due.", { duration: 4000 });
+        }
+        return r;
+      }}
+      onDisable={dueNotify.setDueNotificationsOff}
+    />
+  );
 
   return (
     <div className="min-h-screen bg-background relative">
-      {/* Page-wide ambient orbs — fixed, edge-positioned, very subtle */}
+      {/* Page-wide ambient orbs — fixed, edge-positioned */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         {PAGE_ORBS.map((orb, i) => (
           <motion.div
@@ -229,13 +266,15 @@ const Index = () => {
               ...(('bottom' in orb && orb.bottom) ? { bottom: orb.bottom } : {}),
               backgroundColor: orb.color,
               opacity: orb.opacity,
-              filter: 'blur(80px)',
+              filter: 'blur(92px)',
             }}
             animate={{ y: [0, -24, 8, -16, 0], x: [0, 12, -8, 14, 0] }}
             transition={{ duration: orb.duration, delay: orb.delay, repeat: Infinity, ease: 'easeInOut' }}
           />
         ))}
       </div>
+
+      <PageSideParticles />
 
       {/* Lottie celebration overlay */}
       <AnimatePresence>
@@ -254,40 +293,67 @@ const Index = () => {
             onAdd={createGoal}
             addGoalOpen={addGoalOpen}
             onAddGoalOpenChange={setAddGoalOpen}
+            dueNotificationsSlot={dueReminderToggle}
           />
         )}
       </AnimatePresence>
 
-      {/* Main gradient header */}
-      <div ref={headerRef} className="gradient-header px-4 pt-10 pb-8 relative overflow-hidden z-10">
-        {HEADER_ORBS.map((orb, i) => (
-          <motion.div
-            key={i}
-            className="absolute rounded-full pointer-events-none"
-            style={{ width: orb.w, height: orb.h, left: orb.left, top: orb.top, backgroundColor: orb.color, opacity: orb.opacity, filter: 'blur(45px)' }}
-            animate={{ y: [0, -18, 6, -12, 0], x: [0, 9, -6, 11, 0], scale: [1, 1.06, 0.96, 1.04, 1] }}
-            transition={{ duration: orb.duration, delay: orb.delay, repeat: Infinity, ease: 'easeInOut' }}
-          />
-        ))}
-        <div className="max-w-5xl mx-auto relative z-10">
+      {/* Goals hero: gradient + orbs clipped in the layer below — no extra bottom wash */}
+      <div ref={headerRef} className="index-hero relative z-10 overflow-visible px-4 sm:px-6 pt-10 pb-11">
+        <div
+          className="absolute inset-0 -z-10 overflow-hidden rounded-b-[1.75rem] md:rounded-b-[2rem] pointer-events-none shadow-[0_28px_64px_-20px_rgba(0,0,0,0.65)] ring-1 ring-white/[0.06]"
+          aria-hidden
+        >
+          <div className="absolute inset-0 gradient-header-bg" />
+          {HEADER_ORBS.map((orb, i) => (
+            <motion.div
+              key={i}
+              className="absolute rounded-full pointer-events-none"
+              style={{
+                width: orb.w,
+                height: orb.h,
+                left: orb.left,
+                top: orb.top,
+                backgroundColor: orb.color,
+                opacity: orb.opacity,
+                filter: "blur(38px)",
+                zIndex: 1,
+              }}
+              animate={{
+                y: [0, -18, 6, -12, 0],
+                x: [0, 9, -6, 11, 0],
+                scale: [1, 1.06, 0.96, 1.04, 1],
+              }}
+              transition={{ duration: orb.duration, delay: orb.delay, repeat: Infinity, ease: "easeInOut" }}
+            />
+          ))}
+        </div>
+        <div className="relative z-10 max-w-5xl mx-auto">
           <div className="flex items-start justify-between gap-4">
-            <div className="space-y-1">
+            <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-white/50" />
-                <span className="text-white/40 text-xs font-medium tracking-widest uppercase">Goal Tracker</span>
+                <Target className="h-4 w-4 text-white/55" />
+                <span className="text-white/45 text-[11px] font-semibold tracking-[0.18em] uppercase">
+                  Goal Tracker
+                </span>
               </div>
-              <h1 className="text-3xl font-bold text-white tracking-tight">Hey, {username}</h1>
-              <p className="text-white/40 text-sm italic">"{quote}"</p>
+              <h1 className="text-4xl sm:text-[2.5rem] font-semibold text-white tracking-tight text-balance [text-shadow:0_2px_24px_rgba(0,0,0,0.35)]">
+                Hey, {username}
+              </h1>
+              <p className="text-white/45 text-sm sm:text-[0.9375rem] italic leading-relaxed max-w-xl">
+                &ldquo;{quote}&rdquo;
+              </p>
             </div>
-            <div className="flex items-center gap-2 pt-1">
+            <div className="flex items-center gap-1 sm:gap-2 pt-1 flex-wrap justify-end">
               <AddGoalDialog onAdd={createGoal} open={addGoalOpen} onOpenChange={setAddGoalOpen} />
+              {dueReminderToggle}
               <ThemeToggle variant="header" />
               <Button variant="ghost" size="icon" onClick={handleToggleSound} title={soundOn ? 'Mute sounds' : 'Unmute sounds'}
-                className="text-white/50 hover:text-white hover:bg-white/10">
+                className="text-white/50 hover:text-white hover:bg-white/10 h-10 w-10 sm:h-9 sm:w-9">
                 {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
               </Button>
               <Button variant="ghost" size="icon" onClick={handleLogout} title="Log out"
-                className="text-white/50 hover:text-white hover:bg-white/10">
+                className="text-white/50 hover:text-white hover:bg-white/10 h-10 w-10 sm:h-9 sm:w-9">
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
@@ -295,29 +361,46 @@ const Index = () => {
 
           {!loading && orderedGoals.length > 0 && (
             <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="flex items-center gap-6 mt-5 pt-4 border-t border-white/10"
+              initial="hidden"
+              animate="visible"
+              variants={{
+                hidden: {},
+                visible: { transition: { staggerChildren: 0.06, delayChildren: 0.18 } },
+              }}
+              className="flex flex-wrap items-end gap-x-10 gap-y-4 mt-6 pt-5 border-t border-white/[0.12]"
             >
               {[
                 { label: 'Goals', value: orderedGoals.length },
                 { label: 'Completed', value: completedGoalsBase.length },
                 { label: 'Subtasks done', value: totalSubtasksDone },
               ].map(({ label, value }) => (
-                <div key={label}>
-                  <div className="text-2xl font-bold text-white tabular-nums">{value}</div>
-                  <div className="text-xs text-white/40 uppercase tracking-wide">{label}</div>
-                </div>
+                <motion.div
+                  key={label}
+                  variants={{
+                    hidden: { opacity: 0, y: 10 },
+                    visible: { opacity: 1, y: 0, transition: springContent },
+                  }}
+                >
+                  <div className="text-3xl font-semibold text-white tabular-nums tracking-tight [text-shadow:0_1px_16px_rgba(0,0,0,0.25)]">
+                    {value}
+                  </div>
+                  <div className="text-[11px] text-white/45 font-medium uppercase tracking-[0.14em] mt-1.5">
+                    {label}
+                  </div>
+                </motion.div>
               ))}
             </motion.div>
           )}
         </div>
       </div>
 
-      {/* Content + Sidebar */}
-      <div className="max-w-5xl mx-auto px-4 py-6 relative z-10">
-        <div className="lg:flex gap-8 items-start">
+      {/* Content: tuck under hero with a hairline seam (no full-bleed color wash) */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-6 pt-8 sm:pt-10 relative z-10 -mt-3 sm:-mt-4">
+        <div
+          className="pointer-events-none absolute left-4 right-4 sm:left-6 sm:right-6 top-0 h-px bg-gradient-to-r from-transparent via-border/70 to-transparent"
+          aria-hidden
+        />
+        <div className="lg:flex gap-8 lg:gap-10 items-start pt-1">
           {/* Main content */}
           <div className="flex-1 min-w-0 max-w-2xl mx-auto lg:max-w-none lg:mx-0">
             {loading ? (
@@ -326,38 +409,32 @@ const Index = () => {
                 <SkeletonGoalCard />
               </div>
             ) : orderedGoals.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.96 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="flex flex-col items-center justify-center py-20 text-center space-y-5"
+              <EmptyState
+                icon={Target}
+                title="Set your first goal"
+                description="Break it into steps. Track your progress. Celebrate every win."
               >
-                <div className="goal-float">
-                  <Target className="h-16 w-16 text-primary/40" />
-                </div>
-                <div className="space-y-2">
-                  <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent">
-                    Set your first goal
-                  </h2>
-                  <p className="text-muted-foreground text-sm max-w-xs">
-                    Break it into steps. Track your progress. Celebrate every win.
-                  </p>
-                </div>
                 <AddGoalDialog onAdd={createGoal} triggerClassName="cta-glow" />
-              </motion.div>
+              </EmptyState>
             ) : (
-              <div className="space-y-5">
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, ease: smoothOut }}
+                className="space-y-6"
+              >
                 {/* Search + filter */}
-                <div className="space-y-2.5">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <div className="space-y-3">
+                  <div className="relative group">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary/80" />
                     <Input
                       placeholder="Search goals and subtasks…"
-                      className="pl-9"
+                      className="pl-9 h-11 rounded-lg transition-all duration-300 ease-out focus-visible:ring-offset-background app-surface-input dark:focus-visible:shadow-md dark:focus-visible:shadow-primary/5"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                     />
                   </div>
-                  <div className="flex gap-1.5 flex-wrap">
+                  <div className="flex gap-2 flex-wrap">
                     {([
                       { f: 'all', label: `All (${orderedGoals.length})` },
                       { f: 'active', label: `Active (${activeGoalsBase.length})` },
@@ -366,21 +443,26 @@ const Index = () => {
                     ] as { f: Filter; label: string }[]).map(({ f, label }) => (
                       <button
                         key={f}
+                        type="button"
                         onClick={() => setFilter(f)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-colors ${
+                        className={cn(
+                          "min-h-10 px-4 py-2 rounded-full text-xs font-semibold capitalize transition-all duration-300 ease-out",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                           filter === f
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-secondary text-muted-foreground hover:text-foreground'
-                        }`}
+                            ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 scale-[1.02] ring-2 ring-primary/25"
+                            : "bg-secondary/80 dark:bg-secondary/70 text-muted-foreground hover:text-foreground hover:bg-secondary border border-border/50 hover:border-border hover:scale-[1.02] active:scale-[0.98]",
+                        )}
                       >
                         {label}
                       </button>
                     ))}
                   </div>
                   {filter !== 'archived' && (
-                    <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between pt-2 mt-2 border-t border-border/40">
-                      <div className="flex flex-col gap-1.5">
-                        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Deadline</span>
+                    <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between pt-3 mt-1 border-t border-border/50">
+                      <div className="flex flex-col gap-2">
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.12em]">
+                          Deadline
+                        </span>
                         <div className="flex gap-1.5 flex-wrap">
                           {([
                             { df: 'all' as DueFilter, label: 'Any' },
@@ -392,11 +474,13 @@ const Index = () => {
                               key={df}
                               type="button"
                               onClick={() => setDueFilter(df)}
-                              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                              className={cn(
+                                "min-h-10 px-4 py-2 rounded-full text-xs font-semibold transition-all duration-300 ease-out",
+                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                                 dueFilter === df
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'bg-secondary text-muted-foreground hover:text-foreground'
-                              }`}
+                                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 scale-[1.02] ring-2 ring-primary/25"
+                                  : "bg-secondary/80 dark:bg-secondary/70 text-muted-foreground hover:text-foreground hover:bg-secondary border border-border/50 hover:border-border hover:scale-[1.02] active:scale-[0.98]",
+                              )}
                             >
                               {label}
                             </button>
@@ -404,9 +488,11 @@ const Index = () => {
                         </div>
                       </div>
                       <div className="flex flex-col gap-1.5 sm:items-end">
-                        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Sort</span>
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.12em]">
+                          Sort
+                        </span>
                         <Select value={goalSortMode} onValueChange={(v) => setGoalSortMode(v as GoalSortMode)}>
-                          <SelectTrigger className="h-9 w-[220px] text-xs bg-background">
+                          <SelectTrigger className="min-h-10 h-10 w-full max-w-full sm:max-w-[220px] text-xs rounded-lg transition-all duration-300 app-surface-input">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -438,7 +524,7 @@ const Index = () => {
                         reorderTimer.current = setTimeout(() => reorderGoals(next), 600);
                       }}
                       as="div"
-                      className="space-y-3"
+                      className="space-y-4"
                     >
                       <AnimatePresence initial={false}>
                         {activeGoals.map((goal, i) => (
@@ -447,8 +533,8 @@ const Index = () => {
                             value={goal}
                             as="div"
                             initial={{ opacity: 0, y: 16 }}
-                            animate={{ opacity: 1, y: 0, transition: { delay: i * 0.05, type: 'spring', stiffness: 300, damping: 26 } }}
-                            exit={{ opacity: 0, y: 10, scale: 0.97, transition: { duration: 0.3, ease: 'easeIn' } }}
+                            animate={{ opacity: 1, y: 0, transition: { delay: i * 0.05, ...springContent } }}
+                            exit={{ opacity: 0, y: 10, scale: 0.97, transition: { duration: 0.28, ease: smoothOut } }}
                           >
                             <GoalCard goal={goal} showDragHandle isCelebrating={celebratingGoals.has(goal.id)} onArchive={() => archiveGoal(goal.id)} {...sharedCardProps} />
                           </Reorder.Item>
@@ -456,14 +542,14 @@ const Index = () => {
                       </AnimatePresence>
                     </Reorder.Group>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       <AnimatePresence initial={false}>
                         {activeGoals.map((goal, i) => (
                           <motion.div
                             key={goal.id}
                             initial={{ opacity: 0, y: 16 }}
-                            animate={{ opacity: 1, y: 0, transition: { delay: i * 0.05, type: 'spring', stiffness: 300, damping: 26 } }}
-                            exit={{ opacity: 0, y: 10, scale: 0.97, transition: { duration: 0.3, ease: 'easeIn' } }}
+                            animate={{ opacity: 1, y: 0, transition: { delay: i * 0.05, ...springContent } }}
+                            exit={{ opacity: 0, y: 10, scale: 0.97, transition: { duration: 0.28, ease: smoothOut } }}
                           >
                             <GoalCard goal={goal} showDragHandle={false} isCelebrating={celebratingGoals.has(goal.id)} onArchive={() => archiveGoal(goal.id)} {...sharedCardProps} />
                           </motion.div>
@@ -477,10 +563,10 @@ const Index = () => {
                 {showCompleted && completedGoals.length > 0 && (
                   <div className="space-y-3">
                     {showActive && activeGoals.length > 0 && (
-                      <div className="flex items-center gap-3 pt-1">
-                        <div className="h-px flex-1 bg-border" />
-                        <span className="text-xs text-muted-foreground uppercase tracking-widest">Completed</span>
-                        <div className="h-px flex-1 bg-border" />
+                      <div className="flex items-center gap-3 pt-2">
+                        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.2em]">Completed</span>
+                        <div className="h-px flex-1 bg-gradient-to-l from-transparent via-border to-transparent" />
                       </div>
                     )}
                     <AnimatePresence initial={false}>
@@ -488,8 +574,8 @@ const Index = () => {
                         <motion.div
                           key={goal.id}
                           initial={{ opacity: 0, y: 16 }}
-                          animate={{ opacity: 1, y: 0, transition: { delay: 0.28 + i * 0.05, duration: 0.35, ease: 'easeOut' } }}
-                          exit={{ opacity: 0, scale: 0.96 }}
+                          animate={{ opacity: 1, y: 0, transition: { delay: 0.28 + i * 0.05, ...springContent } }}
+                          exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.25, ease: smoothOut } }}
                         >
                           <GoalCard goal={goal} showDragHandle={false} isCelebrating={celebratingGoals.has(goal.id)} onArchive={() => archiveGoal(goal.id)} {...sharedCardProps} />
                         </motion.div>
@@ -500,19 +586,31 @@ const Index = () => {
 
                 {/* Archived goals */}
                 {filter === 'archived' && (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {archivedLoading ? (
-                      <p className="text-center text-muted-foreground text-sm py-12">Loading archive…</p>
+                      <div className="space-y-3 py-1">
+                        {[0, 1, 2].map((i) => (
+                          <SkeletonGoalCard key={i} />
+                        ))}
+                      </div>
                     ) : archivedGoals.length === 0 ? (
-                      <p className="text-center text-muted-foreground text-sm py-12 italic">Archive is empty.</p>
+                      <EmptyState
+                        compact
+                        icon={Archive}
+                        title="Archive is empty"
+                        description="When you archive a goal, it lands here. Restore it anytime or delete it permanently."
+                      />
                     ) : archivedGoals.map((goal) => {
                       const pct = calcProgress(goal);
                       const done = goal.subtasks.filter((s) => s.is_completed).length;
                       return (
-                        <div key={goal.id} className="rounded-xl border bg-card/50 px-4 py-3 flex items-start gap-3 opacity-70 hover:opacity-100 transition-opacity">
+                        <div key={goal.id} className="group rounded-2xl border border-border/55 bg-card/60 backdrop-blur-sm px-4 py-4 flex items-start gap-3 opacity-90 hover:opacity-100 transition-all duration-300 hover:border-border/80 hover:shadow-xl hover:shadow-black/25 dark:bg-card/55 dark:hover:shadow-black/40">
                           <Archive className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{goal.title}</p>
+                            <p className="font-medium text-sm flex items-center gap-1.5 min-w-0">
+                              {goal.emoji && <span className="shrink-0 text-base leading-none">{goal.emoji}</span>}
+                              <span className="truncate min-w-0">{goal.title}</span>
+                            </p>
                             {goal.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{goal.description}</p>}
                             {goal.due_date && (
                               <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
@@ -555,17 +653,39 @@ const Index = () => {
 
                 {/* No results */}
                 {filter !== 'archived' && !(showActive && activeGoals.length > 0) && !(showCompleted && completedGoals.length > 0) && (
-                  <p className="text-center text-muted-foreground text-sm py-12">
-                    {searchLower
-                      ? `No goals match "${search}"`
-                      : dueFilter !== 'all'
-                        ? 'No goals match this deadline filter.'
-                      : filter === 'active'
-                      ? 'No active goals — all done!'
-                      : 'No completed goals yet'}
-                  </p>
+                  <>
+                    {searchLower ? (
+                      <EmptyState
+                        compact
+                        icon={SearchX}
+                        title={`No matches for "${search}"`}
+                        description="Try a shorter search or clear the box to see all goals."
+                      />
+                    ) : dueFilter !== 'all' ? (
+                      <EmptyState
+                        compact
+                        icon={CalendarDays}
+                        title="Nothing matches this deadline"
+                        description="Switch deadline filter to “Any” or choose another option."
+                      />
+                    ) : filter === 'active' ? (
+                      <EmptyState
+                        compact
+                        icon={Sparkles}
+                        title="All caught up"
+                        description="No active goals in this view — time to celebrate or plan the next win."
+                      />
+                    ) : (
+                      <EmptyState
+                        compact
+                        icon={Trophy}
+                        title="No completed goals yet"
+                        description="Complete every subtask on a goal to see it listed here."
+                      />
+                    )}
+                  </>
                 )}
-              </div>
+              </motion.div>
             )}
 
           </div>
@@ -592,10 +712,10 @@ const Index = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ duration: 0.18 }}
-            className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-3 py-2 rounded-full text-xs font-medium shadow-lg border ${
+            className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-3.5 py-2.5 rounded-full text-xs font-medium backdrop-blur-xl shadow-2xl border ${
               saveStatus === 'error'
-                ? 'bg-destructive text-destructive-foreground border-destructive'
-                : 'bg-card text-foreground border-border'
+                ? 'bg-destructive/95 text-destructive-foreground border-destructive'
+                : 'bg-card/90 text-foreground border-border/55'
             }`}
           >
             {saveStatus === 'saving' && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}

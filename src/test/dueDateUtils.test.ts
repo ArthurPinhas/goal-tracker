@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { getDueUrgency, normalizeDueDate, parseLocalDay, toLocalDayString, isIncompleteForDueDate } from '@/lib/dueDateUtils';
+import { getDueUrgency, normalizeDueDate, parseLocalDay, toLocalDayString, isIncompleteForDueDate, isDueDateToday } from '@/lib/dueDateUtils';
 import type { Goal } from '@/types/goal';
 
 const baseGoal = (overrides: Partial<Goal> & Pick<Goal, 'id'>): Goal => ({
@@ -8,6 +8,8 @@ const baseGoal = (overrides: Partial<Goal> & Pick<Goal, 'id'>): Goal => ({
   title: 'T',
   description: '',
   due_date: null,
+  emoji: null,
+  notes: '',
   subtasks: [],
   ...overrides,
 });
@@ -16,6 +18,9 @@ describe('normalizeDueDate', () => {
   it('accepts PocketBase-like strings and trims to calendar day', () => {
     expect(normalizeDueDate('2027-05-13T00:00:00.000Z')).toBe('2027-05-13');
     expect(normalizeDueDate('2027-05-13')).toBe('2027-05-13');
+  });
+  it('accepts Date objects (e.g. SDK-deserialized)', () => {
+    expect(normalizeDueDate(new Date(2027, 4, 13, 15, 30, 0))).toBe('2027-05-13');
   });
   it('returns null for empty and invalid shapes', () => {
     expect(normalizeDueDate(null)).toBeNull();
@@ -63,6 +68,10 @@ describe('getDueUrgency', () => {
     freeze('2026-06-01');
     expect(getDueUrgency('2027-05-13', true)).toBe('none');
   });
+  it('does not mark a future due date in the same year as overdue (May 21 vs May 5)', () => {
+    freeze('2026-05-05');
+    expect(getDueUrgency('2026-05-21', true)).toBe('none');
+  });
 });
 
 describe('isIncompleteForDueDate', () => {
@@ -74,9 +83,19 @@ describe('isIncompleteForDueDate', () => {
     const g = baseGoal({
       id: '1',
       subtasks: [
-        { id: 's1', goal_id: '1', title: 'a', is_completed: true, effort: null },
+        { id: 's1', goal_id: '1', title: 'a', is_completed: true, effort: null, notes: '' },
       ],
     });
     expect(isIncompleteForDueDate(g)).toBe(false);
+  });
+});
+
+describe('isDueDateToday', () => {
+  it('is true only when the due string is local today', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-15T12:00:00'));
+    expect(isDueDateToday('2026-05-15')).toBe(true);
+    expect(isDueDateToday('2026-05-16')).toBe(false);
+    vi.useRealTimers();
   });
 });

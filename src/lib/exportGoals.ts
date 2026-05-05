@@ -17,11 +17,14 @@ const timestamp = () => new Date().toISOString().slice(0, 10);
 export const exportJSON = (goals: Goal[]) => {
   const data = goals.map((g) => ({
     title: g.title,
+    emoji: g.emoji,
     description: g.description,
+    notes: g.notes,
     due_date: g.due_date,
     progress: Math.round(calcProgress(g)),
     subtasks: g.subtasks.map((s) => ({
       title: s.title,
+      notes: s.notes,
       completed: s.is_completed,
       effort: s.effort,
     })),
@@ -31,17 +34,35 @@ export const exportJSON = (goals: Goal[]) => {
 };
 
 export const exportCSV = (goals: Goal[]) => {
-  const rows: string[] = ['Goal,Description,Due date,Progress,Subtask,Completed,Effort'];
+  const rows: string[] = [
+    'Goal,Emoji,Description,Goal notes,Due date,Progress,Subtask,Subtask notes,Completed,Effort',
+  ];
+  const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   for (const g of goals) {
     const progress = `${Math.round(calcProgress(g))}%`;
     const due = g.due_date ?? '';
+    const em = g.emoji ?? '';
+    const gn = g.notes ?? '';
     if (g.subtasks.length === 0) {
-      rows.push([g.title, g.description, due, progress, '', '', ''].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','));
+      rows.push(
+        [g.title, em, g.description, gn, due, progress, '', '', '', ''].map(esc).join(',')
+      );
     } else {
       for (const s of g.subtasks) {
         rows.push(
-          [g.title, g.description, due, progress, s.title, s.is_completed ? 'Yes' : 'No', s.effort?.toString() ?? '']
-            .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+          [
+            g.title,
+            em,
+            g.description,
+            gn,
+            due,
+            progress,
+            s.title,
+            s.notes ?? '',
+            s.is_completed ? 'Yes' : 'No',
+            s.effort?.toString() ?? '',
+          ]
+            .map(esc)
             .join(',')
         );
       }
@@ -90,7 +111,8 @@ export const exportPDF = (goals: Goal[]) => {
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(20, 20, 30);
-    doc.text(goal.title, margin + 3, y + 7);
+    const titleLine = `${goal.emoji ? `${goal.emoji} ` : ''}${goal.title}`;
+    doc.text(titleLine, margin + 3, y + 7);
 
     // Progress badge
     const badgeColor = pct >= 100 ? [245, 158, 11] : pct >= 50 ? [34, 197, 94] : [52, 211, 153];
@@ -120,6 +142,18 @@ export const exportPDF = (goals: Goal[]) => {
       const descLines = doc.splitTextToSize(goal.description, contentW - 4);
       doc.text(descLines, margin + 3, y);
       y += descLines.length * 4.5 + 2;
+    }
+
+    if (goal.notes?.trim()) {
+      checkPage(8);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(90, 90, 100);
+      doc.text('Notes:', margin + 3, y);
+      y += 4;
+      const noteLines = doc.splitTextToSize(goal.notes.trim(), contentW - 4);
+      doc.text(noteLines, margin + 3, y);
+      y += noteLines.length * 4.5 + 2;
     }
 
     // Subtask count line
@@ -154,6 +188,15 @@ export const exportPDF = (goals: Goal[]) => {
         const lines = doc.splitTextToSize(label, contentW - 10);
         doc.text(lines, margin + 6, y);
         y += lines.length * 5;
+        if (s.notes?.trim()) {
+          checkPage(5);
+          doc.setFontSize(7.5);
+          doc.setFont('helvetica', 'italic');
+          doc.setTextColor(110, 110, 120);
+          const nLines = doc.splitTextToSize(s.notes.trim(), contentW - 14);
+          doc.text(nLines, margin + 8, y);
+          y += nLines.length * 4 + 1;
+        }
       }
     } else {
       checkPage(5);

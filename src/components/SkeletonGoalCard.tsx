@@ -1,5 +1,5 @@
 const SkeletonGoalCard = () => (
-  <div className="rounded-xl border bg-card p-6 space-y-5 shadow-sm animate-pulse">
+  <div className="rounded-2xl border bg-card p-6 space-y-5 shadow-sm dark:border-border/50 dark:shadow-lg dark:shadow-black/40 animate-pulse">
     <div className="flex items-start justify-between gap-2">
       <div className="space-y-2 flex-1">
         <div className="h-5 w-2/5 rounded bg-secondary" />
@@ -15,7 +15,9 @@ const SkeletonGoalCard = () => (
         <div className="h-3 w-16 rounded bg-secondary" />
         <div className="h-3 w-8 rounded bg-secondary" />
       </div>
-      <div className="h-2 w-full rounded-full bg-secondary" />
+      <div className="h-2 w-full rounded-full bg-secondary overflow-hidden relative">
+        <div className="shimmer-bar absolute inset-0 opacity-50" aria-hidden />
+      </div>
     </div>
     <div className="space-y-2">
       <div className="flex justify-between mb-2">

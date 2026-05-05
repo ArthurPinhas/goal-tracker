@@ -9,9 +9,11 @@ import SubtaskItem from "./SubtaskItem";
 import AddSubtaskDialog from "./AddSubtaskDialog";
 import EditGoalDialog from "./EditGoalDialog";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { CalendarDays, Trash2, Trophy, GripVertical, ChevronDown, Archive } from "lucide-react";
+import { CalendarDays, Trash2, Trophy, GripVertical, ChevronDown, Archive, StickyNote } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { smoothOut } from "@/lib/motion";
 import { formatDueChip, getDueUrgency, isIncompleteForDueDate } from "@/lib/dueDateUtils";
 
 interface GoalCardProps {
@@ -19,11 +21,19 @@ interface GoalCardProps {
   pendingSubtasks: Set<string>;
   isCelebrating?: boolean;
   onToggleSubtask: (goalId: string, subtaskId: string) => void;
-  onAddSubtask: (goalId: string, title: string) => void;
+  onAddSubtask: (goalId: string, title: string, notes?: string) => void;
   onDelete: (goalId: string) => void;
   onDeleteSubtask: (subtaskId: string) => void;
-  onEdit: (goalId: string, name: string, description: string, dueDate: string | null) => void;
+  onEdit: (
+    goalId: string,
+    name: string,
+    description: string,
+    dueDate: string | null,
+    emoji: string | null,
+    notes: string
+  ) => void;
   onSetEffort: (subtaskId: string, effort: number | null) => void;
+  onUpdateSubtaskNotes: (subtaskId: string, notes: string) => void;
   onArchive?: () => void;
   showDragHandle?: boolean;
 }
@@ -54,8 +64,10 @@ const PARTICLES = Array.from({ length: 10 }, (_, i) => ({
   color: ['#f59e0b', '#a78bfa', '#34d399', '#fb7185', '#60a5fa'][i % 5],
 }));
 
-const GoalCard = ({ goal, pendingSubtasks, isCelebrating = false, onToggleSubtask, onAddSubtask, onDelete, onDeleteSubtask, onEdit, onSetEffort, onArchive, showDragHandle = true }: GoalCardProps) => {
+const GoalCard = ({ goal, pendingSubtasks, isCelebrating = false, onToggleSubtask, onAddSubtask, onDelete, onDeleteSubtask, onEdit, onSetEffort, onUpdateSubtaskNotes, onArchive, showDragHandle = true }: GoalCardProps) => {
   const [collapsed, setCollapsed] = useState(false);
+  const [showGoalNotes, setShowGoalNotes] = useState(false);
+  const [goalNoteDraft, setGoalNoteDraft] = useState(goal.notes);
   const percentage = calcProgress(goal);
   const isComplete = percentage >= 100 && goal.subtasks.length > 0;
   const isInProgress = percentage > 0 && !isComplete;
@@ -86,7 +98,18 @@ const GoalCard = ({ goal, pendingSubtasks, isCelebrating = false, onToggleSubtas
       toast(HALFWAY_MESSAGES[Math.floor(Math.random() * HALFWAY_MESSAGES.length)], { icon: "🔥" });
     }
     prevPercentage.current = percentage;
-  }, [percentage, goal.subtasks.length]);
+  }, [percentage, goal.subtasks.length, controls]);
+
+  useEffect(() => {
+    setGoalNoteDraft(goal.notes);
+  }, [goal.notes]);
+
+  const flushGoalNotes = () => {
+    const t = goalNoteDraft.trim();
+    if (t !== (goal.notes || "").trim()) {
+      onEdit(goal.id, goal.title, goal.description, goal.due_date, goal.emoji, t);
+    }
+  };
 
   // Force expand during celebration
   useEffect(() => {
@@ -96,15 +119,18 @@ const GoalCard = ({ goal, pendingSubtasks, isCelebrating = false, onToggleSubtas
   return (
     <motion.div
       animate={controls}
-      whileHover={!isCelebrating ? { y: -2, boxShadow: `0 8px 32px rgba(0,0,0,0.35), 0 0 0 1px ${accentColor}25` } : undefined}
-      transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-      className={`rounded-xl border shadow-sm relative
-        ${isCelebrating ? 'celebration-card ring-2 ring-amber-400/80' : 'bg-card'}
-        ${!isCelebrating && isComplete ? 'ring-2 ring-amber-400' : ''}
-        ${!isCelebrating && !isComplete && dueUrgency === 'overdue' ? 'ring-2 ring-red-500/45' : ''}
-        ${!isCelebrating && !isComplete && dueUrgency === 'soon' ? 'ring-2 ring-amber-500/40' : ''}
-        ${!isCelebrating && isInProgress ? 'goal-pulse-ring' : ''}
-      `}
+      whileHover={!isCelebrating ? { y: -2 } : undefined}
+      transition={{ type: "spring", stiffness: 400, damping: 32 }}
+      className={cn(
+        "rounded-2xl border shadow-sm relative bg-card transition-[transform,box-shadow] duration-300 ease-out",
+        "dark:border-border/50 dark:shadow-lg dark:shadow-black/45",
+        "dark:hover:border-border/80 dark:hover:shadow-2xl dark:hover:shadow-black/55",
+        isCelebrating && "celebration-card ring-2 ring-amber-400/80",
+        !isCelebrating && isComplete && "ring-2 ring-amber-400",
+        !isCelebrating && !isComplete && dueUrgency === "overdue" && "ring-2 ring-red-500/45",
+        !isCelebrating && !isComplete && dueUrgency === "soon" && "ring-2 ring-amber-500/40",
+        !isCelebrating && isInProgress && "goal-pulse-ring"
+      )}
       style={{
         borderLeft: `3px solid ${isCelebrating ? '#f59e0b' : accentColor}`,
         background: isCelebrating
@@ -113,7 +139,7 @@ const GoalCard = ({ goal, pendingSubtasks, isCelebrating = false, onToggleSubtas
       }}
     >
       {/* Inner container — clips sweep to rounded corners */}
-      <div className="rounded-xl overflow-hidden relative">
+      <div className="rounded-2xl overflow-hidden relative before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:z-10 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/[0.14] before:to-transparent dark:before:via-white/[0.08]">
         {/* Sweep — framer-motion so it respects rounded corners */}
         <AnimatePresence>
           {isCelebrating && (
@@ -147,9 +173,11 @@ const GoalCard = ({ goal, pendingSubtasks, isCelebrating = false, onToggleSubtas
         </AnimatePresence>
 
         {/* Header */}
-        <div className="flex items-center gap-2 px-4 py-3" style={{ position: 'relative', zIndex: 3 }}>
+        <div className="flex items-center gap-2 px-4 py-3.5" style={{ position: 'relative', zIndex: 3 }}>
           {showDragHandle ? (
-            <GripVertical className="h-4 w-4 text-muted-foreground/25 shrink-0 cursor-grab active:cursor-grabbing" />
+            <span className="shrink-0 touch-none cursor-grab active:cursor-grabbing" title="Drag to reorder" aria-label="Drag to reorder goal">
+              <GripVertical className="h-4 w-4 text-muted-foreground/25" aria-hidden />
+            </span>
           ) : (
             <div className="w-4 shrink-0" aria-hidden />
           )}
@@ -159,6 +187,17 @@ const GoalCard = ({ goal, pendingSubtasks, isCelebrating = false, onToggleSubtas
             onClick={() => setCollapsed((v) => !v)}
           >
             <AnimatePresence>
+              {goal.emoji && (
+                <motion.span
+                  key="goal-emoji"
+                  initial={{ scale: 0.6, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="shrink-0 text-lg leading-none mt-0.5 select-none"
+                  aria-hidden
+                >
+                  {goal.emoji}
+                </motion.span>
+              )}
               {isComplete && (
                 <motion.div
                   initial={{ scale: 0, rotate: -20 }}
@@ -173,7 +212,7 @@ const GoalCard = ({ goal, pendingSubtasks, isCelebrating = false, onToggleSubtas
             </AnimatePresence>
             <div className="min-w-0 flex-1">
               <div className={cn('flex items-center gap-2 min-w-0', collapsed && 'w-full justify-between')}>
-                <span className={`font-semibold tracking-tight truncate min-w-0 ${collapsed ? 'flex-1' : ''} ${isComplete ? 'text-amber-400' : 'text-card-foreground'}`}>
+                <span className={`text-base font-semibold tracking-tight truncate min-w-0 ${collapsed ? 'flex-1' : ''} ${isComplete ? 'text-amber-400' : 'text-card-foreground'}`}>
                   {goal.title}
                 </span>
                 {collapsed && (
@@ -258,18 +297,61 @@ const GoalCard = ({ goal, pendingSubtasks, isCelebrating = false, onToggleSubtas
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.22, ease: 'easeInOut' }}
+              transition={{ duration: 0.28, ease: smoothOut }}
               style={{ overflow: 'hidden', position: 'relative', zIndex: 3 }}
             >
-              <div className="px-4 pb-4 space-y-4 border-t border-border/50 pt-3">
-                {goal.description && <p className="text-sm text-muted-foreground">{goal.description}</p>}
+              <div className="px-4 pb-5 space-y-5 border-t border-border/60 pt-4 min-w-0">
+                {goal.description && (
+                  <p className="text-sm text-muted-foreground leading-relaxed">{goal.description}</p>
+                )}
+                <div className="space-y-2 min-w-0">
+                  <div className="flex items-center justify-between gap-2 min-w-0">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.12em]">
+                      Notes
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        "h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground",
+                        (showGoalNotes || goal.notes?.trim()) && "text-amber-500/90"
+                      )}
+                      title={showGoalNotes ? "Hide notes" : "Notes"}
+                      aria-pressed={showGoalNotes}
+                      onClick={() => setShowGoalNotes((v) => !v)}
+                    >
+                      <StickyNote className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  {!showGoalNotes && !!goal.notes?.trim() && (
+                    <button
+                      type="button"
+                      className="text-left text-sm text-card-foreground rounded-xl border border-border/55 bg-muted/15 px-3 py-2.5 w-full min-w-0 max-w-full whitespace-pre-wrap break-words line-clamp-4 hover:bg-muted/30 hover:border-border dark:bg-card/30 dark:hover:bg-card/45 transition-all duration-300"
+                      onClick={() => setShowGoalNotes(true)}
+                    >
+                      {goal.notes}
+                    </button>
+                  )}
+                  {showGoalNotes && (
+                    <Textarea
+                      value={goalNoteDraft}
+                      onChange={(e) => setGoalNoteDraft(e.target.value)}
+                      onBlur={flushGoalNotes}
+                      placeholder="Private notes, links, reminders…"
+                      rows={3}
+                      className="text-sm min-h-[72px] max-h-36 resize-none overflow-y-auto w-full min-w-0 max-w-full box-border rounded-xl app-surface-input transition-shadow duration-300"
+                      aria-label="Goal notes"
+                    />
+                  )}
+                </div>
                 <GoalProgress percentage={percentage} />
-                <div className="space-y-0.5">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                <div className="space-y-0.5 min-w-0">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.12em]">
                       Subtasks · {doneCount}/{goal.subtasks.length}
                     </span>
-                    <AddSubtaskDialog onAdd={(title) => onAddSubtask(goal.id, title)} />
+                    <AddSubtaskDialog onAdd={(t, n) => onAddSubtask(goal.id, t, n)} />
                   </div>
                   <AnimatePresence initial={false}>
                     {goal.subtasks.map((subtask) => (
@@ -278,7 +360,7 @@ const GoalCard = ({ goal, pendingSubtasks, isCelebrating = false, onToggleSubtas
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.18 }}
+                        transition={{ duration: 0.22, ease: smoothOut }}
                       >
                         <SubtaskItem
                           subtask={subtask}
@@ -286,6 +368,7 @@ const GoalCard = ({ goal, pendingSubtasks, isCelebrating = false, onToggleSubtas
                           onToggle={(subtaskId) => onToggleSubtask(goal.id, subtaskId)}
                           onDelete={onDeleteSubtask}
                           onSetEffort={onSetEffort}
+                          onUpdateNotes={onUpdateSubtaskNotes}
                         />
                       </motion.div>
                     ))}

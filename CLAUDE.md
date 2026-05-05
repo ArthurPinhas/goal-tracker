@@ -15,6 +15,7 @@ The experience should feel **tactile and fun** — every action should have a vi
 | Frontend | React 18 + Vite |
 | Language | TypeScript |
 | Styling | Tailwind CSS + Shadcn UI |
+| Themes | **next-themes** — **dark default**, optional light (class on `<html>`, persisted `goal-tracker-theme`) |
 | Backend + DB + Auth | PocketBase (self-contained binary, SQLite under the hood) |
 | Dev environment | Cursor IDE |
 | Frontend hosting | Cloudflare Pages (future) |
@@ -25,20 +26,28 @@ The experience should feel **tactile and fun** — every action should have a vi
 ## Data Model
 
 ### Users
+
 Handled entirely by PocketBase built-in auth. No custom user collection needed.
 
+Auth UI collects **username + password**; the client maps signup/login to PocketBase users using a synthetic email: `{username}@goaltracker.local` (see `useAuth`). Pick usernames accordingly.
+
 ### Goals (PocketBase collection)
+
 | Field | Type | Notes |
 |---|---|---|
 | id | auto | PocketBase generates |
 | user | relation | links to auth user |
 | name | text | required |
 | description | text | optional |
+| **due_date** | **date** | **optional** — calendar deadline; app uses canonical `YYYY-MM-DD` semantics |
+| **emoji** | text | optional — display emoji in title row (suggest/pick in dialogs) |
+| **notes** | text | optional — plain-text private notes (search + export) |
 | archived | bool | default false |
-| sort_order | number | for drag-and-drop ordering |
+| sort_order | number | drag-and-drop order; **new goals** created with **`sort_order: -Date.now()`** so ascending sort surfaces them above legacy `0…n−1`; client merge keeps “new IDs” first in `orderedGoals` |
 | created | auto | PocketBase generates |
 
 ### Subtasks (PocketBase collection)
+
 | Field | Type | Notes |
 |---|---|---|
 | id | auto | PocketBase generates |
@@ -46,65 +55,126 @@ Handled entirely by PocketBase built-in auth. No custom user collection needed.
 | name | text | required |
 | completed | bool | default false |
 | effort | number | optional, 1–5, default null |
+| **notes** | text | optional — plain-text notes (search + export) |
 
-### Progress Calculation Logic
 - Default: all subtasks have equal weight → progress = (completed subtasks / total subtasks) × 100
 - If effort points are set on ANY subtask in a goal: weight = subtask effort / sum of all subtask efforts
 - Effort is optional and per-subtask — users can ignore it entirely
 
+### Due-date urgency (frontend-only)
+
+Normalized with `normalizeDueDate` (`src/lib/dueDateUtils.ts`). Urgency compares **local calendar days** via `startOfDay` + `differenceInCalendarDays` (not string sorting), with ISO / `Date` inputs normalized to `YYYY-MM-DD`.
+
+- **Overdue:** `due_date` before today AND goal not “done” for due purposes (same completion rule as card)
+- **Due soon:** from today through +7 calendar days (inclusive)
+- **Completed goals** (100% with ≥1 subtask): no overdue/soon styling on rings
+
+Filters in **Index**: deadline pills **Any / Has date / Overdue / ≤7 days**; sort **Manual (drag)** vs **Due date · soonest first**. Drag reorder only when **Deadline: Any** and **Sort: Manual** (otherwise lists are filtered/sorted and must not reorder a subset incorrectly).
+
+### Due reminders — browser “option A” (`Notification` API)
+
+- **User control:** bell toggle in the main and sticky headers (`DueNotificationToggle`); preference stored in **`localStorage`** (`goal-tracker-due-notifications-enabled`).
+- **When it fires:** incomplete goals whose due date is **today** or **before today** (overdue). Deduped **once per goal per local calendar day** (`localStorage` map `goal-tracker-due-notify-sent-v1`).
+- **Cadence:** `useDueNotifications` uses **`DUE_NOTIFICATION_INTERVAL_MS`** (1 minute) plus **`visibilitychange`** and **`window` `focus`**. The effect depends on **`goals`** from `useGoals` (not filtered UI lists). **`runDueNotificationCheck`** only calls **`markGoalsNotifiedForDay`** after **`new Notification(...)` succeeds**. Notifications use **`requireInteraction: true`** where supported (OS behavior still varies). **`Index`** passes **`onDelivered`** to show the same reminder in-app via **react-hot-toast** (`id: goal-due-reminder`, ~45s) so reminders are visible inside the active browser tab.
+- **Limitations:** requires **permission**; only meaningful while the app tab (or installed PWA) is **open** — **no** background push, email, or SMS.
+
+### Notes (goals & subtasks)
+
+- **Plain text only** — store user-entered copy; rendered in dialogs/cards and searchable from **Index** (goal + subtask notes included in search).
+- **Persistence:** optional PocketBase fields **`goals.notes`** and **`subtasks.notes`** (text). Included in **JSON / CSV / PDF** export.
+
 ---
 
-## Current Project State (as of 2026-05-04)
+## Current Project State (as of 2026-05)
 
-V1 is **fully shipped and functional**. PocketBase is connected, all CRUD works, auth works.
+V1 is **fully shipped and functional**. PocketBase is connected, all CRUD works, auth works. **Goal due dates**, **deadline UX**, **theme toggle**, **plain-text notes**, **browser due reminders**, export, PWA, tests, and **several UI polish passes** are in tree (dark-first tokens, shared motion, elevated inputs, upgraded shadcn shells — see *UI / UX* and README *UI polish*).
+
+### Phases (internal delivery batches)
+
+| Phase | Scope | Status |
+| --- | --- | --- |
+| A | UI polish (spacing, empty states, filters, design system, primitives, motion) | **Shipped** (ongoing small tweaks) |
+| B | Due-date **browser** notifications (option A — tab/PWA active) | Shipped |
+| C | Plain-text **notes** on goals + subtasks | Shipped |
+| D | Sidebar stats / analytics expansion | **Skipped** (sidebar unchanged for now) |
+| E | Ops & trust “must-haves” (production security, backups, safe exposure, recovery story) | **Not started** — checklist in *Phase E — production readiness* below |
+
+Per product direction: **export remains client-side only**; **sidebar layout** was not expanded in Phase D.
 
 ### What's built and live
 
 **Auth**
-- Register with email + password
-- Login / Logout
+
+- Register / login / logout (`useAuth`)
 - Each user sees only their own goals (PocketBase API rules)
 
 **Goals**
-- Create, edit, delete
+
+- Create, edit, delete (including **optional due date** in create/edit — `GoalDueDatePicker`; optional **notes** textarea)
 - Archive / restore / permanently delete archived goals
-- Drag-and-drop reorder (Framer Motion `Reorder`, persisted to PocketBase `sort_order`)
+- Drag-and-drop reorder (**Framer Motion `Reorder`**), persisted to **`sort_order`**
+- **New goals appear at top** after fetch (PB sort + **`Index` orderedGoals merge**)
 - Progress bar — weighted by effort if set, equal weight otherwise
-- Search across goal title, description, and subtask names
-- Filter tabs: All / Active / Done / Archived
+- Search across goal title, description, **goal notes**, subtask titles, and **subtask notes**
+- Filter tabs: All / Active / Done / Archived; **deadline refinement** + **due-date sort**
 
 **Subtasks**
+
 - Add, toggle complete/incomplete, delete
 - Optional effort points (1–5) — power-user toggle per subtask
+- Optional **plain-text notes** per subtask (inline expand on card)
 - Optimistic UI for toggle (instant feedback, revert on error)
 
 **Celebration UI**
-- Lottie animation overlay on goal completion (`CelebrationOverlay`)
+
+- Lottie animation overlay on goal completion (`CelebrationOverlay` — fade + spring scale; `aria-hidden` on wrapper)
 - Canvas confetti on subtask complete
 - Framer Motion animations throughout (card enter/exit, progress bar, sidebar ring)
 - react-hot-toast notifications with motivational quotes
 - Sound effects (`src/lib/sounds.ts`) — toggleable, persisted to localStorage
 
+**Due-date reminders (browser)**
+
+- `DueNotificationToggle` — bell in main + sticky header (same React node via `dueNotificationsSlot` on `StickyHeader`)
+- `useDueNotifications` + `runDueNotificationCheck` (`src/lib/dueNotifications.ts`) — permission, localStorage prefs, per-day dedupe
+
 **UI / UX**
-- Sticky header slides in when main header scrolls out of view (`StickyHeader`)
-- Sidebar with progress ring + stats (goals completed, avg progress, subtasks done) — desktop only (`GoalSidebar`)
-- Skeleton loading cards (`SkeletonGoalCard`)
-- Save status indicator (Saving… / Saved / Error) in bottom-right corner
-- Cmd/Ctrl+N keyboard shortcut to open new goal dialog
-- Ambient animated orbs in header and page background
+
+- **Light / dark theme** — **`ThemeToggle`** (`next-themes`, default **dark**, key `goal-tracker-theme`; inline script in `index.html` limits flash); tokens in **`src/index.css`** (`:root` light / `.dark` dark). **`app-surface-input`** (dark elevated fields), **`ui-section-label`** (uppercase micro-labels), softer dot grid in dark.
+- **Motion** — shared **`springContent`** and **`smoothOut`** in **`src/lib/motion.ts`** for consistent springs / easing (Index, cards, dialogs, auth, celebration, archive).
+- `Sonner` and **react-hot-toast** use resolved theme / card-style chrome (`src/components/ui/sonner.tsx`, `App.tsx`).
+- Sticky header (`StickyHeader`) — theme + **due reminders** + add goal + sound + logout
+- Sidebar (`GoalSidebar`) — progress ring + stats including **Overdue** and **Due ≤7 days** (desktop)
+- Skeleton loading cards (`SkeletonGoalCard`), **IndexRouteFallback** (lazy route shell)
+- Save status indicator (Saving… / Saved / Error) bottom-right
+- Cmd/Ctrl+N opens new goal dialog
+- Ambient animated orbs in header and page background; **`PageSideParticles`** on main goals page
+- Index **hero** is a clipped gradient block; transition to the list is a **narrow seam** — avoid reintroducing stacked full-bleed gradient washes over gutters/particles.
 - Motivational quote in header — rotates on refresh
+- Dialogs / alerts / tooltips / dropdowns / select / calendar / radix toasts aligned to the same **rounded-xl / dark depth** language where applicable
 
 **Export**
-- Export all goals as JSON, CSV, or PDF
-- PDF is formatted with progress bar, subtask list, colour-coded badges
-- Accessible via Export button in the sidebar (`ExportDialog`)
+
+- JSON, CSV, PDF — **`due_date`** and **notes** (goal + subtask) included where present
+- `ExportDialog` in sidebar
 
 **Infrastructure**
-- PWA icons added (apple-touch-icon, 192, 512)
-- Vite PWA plugin configured
-- PocketBase client singleton at `src/lib/pocketbase.ts`
-- `src/lib/goalUtils.ts` — `calcProgress` and `getProgressColor` utilities
-- `src/types/goal.ts` — canonical type definitions (`Goal`, `Subtask`)
+
+- PWA icons + **Vite PWA** plugin (`vite.config.ts` — dev server **`8080`**)
+- **`import.meta.env.VITE_POCKETBASE_URL`** only — never committed real secrets (use **`.gitignore`'d `.env`**, ship **`.env.example`** template)
+- **`.gitignore`**: PocketBase dirs, `**/pb_data/`, SQLite, `.env.*` (allow `.env.example`)
+- PocketBase client singleton `src/lib/pocketbase.ts`
+- `goalUtils.ts` — `calcProgress`, `getProgressColor`
+- `dueDateUtils.ts` — urgency, normalization, formatting
+- **`src/types/goal.ts`** — `Goal` / `Subtask` include `due_date`, `emoji`, **`notes`**
+
+**Testing**
+
+- **Vitest** + Testing Library (`npm run test`) — **`dueDateUtils`**, **`goalEmojiSuggest`**, **`goalUtils`**, **`useGoals`**, **`AddGoalDialog`**, **`ThemeToggle`**, **`src/test/setup.ts`** in-memory **localStorage** mock
+
+**Docs**
+
+- Root **`README.md`** — onboarding, PocketBase schema notes, security contributor notes (**push target**: `git remote -v`, not README)
 
 ---
 
@@ -113,73 +183,143 @@ V1 is **fully shipped and functional**. PocketBase is connected, all CRUD works,
 ```
 src/
   components/
-    ui/               — Shadcn UI primitives
-    AddGoalDialog     — Create goal modal
-    AddSubtaskDialog  — Add subtask modal
-    ArchiveSection    — Archived goals list
-    CelebrationOverlay— Lottie full-screen celebration
-    EditGoalDialog    — Edit goal modal
-    ExportDialog      — Export modal (JSON/CSV/PDF)
-    GoalCard          — Goal card with subtasks
-    GoalProgress      — Progress bar component
-    GoalSidebar       — Desktop stats sidebar
-    MilestoneCard     — Legacy scaffold — unused
-    SkeletonGoalCard  — Loading placeholder
-    StickyHeader      — Scroll-activated header
-    SubtaskItem       — Individual subtask row
+    ui/                 — Shadcn UI primitives
+    AddGoalDialog       — Create goal modal (+ due picker + emoji title)
+    AddSubtaskDialog    — Add subtask modal
+    PageSideParticles   — Side gutter particles on Index
+    ArchiveSection      — Collapsible archived list UI (currently **not imported** on Index — main page uses **inline** archive section; reconcile or remove to avoid drift)
+    AuthAmbientBackground — Soft orbs on login/register
+    CelebrationOverlay — Lottie full-screen celebration
+    EmptyState          — Shared empty / no-results illustration
+    EditGoalDialog      — Edit goal modal (+ due picker + emoji title)
+    DueNotificationToggle — Bell: browser due reminders (option A)
+    DueReminderInAppToast — Large in-tab mirror when system notification fires
+    ExportDialog        — Export modal (JSON/CSV/PDF)
+    GoalCard            — Goal card + subtasks + due urgency chrome
+    GoalDueDatePicker   — Popover + calendar due date (+ clear)
+    GoalEmojiTitleSection — Title + optional emoji suggest / shuffle / picker
+    GoalProgress        — Progress bar
+    GoalSidebar         — Desktop stats sidebar
+    IndexRouteFallback  — Loading shell for lazy `Index` route
+    SkeletonGoalCard    — Loading placeholder
+    StickyHeader        — Scroll-activated header
+    SubtaskItem         — Individual subtask row
+    ThemeToggle         — Light/dark control
   hooks/
-    useAuth           — Auth state (PocketBase)
-    useGoals          — All goal + subtask CRUD
+    useAuth             — Auth state (PocketBase)
+    useGoalEmojiSuggest — Debounced emoji suggestion for title
+    useGoals            — All goal + subtask CRUD
+    useDueNotifications — Interval + visibility hooks for due `Notification` checks
   lib/
-    exportGoals       — JSON/CSV/PDF export logic
-    goalUtils         — calcProgress, getProgressColor
-    pocketbase        — PocketBase client singleton
-    sounds            — Sound effect helpers
-    utils             — Tailwind cn() helper
+    dueNotifications     — `runDueNotificationCheck`, localStorage prefs & dedupe keys
+    dueDateUtils         — Due normalization + urgency helpers
+    exportGoals          — JSON/CSV/PDF export
+    goalEmojiSuggest     — Match title → emoji + shuffle pools (imports `goalEmojiSuggestRules`)
+    goalEmojiSuggestRules — Large keyword → emoji table (data only)
+    goalUtils            — calcProgress, getProgressColor
+    motion               — springContent, smoothOut (shared Framer tuning)
+    pocketbase           — PocketBase client singleton
+    sounds               — Sound effect helpers
+    utils                — Tailwind cn() helper
   pages/
-    Index             — Main goals page
-    Login             — Login page
-    Register          — Register page
-    NotFound          — 404
+    Index                — Main goals page (lazy route chunk)
+    Login                — Login page
+    Register             — Register page
+    NotFound             — 404 (`EmptyState`)
+  providers/
+    ThemeProvider        — wraps next-themes
   types/
-    goal              — Goal, Subtask interfaces
-    milestone         — Legacy scaffold types — unused
+    goal                 — Goal, Subtask interfaces
+  test/                  — Vitest specs + setup
   assets/
-    celebration.json  — Lottie animation data
+    celebration.json    — Lottie animation data
 ```
+
+---
+
+## Phase E — production readiness (must-haves)
+
+**Goal:** Run the app on the **public internet** (or a trusted network) without turning PocketBase or user data into an easy target — and be able to **recover** when something breaks.
+
+### Safe exposure pattern
+
+1. **HTTPS everywhere** — Terminate TLS for the **static frontend** and for **PocketBase**. Do not ship production auth over `http://`.
+2. **Reverse proxy** — Put PocketBase behind **Caddy, nginx, Traefik, or Cloudflare Tunnel**. Typical pattern: `https://app.example.com` → static files; `https://pb.example.com` (or same host `/api` path if you configure it) → PocketBase. **Do not** leave PocketBase’s default port **world-open** unless you fully accept the risk.
+3. **Admin UI (`/_/`)** — Treat as **root on your database**. Use a **strong unique password**, enable **2FA** in PocketBase if you use a version that supports it, prefer **VPN / SSH tunnel / IP allowlist** for admin, or bind admin to localhost and access via tunnel. Never use default credentials on a public IP.
+4. **CORS** — In PocketBase settings, allow only your **real frontend origin(s)** in production (not `*`).
+5. **Collection API rules** — Verify every **`goals`** / **`subtasks`** rule: create/update/delete/list only where `user` / `goal.user` matches `@request.auth.id`. Re-test after schema changes.
+
+### Secrets and client bundle
+
+- **`VITE_POCKETBASE_URL`** is embedded in the JS bundle — **public**. That is OK; security is **rules + TLS + admin lockdown**, not hiding the URL.
+- Never put **service-role** or SMTP passwords in `VITE_*` or client code.
+
+### Backups and restore (account & data)
+
+- **Automated backups** of **`pb_data`** (and hooks/migrations if you add them) on a schedule; store **encrypted** copies **off the same machine**.
+- **Test restore** to a scratch instance quarterly — a backup you have never restored is a gamble.
+- **Restore account / password recovery:** The app registers users with **`{username}@goaltracker.local`**. PocketBase “email reset” only works if users have a **deliverable email**. For production with real users you should either: (a) collect a **real email** at registration and enable PB **email verification / password reset**, (b) document **manual admin reset** for self-hosters, or (c) add **OAuth** — pick one explicitly; “forgot password” will confuse users otherwise.
+
+### Abuse and observability
+
+- Add **rate limiting** at the proxy or via PocketBase hooks for `auth` endpoints if the API is public.
+- Monitor disk, failed auth spikes, and process health; alert on backup job failure.
+
+### Headers (if you control the static host)
+
+- **HSTS** on the app origin; tighten **Content-Security-Policy** over time; restrict **frame-embedding** if you do not need it.
+
+Phase E is **documentation + process + deployment choices** first; some items require **no code**, others (real email for recovery) need **product + schema** agreement.
+
+---
+
+## Prioritized product suggestions (impact)
+
+Not committed roadmap — for planning only (aligned with **V2**):
+
+1. **Categories / tags / folders** — largest organizational win at scale.  
+2. **Recurring goals / habits** — retention / daily use.  
+3. **Read-only share links** — high value vs effort if rules + token are done carefully.  
+4. **Goal templates** — strong effort-to-impact ratio.  
+5. **Light analytics** (streaks, weekly completions) — optional sidebar/Page without full “dashboard.”  
+6. **PWA offline + sync** — high effort.  
+7. **Wire or remove `ArchiveSection`** — avoid duplicate archive UX.  
+8. **Email digest** — SMTP/Resend; complements browser-only reminders.  
+9. **Docker / Synology deploy** — ops story for self-hosters.
 
 ---
 
 ## V2 Roadmap (Not Yet Built)
 
-These are planned for after V1 stabilises. Do not build until discussed.
+Planned beyond current V1+ — **discuss before building**.
+
+**Already shipped (do not duplicate as roadmap work): goal due dates, light/dark theme, plain-text notes on goals/subtasks, browser due reminders (option A).**
 
 | Feature | Notes |
 |---|---|
 | Goal categories / folders | Group goals into projects above the goal level |
-| Due dates on goals | Optional deadline with overdue visual state |
-| Email export / scheduled email digest | Send goals summary to user's email (needs SMTP or Resend) |
+| Email export / scheduled email digest | Send goals summary (SMTP or Resend) |
+| Goal templates | Save / reuse structures |
 | Sub-subtasks (task nesting) | 3-level hierarchy: Category → Goal → Subtask → Task |
-| Goal templates | Save a goal structure and reuse it |
-| Analytics dashboard | Completion rate over time, streaks, most active days |
-| Sharing goals | Share read-only link to a goal with others |
-| Dark/light theme toggle | Currently dark-only |
-| PWA offline mode | Full offline support with background sync |
-| Mobile app | React Native or Capacitor wrapper |
-| Docker / Synology deploy | Self-host PocketBase + frontend as Docker stack |
-| Subtask comments / notes | Per-subtask notes field |
-| Recurring goals | Reset on schedule (daily habits, weekly reviews) |
+| Analytics dashboard | Streaks, completion over time |
+| Sharing goals | Read-only links |
+| PWA offline mode | Full offline + sync |
+| Mobile app | RN or Capacitor |
+| Docker / Synology deploy | Self-host PocketBase + frontend |
+| Recurring goals | Scheduled reset / habits |
 
 ---
 
 ## Key Design Decisions (Don't Change Without Discussing)
 
-1. **Flat structure for V1** — Goals → Subtasks only. No parent "category" or "project" layer above goals. That's V2.
-2. **Effort points are optional** — Default experience has zero friction. Equal weight auto-calculated. Effort is a power-user toggle.
-3. **Celebration UI is core** — The rewarding feel is the whole point of the app. Don't skip or simplify it.
-4. **PocketBase handles everything backend** — No separate Node/Express/Fastify server. PocketBase IS the backend.
-5. **No Redux or heavy state management** — React state + PocketBase SDK is enough for this scale.
-6. **Export is client-side only** — No server involvement for export. JSON/CSV/PDF all generated in the browser.
+1. **Flat structure for V1** — Goals → Subtasks only. No parent category layer in V1. That's V2+.
+2. **Effort points are optional** — Default experience has zero friction; effort is power-user toggle.
+3. **Celebration UI is core** — Don't skip or simplify the rewarding feedback.
+4. **PocketBase handles everything backend** — No separate app server for V1 scope.
+5. **No Redux** — React + PocketBase SDK is enough here.
+6. **Export is client-side only** — JSON/CSV/PDF in-browser.
+7. **Due dates optional** — No forced deadlines; urgency styling only when incomplete.
+8. **`VITE_*` is public at build time** — Never put PocketBase secrets in env exposed to browser; PocketBase rules are the real ACL.
 
 ---
 
@@ -187,36 +327,41 @@ These are planned for after V1 stabilises. Do not build until discussed.
 
 - Always use TypeScript — no plain `.js` files in `src/`
 - Always use Tailwind for styling — no inline styles, no separate CSS files unless absolutely necessary
-- Use Shadcn UI components where they fit — don't reinvent buttons, modals, inputs
-- Keep PocketBase URL in an environment variable (`VITE_POCKETBASE_URL`) — never hardcode it
-- Keep the PocketBase client as a singleton in `src/lib/pocketbase.ts`
-- No heavy state management libraries — React useState/useContext is enough
-- Components should be small and focused — one responsibility per component
-- When in doubt about scope: do less, do it well, ship it
+- Use Shadcn UI where it fits
+- **`VITE_POCKETBASE_URL`** from env — never hardcode deployed URLs into source for production
+- PocketBase singleton in `src/lib/pocketbase.ts`
+- Components small and focused — one responsibility per component
+- When in doubt: do less, do it well, ship it
+- Never commit **`pb_data/`**, **`*.db`**, or real **`.env`** — see README + `.gitignore`
 
 ---
 
 ## Running The App Locally
 
-Every dev session needs both of these running:
+Every dev session needs both processes:
 
 ```bash
 # Terminal 1 — Frontend
 npm run dev
 
-# Terminal 2 — Backend
+# Terminal 2 — Backend (path to binary as you keep it locally)
 ./pocketbase serve
 ```
 
-Frontend: http://localhost:5173
-PocketBase admin: http://127.0.0.1:8090/_/
+- **Frontend:** URL printed by Vite (this repo configures **port `8080`** in `vite.config.ts`).
+- **PocketBase admin:** http://127.0.0.1:8090/_/  
+- Before first goal with metadata: in PocketBase Admin add optional **`due_date`** (type **date**) and **`notes`** (type **text**) on **`goals`**, and optional **`notes`** (type **text**) on **`subtasks`**.
 
 ---
 
 ## Environment Variables
 
-Create a `.env` file in the project root (already in `.gitignore`):
+- Copy **`.env.example` → `.env`** (repo root — `.git` ignores `.env` / `.env.*` except `.env.example`).
+- **Required for dev:**
 
 ```
 VITE_POCKETBASE_URL=http://127.0.0.1:8090
 ```
+
+Use your deployed PocketBase **HTTPS URL** only when that endpoint is intentionally public-facing and rules are tightened for production.
+

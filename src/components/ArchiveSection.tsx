@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Archive, ChevronDown, RotateCcw, Trash2, CheckSquare } from 'lucide-react';
 import { Goal } from '@/types/goal';
 import { calcProgress } from '@/lib/goalUtils';
+import { smoothOut } from '@/lib/motion';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -39,18 +40,21 @@ const ArchiveSection = ({ archivedGoals, archivedLoading, onOpen, onRestore, onD
   return (
     <div className="mt-8">
       <button
+        type="button"
         onClick={handleToggle}
-        className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors w-full group"
+        className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 w-full group rounded-xl py-2.5 px-2 -mx-2 hover:bg-muted/35 dark:hover:bg-muted/15"
       >
         <div className="h-px flex-1 bg-border group-hover:bg-border/80" />
         <div className="flex items-center gap-1.5 shrink-0">
           <Archive className="h-3.5 w-3.5" />
           <span>Archive</span>
           {loaded && archivedGoals.length > 0 && (
-            <span className="text-xs bg-secondary px-1.5 py-0.5 rounded-full tabular-nums">{archivedGoals.length}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider bg-secondary/90 dark:bg-muted px-2 py-0.5 rounded-full tabular-nums text-muted-foreground dark:text-foreground/90">
+              {archivedGoals.length}
+            </span>
           )}
         </div>
-        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
+        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.22, ease: smoothOut }}>
           <ChevronDown className="h-3.5 w-3.5" />
         </motion.div>
         <div className="h-px flex-1 bg-border group-hover:bg-border/80" />
@@ -62,7 +66,7 @@ const ArchiveSection = ({ archivedGoals, archivedLoading, onOpen, onRestore, onD
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.22, ease: 'easeInOut' }}
+            transition={{ duration: 0.32, ease: smoothOut }}
             style={{ overflow: 'hidden' }}
           >
             <div className="pt-3 space-y-2">
@@ -78,7 +82,7 @@ const ArchiveSection = ({ archivedGoals, archivedLoading, onOpen, onRestore, onD
                 return (
                   <div
                     key={goal.id}
-                    className="rounded-xl border bg-card/50 px-4 py-3 flex items-start gap-3 opacity-60 hover:opacity-100 transition-opacity"
+                    className="rounded-xl border border-border/70 dark:border-border/55 bg-card/50 dark:bg-card/35 dark:shadow-md dark:shadow-black/25 px-4 py-3 flex items-start gap-3 opacity-70 hover:opacity-100 transition-[opacity,box-shadow] duration-200 hover:dark:shadow-lg"
                   >
                     <Archive className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
@@ -97,7 +101,7 @@ const ArchiveSection = ({ archivedGoals, archivedLoading, onOpen, onRestore, onD
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                        className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground dark:hover:bg-muted/30"
                         onClick={() => onRestore(goal.id)}
                         title="Restore to active"
                       >
@@ -105,7 +109,7 @@ const ArchiveSection = ({ archivedGoals, archivedLoading, onOpen, onRestore, onD
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive dark:hover:bg-muted/30">
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </AlertDialogTrigger>

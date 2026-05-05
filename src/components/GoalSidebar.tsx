@@ -1,8 +1,11 @@
+import { lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import { Trophy, Target, CheckSquare, Clock, AlertCircle } from "lucide-react";
 import { Goal } from "@/types/goal";
 import { calcProgress } from "@/lib/goalUtils";
-import ExportDialog from "@/components/ExportDialog";
+import { springContent, smoothOut } from "@/lib/motion";
+
+const ExportDialog = lazy(() => import("@/components/ExportDialog"));
 
 interface GoalSidebarProps {
   goals: Goal[];
@@ -30,7 +33,7 @@ const ProgressRing = ({ completed, total }: { completed: number; total: number }
           strokeDasharray={circ}
           animate={{ strokeDashoffset: circ * (1 - pct) }}
           initial={{ strokeDashoffset: circ }}
-          transition={{ duration: 0.9, ease: 'easeOut' }}
+          transition={{ duration: 0.85, ease: smoothOut }}
         />
       </svg>
       <div className="text-center z-10 select-none">
@@ -57,11 +60,11 @@ const GoalSidebar = ({ goals, completedCount, totalSubtasksDone, totalSubtasks, 
     <motion.aside
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: 0.25, duration: 0.4 }}
+      transition={{ ...springContent, delay: 0.12 }}
       className="hidden lg:flex flex-col gap-3 w-52 shrink-0"
     >
       {/* Progress ring */}
-      <div className="rounded-xl border bg-card p-4 flex flex-col items-center gap-2">
+      <div className="rounded-2xl border bg-card p-4 flex flex-col items-center gap-2 dark:border-border/50 dark:shadow-lg dark:shadow-black/35">
         <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">Progress</span>
         <ProgressRing completed={completedCount} total={goals.length} />
         <div className="text-xs text-muted-foreground text-center">
@@ -70,7 +73,7 @@ const GoalSidebar = ({ goals, completedCount, totalSubtasksDone, totalSubtasks, 
       </div>
 
       {/* Stats */}
-      <div className="rounded-xl border bg-card p-4 space-y-2.5">
+      <div className="rounded-2xl border bg-card p-4 space-y-2.5 dark:border-border/50 dark:shadow-lg dark:shadow-black/35">
         {([
           { label: 'Active', value: activeCount, Icon: Target },
           { label: 'Completed', value: completedCount, Icon: Trophy },
@@ -89,12 +92,20 @@ const GoalSidebar = ({ goals, completedCount, totalSubtasksDone, totalSubtasks, 
       </div>
 
       {/* Quote */}
-      <div className="rounded-xl border bg-card p-4">
+      <div className="rounded-2xl border bg-card p-4 dark:border-border/50 dark:shadow-lg dark:shadow-black/35">
         <p className="text-xs text-muted-foreground italic leading-relaxed">"{quote}"</p>
       </div>
 
-      {/* Export */}
-      <ExportDialog goals={goals} />
+      {/* Export — lazy so PDF/jspdf loads only when sidebar is used (desktop) */}
+      <Suspense
+        fallback={
+          <div className="rounded-2xl border border-border/60 bg-card/80 dark:bg-card/70 backdrop-blur-sm p-4 min-h-[108px] flex items-center justify-center animate-pulse dark:border-border/50 dark:shadow-lg dark:shadow-black/30">
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">Export</span>
+          </div>
+        }
+      >
+        <ExportDialog goals={goals} />
+      </Suspense>
     </motion.aside>
   );
 };

@@ -49,34 +49,35 @@
     --success: 158 55% 36%;
   }
 
+  /* Dark is the primary product look — slightly lifted cards & clearer edges vs background */
   .dark {
     color-scheme: dark;
-    --background: 220 20% 10%;
-    --foreground: 210 20% 90%;
+    --background: 220 21% 9%;
+    --foreground: 210 20% 92%;
 
-    --card: 220 18% 13%;
-    --card-foreground: 210 20% 90%;
+    --card: 220 18% 14%;
+    --card-foreground: 210 20% 92%;
 
     --popover: 220 18% 15%;
-    --popover-foreground: 210 20% 90%;
+    --popover-foreground: 210 20% 92%;
 
     --primary: 160 60% 45%;
     --primary-foreground: 220 20% 10%;
 
-    --secondary: 220 15% 18%;
-    --secondary-foreground: 210 20% 80%;
+    --secondary: 220 16% 19%;
+    --secondary-foreground: 210 20% 82%;
 
-    --muted: 220 15% 16%;
-    --muted-foreground: 215 15% 55%;
+    --muted: 220 14% 17%;
+    --muted-foreground: 215 14% 58%;
 
-    --accent: 160 50% 40%;
-    --accent-foreground: 220 20% 10%;
+    --accent: 160 48% 38%;
+    --accent-foreground: 210 25% 96%;
 
     --destructive: 0 65% 50%;
     --destructive-foreground: 210 20% 95%;
 
-    --border: 220 15% 20%;
-    --input: 220 15% 20%;
+    --border: 220 13% 23%;
+    --input: 220 13% 22%;
     --ring: 160 60% 45%;
 
     --sidebar-background: 220 18% 11%;
@@ -107,7 +108,19 @@
   }
 
   .dark body {
-    background-image: radial-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    background-image: radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  }
+}
+
+@layer utilities {
+  /* Consistent tool chrome in dark — avoids flat inputs on flat bg */
+  .dark .app-surface-input {
+    @apply bg-card/65 border-border/85 shadow-md shadow-black/20 backdrop-blur-sm;
+  }
+
+  /* Dialogs / forms — matches Index filter row labels */
+  .ui-section-label {
+    @apply text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground;
   }
 }
 
@@ -163,10 +176,44 @@
   animation: shimmer 2.4s ease-in-out infinite;
 }
 
-.gradient-header {
+/* Shared animated fill (Index hero uses this inside a clipped layer) */
+.gradient-header-bg {
   background: linear-gradient(135deg, #1e1b4b, #312e81, #4c1d95, #1e3a5f, #0f172a, #1e1b4b);
   background-size: 400% 400%;
   animation: gradient-shift 10s ease infinite;
+}
+
+/* Login, Register, NotFound, loading fallback — single clipped block + short fade */
+.gradient-header {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0 0 1.75rem 1.75rem;
+  background: linear-gradient(135deg, #1e1b4b, #312e81, #4c1d95, #1e3a5f, #0f172a, #1e1b4b);
+  background-size: 400% 400%;
+  animation: gradient-shift 10s ease infinite;
+}
+
+@media (min-width: 768px) {
+  .gradient-header {
+    border-radius: 0 0 2rem 2rem;
+  }
+}
+
+.gradient-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: clamp(3.5rem, 14vw, 6.5rem);
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    hsl(var(--background) / 0) 0%,
+    hsl(var(--background) / 0.35) 50%,
+    hsl(var(--background) / 0.94) 100%
+  );
 }
 
 .goal-float {

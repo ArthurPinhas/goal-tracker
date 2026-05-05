@@ -7,14 +7,23 @@ import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig({
   server: {
     host: "::",
-    port: 8080,
+    // Many docs/examples use :3000; match that so “wrong port = wrong app” is less likely
+    port: 3000,
+    strictPort: false,
     hmr: {
       overlay: false,
+    },
+    headers: {
+      "Cache-Control": "no-store",
     },
   },
   plugins: [
     react(),
     VitePWA({
+      /* Avoid registering Workbox during `npm run dev` — keeps dev free of SW cache surprises */
+      devOptions: {
+        enabled: false,
+      },
       registerType: "autoUpdate",
       includeAssets: ["icon.svg", "icon-192.png", "icon-512.png", "apple-touch-icon.png"],
       manifest: {
@@ -52,6 +61,6 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-    dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
+    dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
   },
 });
