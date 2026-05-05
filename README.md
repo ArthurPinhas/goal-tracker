@@ -138,7 +138,7 @@ Still no alert? Confirm the bell is **on** (filled bell), the goal has a **due d
 
 ### Phase E — production readiness (ops & trust)
 
-Phase E is the **must-have pass** before treating the stack as production-grade: expose the app and API **safely**, recover from failure, and avoid shipping foot-guns. Detailed checklist and rationale live in **`CLAUDE.md`** → *Phase E — production readiness*. Summary:
+Phase E is the **must-have pass** before treating the stack as production-grade: expose the app and API **safely**, recover from failure, and avoid shipping foot-guns. Detailed checklist and rationale live in **`CLAUDE.md`** → *Phase E — production readiness*. **Synology / beginner step-by-step** (Cloudflare Tunnel, CORS, backups in plain English): **`docs/BEGINNER_SYNOLOGY_DEPLOY.md`**. Summary:
 
 | Area | What to do |
 | --- | --- |
@@ -159,8 +159,9 @@ Exposing **only** the static frontend while the API sits on a separate **HTTPS**
 
 ## Deploying (overview)
 
-- **Frontend** — static host (e.g. Cloudflare Pages); set `VITE_POCKETBASE_URL` to your live PocketBase **HTTPS** API origin at **build** time (same hostname or API subdomain—your choice, as long as CORS matches).
-- **PocketBase** — self-host (Docker, NAS, VPS) **behind TLS**; do **not** leave the admin dashboard wide open on the public internet.
+- **Beginner / Synology NAS — step-by-step:** [`docs/BEGINNER_SYNOLOGY_DEPLOY.md`](docs/BEGINNER_SYNOLOGY_DEPLOY.md) (plain English, **Cloudflare Tunnel** path = no router port holes; optional classic reverse-proxy path).
+- **Frontend** — static host (e.g. Cloudflare Pages, or your NAS); set `VITE_POCKETBASE_URL` to your live PocketBase **HTTPS** API origin at **build** time (CORS must allow that frontend origin in PocketBase).
+- **PocketBase** — self-host (Docker on NAS, etc.) **behind TLS**; do **not** leave the admin dashboard without a strong password or expose raw **8090** to the internet.
 
 ---
 
