@@ -271,6 +271,8 @@ src/
 
 Phase E is **documentation + process + deployment choices** first; some items require **no code**, others (real email for recovery) need **product + schema** agreement.
 
+For a **literal step-by-step** aimed at beginners self-hosting on **Synology** (especially without opening PocketBase ports on the router), see **`docs/BEGINNER_SYNOLOGY_DEPLOY.md`** (recommended: **Cloudflare Tunnel** + HTTPS + tight CORS + backups).
+
 ---
 
 ## Prioritized product suggestions (impact)
