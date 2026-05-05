@@ -12,9 +12,18 @@ dist
 dist-ssr
 *.local
 
-# Local environment and binaries
+# Local environment (never commit real URLs or prod secrets here)
 .env
-pocketbase_0.37.4_darwin_arm64/
+.env.*
+!.env.example
+
+# PocketBase binaries and live data (contain users and SQLite DBs)
+pocketbase_*/
+**/pb_data/
+
+# SQLite / local DB artefacts
+*.db
+*.sqlite*
 
 # Editor directories and files
 .vscode/*

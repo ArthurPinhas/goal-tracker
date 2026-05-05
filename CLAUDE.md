@@ -123,7 +123,7 @@ src/
     GoalCard          — Goal card with subtasks
     GoalProgress      — Progress bar component
     GoalSidebar       — Desktop stats sidebar
-    MilestoneCard     — Legacy (Lovable) — unused
+    MilestoneCard     — Legacy scaffold — unused
     SkeletonGoalCard  — Loading placeholder
     StickyHeader      — Scroll-activated header
     SubtaskItem       — Individual subtask row
@@ -143,7 +143,7 @@ src/
     NotFound          — 404
   types/
     goal              — Goal, Subtask interfaces
-    milestone         — Legacy (Lovable) — unused
+    milestone         — Legacy scaffold types — unused
   assets/
     celebration.json  — Lottie animation data
 ```
