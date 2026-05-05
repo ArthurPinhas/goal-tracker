@@ -10,7 +10,9 @@ import AddSubtaskDialog from "./AddSubtaskDialog";
 import EditGoalDialog from "./EditGoalDialog";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Trash2, Trophy, GripVertical, ChevronDown, Archive } from "lucide-react";
+import { CalendarDays, Trash2, Trophy, GripVertical, ChevronDown, Archive } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { formatDueChip, getDueUrgency, isIncompleteForDueDate } from "@/lib/dueDateUtils";
 
 interface GoalCardProps {
   goal: Goal;
@@ -20,9 +22,10 @@ interface GoalCardProps {
   onAddSubtask: (goalId: string, title: string) => void;
   onDelete: (goalId: string) => void;
   onDeleteSubtask: (subtaskId: string) => void;
-  onEdit: (goalId: string, name: string, description: string) => void;
+  onEdit: (goalId: string, name: string, description: string, dueDate: string | null) => void;
   onSetEffort: (subtaskId: string, effort: number | null) => void;
   onArchive?: () => void;
+  showDragHandle?: boolean;
 }
 
 const HALFWAY_MESSAGES = [
@@ -51,11 +54,13 @@ const PARTICLES = Array.from({ length: 10 }, (_, i) => ({
   color: ['#f59e0b', '#a78bfa', '#34d399', '#fb7185', '#60a5fa'][i % 5],
 }));
 
-const GoalCard = ({ goal, pendingSubtasks, isCelebrating = false, onToggleSubtask, onAddSubtask, onDelete, onDeleteSubtask, onEdit, onSetEffort, onArchive }: GoalCardProps) => {
+const GoalCard = ({ goal, pendingSubtasks, isCelebrating = false, onToggleSubtask, onAddSubtask, onDelete, onDeleteSubtask, onEdit, onSetEffort, onArchive, showDragHandle = true }: GoalCardProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const percentage = calcProgress(goal);
   const isComplete = percentage >= 100 && goal.subtasks.length > 0;
   const isInProgress = percentage > 0 && !isComplete;
+  const incompleteForDue = isIncompleteForDueDate(goal);
+  const dueUrgency = getDueUrgency(goal.due_date, incompleteForDue && !isComplete);
   const accentColor = getAccentColor(goal.id);
   const doneCount = goal.subtasks.filter((s) => s.is_completed).length;
   const controls = useAnimation();
@@ -96,6 +101,8 @@ const GoalCard = ({ goal, pendingSubtasks, isCelebrating = false, onToggleSubtas
       className={`rounded-xl border shadow-sm relative
         ${isCelebrating ? 'celebration-card ring-2 ring-amber-400/80' : 'bg-card'}
         ${!isCelebrating && isComplete ? 'ring-2 ring-amber-400' : ''}
+        ${!isCelebrating && !isComplete && dueUrgency === 'overdue' ? 'ring-2 ring-red-500/45' : ''}
+        ${!isCelebrating && !isComplete && dueUrgency === 'soon' ? 'ring-2 ring-amber-500/40' : ''}
         ${!isCelebrating && isInProgress ? 'goal-pulse-ring' : ''}
       `}
       style={{
@@ -141,10 +148,14 @@ const GoalCard = ({ goal, pendingSubtasks, isCelebrating = false, onToggleSubtas
 
         {/* Header */}
         <div className="flex items-center gap-2 px-4 py-3" style={{ position: 'relative', zIndex: 3 }}>
-          <GripVertical className="h-4 w-4 text-muted-foreground/25 shrink-0 cursor-grab active:cursor-grabbing" />
+          {showDragHandle ? (
+            <GripVertical className="h-4 w-4 text-muted-foreground/25 shrink-0 cursor-grab active:cursor-grabbing" />
+          ) : (
+            <div className="w-4 shrink-0" aria-hidden />
+          )}
 
           <button
-            className="flex-1 flex items-center gap-2 min-w-0 text-left"
+            className="flex-1 flex items-start gap-2 min-w-0 text-left"
             onClick={() => setCollapsed((v) => !v)}
           >
             <AnimatePresence>
@@ -154,25 +165,45 @@ const GoalCard = ({ goal, pendingSubtasks, isCelebrating = false, onToggleSubtas
                   animate={{ scale: 1, rotate: 0 }}
                   exit={{ scale: 0 }}
                   transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+                  className="shrink-0 mt-0.5"
                 >
-                  <Trophy className={`h-4 w-4 shrink-0 ${isCelebrating ? 'text-amber-300' : 'text-amber-400'}`} />
+                  <Trophy className={`h-4 w-4 ${isCelebrating ? 'text-amber-300' : 'text-amber-400'}`} />
                 </motion.div>
               )}
             </AnimatePresence>
-            <span className={`font-semibold tracking-tight truncate ${isComplete ? 'text-amber-400' : 'text-card-foreground'}`}>
-              {goal.title}
-            </span>
-            {collapsed && (
-              <div className="flex items-center gap-2 ml-auto shrink-0">
-                <div className="w-20 h-1.5 rounded-full bg-secondary overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{ width: `${percentage}%`, backgroundColor: getProgressColor(percentage) }}
-                  />
-                </div>
-                <span className="text-xs text-muted-foreground tabular-nums">{doneCount}/{goal.subtasks.length}</span>
+            <div className="min-w-0 flex-1">
+              <div className={cn('flex items-center gap-2 min-w-0', collapsed && 'w-full justify-between')}>
+                <span className={`font-semibold tracking-tight truncate min-w-0 ${collapsed ? 'flex-1' : ''} ${isComplete ? 'text-amber-400' : 'text-card-foreground'}`}>
+                  {goal.title}
+                </span>
+                {collapsed && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="w-20 h-1.5 rounded-full bg-secondary overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${percentage}%`, backgroundColor: getProgressColor(percentage) }}
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground tabular-nums">{doneCount}/{goal.subtasks.length}</span>
+                  </div>
+                )}
               </div>
-            )}
+              {goal.due_date && (
+                <div
+                  className={cn(
+                    'flex items-center gap-1 mt-1 text-xs',
+                    dueUrgency === 'overdue' && 'text-red-400 font-medium',
+                    dueUrgency === 'soon' && 'text-amber-400/90',
+                    dueUrgency === 'none' && 'text-muted-foreground'
+                  )}
+                >
+                  <CalendarDays className="h-3 w-3 shrink-0 opacity-80" />
+                  <span>{formatDueChip(goal.due_date)}</span>
+                  {dueUrgency === 'overdue' && <span className="text-red-400/90">· Overdue</span>}
+                  {dueUrgency === 'soon' && <span className="text-amber-400/80">· Due soon</span>}
+                </div>
+              )}
+            </div>
           </button>
 
           <div className="flex items-center gap-1 shrink-0">

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Trophy, Target, CheckSquare } from "lucide-react";
+import { Trophy, Target, CheckSquare, Clock, AlertCircle } from "lucide-react";
 import { Goal } from "@/types/goal";
 import { calcProgress } from "@/lib/goalUtils";
 import ExportDialog from "@/components/ExportDialog";
@@ -10,6 +10,8 @@ interface GoalSidebarProps {
   totalSubtasksDone: number;
   totalSubtasks: number;
   quote: string;
+  overdueCount: number;
+  dueSoonCount: number;
 }
 
 const ProgressRing = ({ completed, total }: { completed: number; total: number }) => {
@@ -42,7 +44,7 @@ const ProgressRing = ({ completed, total }: { completed: number; total: number }
   );
 };
 
-const GoalSidebar = ({ goals, completedCount, totalSubtasksDone, totalSubtasks, quote }: GoalSidebarProps) => {
+const GoalSidebar = ({ goals, completedCount, totalSubtasksDone, totalSubtasks, quote, overdueCount, dueSoonCount }: GoalSidebarProps) => {
   if (goals.length === 0) return null;
 
   const avgProgress = goals.length > 0
@@ -73,6 +75,8 @@ const GoalSidebar = ({ goals, completedCount, totalSubtasksDone, totalSubtasks, 
           { label: 'Active', value: activeCount, Icon: Target },
           { label: 'Completed', value: completedCount, Icon: Trophy },
           { label: 'Subtasks done', value: `${totalSubtasksDone}/${totalSubtasks}`, Icon: CheckSquare },
+          { label: 'Overdue', value: overdueCount, Icon: AlertCircle },
+          { label: 'Due ≤7 days', value: dueSoonCount, Icon: Clock },
         ] as const).map(({ label, value, Icon }) => (
           <div key={label} className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">

@@ -11,5 +11,7 @@ export interface Goal {
   user_id: string;
   title: string;
   description: string;
+  /** Calendar date `YYYY-MM-DD`, or null if unset */
+  due_date: string | null;
   subtasks: Subtask[];
 }

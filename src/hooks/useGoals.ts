@@ -2,17 +2,26 @@ import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import pb from '@/lib/pocketbase';
 import { Goal, Subtask } from '@/types/goal';
+import { normalizeDueDate } from '@/lib/dueDateUtils';
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 const isNetworkError = (err: unknown): boolean =>
   err instanceof Error && (err.message === 'Failed to fetch' || err.message.includes('NetworkError'));
 
-const mapGoalRecord = (r: { id: string; user: string; name: string; description: string; expand?: Record<string, Subtask[]> }): Goal => ({
+const mapGoalRecord = (r: {
+  id: string;
+  user: string;
+  name: string;
+  description: string;
+  due_date?: string | null;
+  expand?: Record<string, Subtask[]>;
+}): Goal => ({
   id: r.id,
   user_id: r.user,
   title: r.name,
   description: r.description,
+  due_date: normalizeDueDate(r.due_date),
   subtasks: (r.expand?.['subtasks_via_goal'] ?? []).map((s) => ({
     id: s.id,
     goal_id: (s as unknown as { goal: string }).goal,
@@ -78,10 +87,17 @@ export function useGoals() {
     }
   };
 
-  const createGoal = async (name: string, description: string) => {
+  const createGoal = async (name: string, description: string, due_date: string | null = null) => {
     try {
       markSaving();
-      await pb.collection('goals').create({ name, description, user: pb.authStore.record?.id, sort_order: goals.length });
+      await pb.collection('goals').create({
+        name,
+        description,
+        due_date: due_date || null,
+        user: pb.authStore.record?.id,
+        /** Sort ascending; negatives order before reorder indices (0…n−1), so new goals appear at the top. */
+        sort_order: -Date.now(),
+      });
       await fetchGoals();
       markSaved();
     } catch (err) {
@@ -90,11 +106,15 @@ export function useGoals() {
     }
   };
 
-  const editGoal = async (goalId: string, name: string, description: string) => {
+  const editGoal = async (goalId: string, name: string, description: string, due_date: string | null) => {
     try {
       markSaving();
-      await pb.collection('goals').update(goalId, { name, description });
-      setGoals((prev) => prev.map((g) => (g.id === goalId ? { ...g, title: name, description } : g)));
+      await pb.collection('goals').update(goalId, { name, description, due_date: due_date || null });
+      setGoals((prev) =>
+        prev.map((g) =>
+          g.id === goalId ? { ...g, title: name, description, due_date: due_date ?? null } : g
+        )
+      );
       markSaved();
     } catch (err) {
       markError();

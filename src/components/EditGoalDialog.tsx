@@ -10,23 +10,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import GoalDueDatePicker from "@/components/GoalDueDatePicker";
 import { Pencil } from "lucide-react";
 import { Goal } from "@/types/goal";
 
 interface EditGoalDialogProps {
   goal: Goal;
-  onEdit: (goalId: string, name: string, description: string) => void;
+  onEdit: (goalId: string, name: string, description: string, dueDate: string | null) => void;
 }
 
 const EditGoalDialog = ({ goal, onEdit }: EditGoalDialogProps) => {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(goal.title);
   const [description, setDescription] = useState(goal.description);
+  const [dueDate, setDueDate] = useState<string | null>(goal.due_date);
 
   const handleOpen = (val: boolean) => {
     if (val) {
       setTitle(goal.title);
       setDescription(goal.description);
+      setDueDate(goal.due_date);
     }
     setOpen(val);
   };
@@ -34,7 +37,7 @@ const EditGoalDialog = ({ goal, onEdit }: EditGoalDialogProps) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-    onEdit(goal.id, title.trim(), description.trim());
+    onEdit(goal.id, title.trim(), description.trim(), dueDate);
     setOpen(false);
   };
 
@@ -68,6 +71,7 @@ const EditGoalDialog = ({ goal, onEdit }: EditGoalDialogProps) => {
               rows={3}
             />
           </div>
+          <GoalDueDatePicker id="edit-due" value={dueDate} onChange={setDueDate} />
           <div className="flex justify-end">
             <Button type="submit" disabled={!title.trim()}>Save</Button>
           </div>

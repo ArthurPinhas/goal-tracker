@@ -11,10 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import GoalDueDatePicker from "@/components/GoalDueDatePicker";
 import { Plus } from "lucide-react";
 
 interface AddGoalDialogProps {
-  onAdd: (title: string, description: string) => void;
+  onAdd: (title: string, description: string, dueDate: string | null) => void;
   triggerClassName?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -26,14 +27,16 @@ const AddGoalDialog = ({ onAdd, triggerClassName, open: controlledOpen, onOpenCh
   const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [dueDate, setDueDate] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
     playPop();
-    onAdd(title.trim(), description.trim());
+    onAdd(title.trim(), description.trim(), dueDate);
     setTitle("");
     setDescription("");
+    setDueDate(null);
     setOpen(false);
   };
 
@@ -70,6 +73,7 @@ const AddGoalDialog = ({ onAdd, triggerClassName, open: controlledOpen, onOpenCh
               rows={3}
             />
           </div>
+          <GoalDueDatePicker id="goal-due" value={dueDate} onChange={setDueDate} />
           <div className="flex justify-end">
             <Button type="submit" disabled={!title.trim()}>
               Create

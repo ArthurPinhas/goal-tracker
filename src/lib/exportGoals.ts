@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { Goal } from '@/types/goal';
 import { calcProgress } from '@/lib/goalUtils';
+import { formatDueChip } from '@/lib/dueDateUtils';
 
 const downloadBlob = (blob: Blob, filename: string) => {
   const url = URL.createObjectURL(blob);
@@ -17,6 +18,7 @@ export const exportJSON = (goals: Goal[]) => {
   const data = goals.map((g) => ({
     title: g.title,
     description: g.description,
+    due_date: g.due_date,
     progress: Math.round(calcProgress(g)),
     subtasks: g.subtasks.map((s) => ({
       title: s.title,
@@ -29,16 +31,17 @@ export const exportJSON = (goals: Goal[]) => {
 };
 
 export const exportCSV = (goals: Goal[]) => {
-  const rows: string[] = ['Goal,Description,Progress,Subtask,Completed,Effort'];
+  const rows: string[] = ['Goal,Description,Due date,Progress,Subtask,Completed,Effort'];
   for (const g of goals) {
     const progress = `${Math.round(calcProgress(g))}%`;
+    const due = g.due_date ?? '';
     if (g.subtasks.length === 0) {
-      rows.push([g.title, g.description, progress, '', '', ''].map((v) => `"${v.replace(/"/g, '""')}"`).join(','));
+      rows.push([g.title, g.description, due, progress, '', '', ''].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','));
     } else {
       for (const s of g.subtasks) {
         rows.push(
-          [g.title, g.description, progress, s.title, s.is_completed ? 'Yes' : 'No', s.effort?.toString() ?? '']
-            .map((v) => `"${v.replace(/"/g, '""')}"`)
+          [g.title, g.description, due, progress, s.title, s.is_completed ? 'Yes' : 'No', s.effort?.toString() ?? '']
+            .map((v) => `"${String(v).replace(/"/g, '""')}"`)
             .join(',')
         );
       }
@@ -98,6 +101,15 @@ export const exportPDF = (goals: Goal[]) => {
     doc.setTextColor(255, 255, 255);
     doc.text(`${pct}%`, pageW - margin - 11, y + 6.5, { align: 'center' });
     y += 13;
+
+    if (goal.due_date) {
+      checkPage(6);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 100, 115);
+      doc.text(`Due ${formatDueChip(goal.due_date)}`, margin + 3, y);
+      y += 5;
+    }
 
     // Description
     if (goal.description) {

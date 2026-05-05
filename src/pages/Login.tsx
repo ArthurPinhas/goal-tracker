@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Target } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const Login = () => {
   const { login } = useAuth();
@@ -32,7 +33,10 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Gradient header */}
-      <div className="gradient-header px-4 pt-12 pb-16 text-center">
+      <div className="gradient-header px-4 pt-12 pb-16 text-center relative">
+        <div className="absolute right-3 top-3 sm:right-6 sm:top-4">
+          <ThemeToggle variant="header" />
+        </div>
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}

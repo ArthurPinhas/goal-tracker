@@ -2,12 +2,13 @@ import { motion } from "framer-motion";
 import { Target, LogOut, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AddGoalDialog from "./AddGoalDialog";
+import ThemeToggle from "./ThemeToggle";
 
 interface StickyHeaderProps {
   soundOn: boolean;
   onToggleSound: () => void;
   onLogout: () => void;
-  onAdd: (title: string, description: string) => void;
+  onAdd: (title: string, description: string, dueDate: string | null) => void;
   addGoalOpen?: boolean;
   onAddGoalOpenChange?: (open: boolean) => void;
 }
@@ -27,6 +28,7 @@ const StickyHeader = ({ soundOn, onToggleSound, onLogout, onAdd, addGoalOpen, on
       </div>
       <div className="flex items-center gap-1">
         <AddGoalDialog onAdd={onAdd} open={addGoalOpen} onOpenChange={onAddGoalOpenChange} />
+        <ThemeToggle className="h-8 w-8" />
         <Button variant="ghost" size="icon" onClick={onToggleSound} title={soundOn ? 'Mute' : 'Unmute'}
           className="h-8 w-8 text-muted-foreground hover:text-foreground">
           {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}

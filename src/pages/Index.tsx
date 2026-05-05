@@ -11,11 +11,20 @@ import SkeletonGoalCard from "@/components/SkeletonGoalCard";
 import CelebrationOverlay from "@/components/CelebrationOverlay";
 import StickyHeader from "@/components/StickyHeader";
 import GoalSidebar from "@/components/GoalSidebar";
+import ThemeToggle from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Target, LogOut, Search, Volume2, VolumeX, Check, Loader2, AlertCircle, Archive, RotateCcw, CheckSquare, Trash2 } from "lucide-react";
+import { Target, LogOut, Search, Volume2, VolumeX, Check, Loader2, AlertCircle, Archive, RotateCcw, CheckSquare, Trash2, CalendarDays } from "lucide-react";
 import { isSoundEnabled, toggleSound } from "@/lib/sounds";
+import { formatDueChip, getDueUrgency, isIncompleteForDueDate } from "@/lib/dueDateUtils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const QUOTES = [
   "The secret of getting ahead is getting started.",
@@ -47,6 +56,27 @@ const PAGE_ORBS = [
 ];
 
 type Filter = 'all' | 'active' | 'done' | 'archived';
+type DueFilter = 'all' | 'has_due' | 'overdue' | 'due_soon';
+type GoalSortMode = 'manual' | 'due_asc';
+
+function sortGoalsByDueAsc(goals: Goal[]): Goal[] {
+  return [...goals].sort((a, b) => {
+    if (!a.due_date && !b.due_date) return 0;
+    if (!a.due_date) return 1;
+    if (!b.due_date) return -1;
+    return a.due_date.localeCompare(b.due_date);
+  });
+}
+
+function matchesDueFilter(goal: Goal, df: DueFilter): boolean {
+  if (df === 'all') return true;
+  if (df === 'has_due') return !!goal.due_date;
+  const incomplete = isIncompleteForDueDate(goal);
+  const u = getDueUrgency(goal.due_date, incomplete);
+  if (df === 'overdue') return u === 'overdue';
+  if (df === 'due_soon') return u === 'soon';
+  return true;
+}
 
 const Index = () => {
   const { user, logout } = useAuth();
@@ -55,6 +85,8 @@ const Index = () => {
   const [orderedGoals, setOrderedGoals] = useState<Goal[]>([]);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
+  const [dueFilter, setDueFilter] = useState<DueFilter>('all');
+  const [goalSortMode, setGoalSortMode] = useState<GoalSortMode>('manual');
   const [celebratingGoals, setCelebratingGoals] = useState<Set<string>>(new Set());
   const [showCelebration, setShowCelebration] = useState(false);
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
@@ -97,8 +129,9 @@ const Index = () => {
         return [...goals].sort((a, b) => {
           const ai = saved.indexOf(a.id), bi = saved.indexOf(b.id);
           if (ai === -1 && bi === -1) return 0;
-          if (ai === -1) return 1;
-          if (bi === -1) return -1;
+          /* Prefer goals not yet in saved order (new creations) at the top */
+          if (ai === -1) return -1;
+          if (bi === -1) return 1;
           return ai - bi;
         });
       }
@@ -107,7 +140,8 @@ const Index = () => {
       const filtered = prev
         .filter((g) => goals.some((ng) => ng.id === g.id))
         .map((g) => goals.find((ng) => ng.id === g.id)!);
-      return [...filtered, ...newGoals];
+      /** New IDs from PocketBase (`sort_order: -Date.now()`) go at the top; keep prior manual order below */
+      return [...newGoals, ...filtered];
     });
   }, [goals]);
 
@@ -145,8 +179,23 @@ const Index = () => {
     );
   };
 
-  const activeGoals = orderedGoals.filter((g) => (calcProgress(g) < 100 || celebratingGoals.has(g.id)) && matchesSearch(g));
-  const completedGoals = orderedGoals.filter((g) => calcProgress(g) >= 100 && g.subtasks.length > 0 && !celebratingGoals.has(g.id) && matchesSearch(g));
+  const activeGoalsBase = orderedGoals.filter((g) => (calcProgress(g) < 100 || celebratingGoals.has(g.id)) && matchesSearch(g));
+  const completedGoalsBase = orderedGoals.filter((g) => calcProgress(g) >= 100 && g.subtasks.length > 0 && !celebratingGoals.has(g.id) && matchesSearch(g));
+
+  const activeGoalsFiltered = activeGoalsBase.filter((g) => matchesDueFilter(g, dueFilter));
+  const completedGoalsFiltered = completedGoalsBase.filter((g) => matchesDueFilter(g, dueFilter));
+
+  const activeGoals = goalSortMode === 'due_asc' ? sortGoalsByDueAsc(activeGoalsFiltered) : activeGoalsFiltered;
+  const completedGoals = completedGoalsFiltered;
+
+  const canDragReorder = dueFilter === 'all' && goalSortMode === 'manual';
+
+  const overdueCount = orderedGoals.filter(
+    (g) => getDueUrgency(g.due_date, isIncompleteForDueDate(g)) === 'overdue'
+  ).length;
+  const dueSoonCount = orderedGoals.filter(
+    (g) => getDueUrgency(g.due_date, isIncompleteForDueDate(g)) === 'soon'
+  ).length;
 
   const showActive = filter !== 'done' && filter !== 'archived';
   const showCompleted = filter !== 'active' && filter !== 'archived';
@@ -232,6 +281,7 @@ const Index = () => {
             </div>
             <div className="flex items-center gap-2 pt-1">
               <AddGoalDialog onAdd={createGoal} open={addGoalOpen} onOpenChange={setAddGoalOpen} />
+              <ThemeToggle variant="header" />
               <Button variant="ghost" size="icon" onClick={handleToggleSound} title={soundOn ? 'Mute sounds' : 'Unmute sounds'}
                 className="text-white/50 hover:text-white hover:bg-white/10">
                 {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
@@ -252,7 +302,7 @@ const Index = () => {
             >
               {[
                 { label: 'Goals', value: orderedGoals.length },
-                { label: 'Completed', value: completedGoals.length },
+                { label: 'Completed', value: completedGoalsBase.length },
                 { label: 'Subtasks done', value: totalSubtasksDone },
               ].map(({ label, value }) => (
                 <div key={label}>
@@ -310,8 +360,8 @@ const Index = () => {
                   <div className="flex gap-1.5 flex-wrap">
                     {([
                       { f: 'all', label: `All (${orderedGoals.length})` },
-                      { f: 'active', label: `Active (${activeGoals.length})` },
-                      { f: 'done', label: `Done (${completedGoals.length})` },
+                      { f: 'active', label: `Active (${activeGoalsBase.length})` },
+                      { f: 'done', label: `Done (${completedGoalsBase.length})` },
                       { f: 'archived', label: `Archived${archivedGoals.length > 0 ? ` (${archivedGoals.length})` : ''}` },
                     ] as { f: Filter; label: string }[]).map(({ f, label }) => (
                       <button
@@ -327,43 +377,100 @@ const Index = () => {
                       </button>
                     ))}
                   </div>
+                  {filter !== 'archived' && (
+                    <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between pt-2 mt-2 border-t border-border/40">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Deadline</span>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {([
+                            { df: 'all' as DueFilter, label: 'Any' },
+                            { df: 'has_due', label: 'Has date' },
+                            { df: 'overdue', label: 'Overdue' },
+                            { df: 'due_soon', label: '≤7 days' },
+                          ] as const).map(({ df, label }) => (
+                            <button
+                              key={df}
+                              type="button"
+                              onClick={() => setDueFilter(df)}
+                              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                                dueFilter === df
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-secondary text-muted-foreground hover:text-foreground'
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1.5 sm:items-end">
+                        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Sort</span>
+                        <Select value={goalSortMode} onValueChange={(v) => setGoalSortMode(v as GoalSortMode)}>
+                          <SelectTrigger className="h-9 w-[220px] text-xs bg-background">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="manual">Manual (drag to reorder)</SelectItem>
+                            <SelectItem value="due_asc">Due date · soonest first</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Active goals — draggable */}
+                {/* Active goals */}
                 {showActive && activeGoals.length > 0 && (
-                  <Reorder.Group
-                    axis="y"
-                    values={activeGoals}
-                    onReorder={(reordered) => {
-                      let next: Goal[] = [];
-                      setOrderedGoals((prev) => {
-                        const completedIds = new Set(prev.filter((g) => calcProgress(g) >= 100 && !celebratingGoals.has(g.id)).map((g) => g.id));
-                        const completed = prev.filter((g) => completedIds.has(g.id));
-                        next = [...reordered, ...completed];
-                        localStorage.setItem('goal-order', JSON.stringify(next.map((g) => g.id)));
-                        return next;
-                      });
-                      if (reorderTimer.current) clearTimeout(reorderTimer.current);
-                      reorderTimer.current = setTimeout(() => reorderGoals(next), 600);
-                    }}
-                    as="div"
-                    className="space-y-3"
-                  >
-                    <AnimatePresence initial={false}>
-                      {activeGoals.map((goal, i) => (
-                        <Reorder.Item
-                          key={goal.id}
-                          value={goal}
-                          as="div"
-                          initial={{ opacity: 0, y: 16 }}
-                          animate={{ opacity: 1, y: 0, transition: { delay: i * 0.05, type: 'spring', stiffness: 300, damping: 26 } }}
-                          exit={{ opacity: 0, y: 10, scale: 0.97, transition: { duration: 0.3, ease: 'easeIn' } }}
-                        >
-                          <GoalCard goal={goal} isCelebrating={celebratingGoals.has(goal.id)} onArchive={() => archiveGoal(goal.id)} {...sharedCardProps} />
-                        </Reorder.Item>
-                      ))}
-                    </AnimatePresence>
-                  </Reorder.Group>
+                  canDragReorder ? (
+                    <Reorder.Group
+                      axis="y"
+                      values={activeGoals}
+                      onReorder={(reordered) => {
+                        let next: Goal[] = [];
+                        setOrderedGoals((prev) => {
+                          const completedIds = new Set(prev.filter((g) => calcProgress(g) >= 100 && !celebratingGoals.has(g.id)).map((g) => g.id));
+                          const completed = prev.filter((g) => completedIds.has(g.id));
+                          next = [...reordered, ...completed];
+                          localStorage.setItem('goal-order', JSON.stringify(next.map((g) => g.id)));
+                          return next;
+                        });
+                        if (reorderTimer.current) clearTimeout(reorderTimer.current);
+                        reorderTimer.current = setTimeout(() => reorderGoals(next), 600);
+                      }}
+                      as="div"
+                      className="space-y-3"
+                    >
+                      <AnimatePresence initial={false}>
+                        {activeGoals.map((goal, i) => (
+                          <Reorder.Item
+                            key={goal.id}
+                            value={goal}
+                            as="div"
+                            initial={{ opacity: 0, y: 16 }}
+                            animate={{ opacity: 1, y: 0, transition: { delay: i * 0.05, type: 'spring', stiffness: 300, damping: 26 } }}
+                            exit={{ opacity: 0, y: 10, scale: 0.97, transition: { duration: 0.3, ease: 'easeIn' } }}
+                          >
+                            <GoalCard goal={goal} showDragHandle isCelebrating={celebratingGoals.has(goal.id)} onArchive={() => archiveGoal(goal.id)} {...sharedCardProps} />
+                          </Reorder.Item>
+                        ))}
+                      </AnimatePresence>
+                    </Reorder.Group>
+                  ) : (
+                    <div className="space-y-3">
+                      <AnimatePresence initial={false}>
+                        {activeGoals.map((goal, i) => (
+                          <motion.div
+                            key={goal.id}
+                            initial={{ opacity: 0, y: 16 }}
+                            animate={{ opacity: 1, y: 0, transition: { delay: i * 0.05, type: 'spring', stiffness: 300, damping: 26 } }}
+                            exit={{ opacity: 0, y: 10, scale: 0.97, transition: { duration: 0.3, ease: 'easeIn' } }}
+                          >
+                            <GoalCard goal={goal} showDragHandle={false} isCelebrating={celebratingGoals.has(goal.id)} onArchive={() => archiveGoal(goal.id)} {...sharedCardProps} />
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  )
                 )}
 
                 {/* Completed goals section */}
@@ -384,7 +491,7 @@ const Index = () => {
                           animate={{ opacity: 1, y: 0, transition: { delay: 0.28 + i * 0.05, duration: 0.35, ease: 'easeOut' } }}
                           exit={{ opacity: 0, scale: 0.96 }}
                         >
-                          <GoalCard goal={goal} isCelebrating={celebratingGoals.has(goal.id)} onArchive={() => archiveGoal(goal.id)} {...sharedCardProps} />
+                          <GoalCard goal={goal} showDragHandle={false} isCelebrating={celebratingGoals.has(goal.id)} onArchive={() => archiveGoal(goal.id)} {...sharedCardProps} />
                         </motion.div>
                       ))}
                     </AnimatePresence>
@@ -407,6 +514,12 @@ const Index = () => {
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm truncate">{goal.title}</p>
                             {goal.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{goal.description}</p>}
+                            {goal.due_date && (
+                              <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                                <CalendarDays className="h-3 w-3 shrink-0 opacity-80" />
+                                <span>Due {formatDueChip(goal.due_date)}</span>
+                              </div>
+                            )}
                             <div className="flex items-center gap-1.5 mt-1.5">
                               <CheckSquare className="h-3 w-3 text-muted-foreground" />
                               <span className="text-xs text-muted-foreground tabular-nums">{done}/{goal.subtasks.length} subtasks · {pct}%</span>
@@ -445,6 +558,8 @@ const Index = () => {
                   <p className="text-center text-muted-foreground text-sm py-12">
                     {searchLower
                       ? `No goals match "${search}"`
+                      : dueFilter !== 'all'
+                        ? 'No goals match this deadline filter.'
                       : filter === 'active'
                       ? 'No active goals — all done!'
                       : 'No completed goals yet'}
@@ -459,10 +574,12 @@ const Index = () => {
           <div className="sticky top-20">
             <GoalSidebar
               goals={orderedGoals}
-              completedCount={completedGoals.length}
+              completedCount={completedGoalsBase.length}
               totalSubtasksDone={totalSubtasksDone}
               totalSubtasks={totalSubtasks}
               quote={quote}
+              overdueCount={overdueCount}
+              dueSoonCount={dueSoonCount}
             />
           </div>
         </div>
