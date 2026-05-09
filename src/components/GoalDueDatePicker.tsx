@@ -25,7 +25,7 @@ const GoalDueDatePicker = ({ id, value, onChange }: GoalDueDatePickerProps) => {
           Due date
         </Label>
         {value && (
-          <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={() => onChange(null)}>
+          <Button type="button" variant="ghost" size="sm" className="min-h-9 touch-manipulation px-2 text-xs text-muted-foreground md:h-7" onClick={() => onChange(null)}>
             Clear
           </Button>
         )}

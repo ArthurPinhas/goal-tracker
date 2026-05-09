@@ -39,7 +39,7 @@ const AddSubtaskDialog = ({ onAdd }: AddSubtaskDialogProps) => {
         <Button
           variant="ghost"
           size="sm"
-          className="gap-1.5 h-9 min-h-9 px-3 text-xs font-semibold rounded-full text-muted-foreground border border-border/40 bg-secondary/40 hover:bg-secondary hover:text-card-foreground hover:border-border/70 dark:bg-card/40 dark:hover:bg-card/60 transition-all duration-300"
+          className="gap-1.5 h-10 min-h-10 touch-manipulation px-3 text-xs font-semibold rounded-full text-muted-foreground border border-border/40 bg-secondary/40 hover:bg-secondary hover:text-card-foreground hover:border-border/70 dark:bg-card/40 dark:hover:bg-card/60 transition-all duration-300 md:h-9 md:min-h-9"
         >
           <Plus className="h-3.5 w-3.5" />
           Add
@@ -80,7 +80,7 @@ const AddSubtaskDialog = ({ onAdd }: AddSubtaskDialogProps) => {
             />
           </div>
           <div className="flex justify-end pt-1">
-            <Button type="submit" disabled={!title.trim()} className="min-h-10 shadow-md shadow-primary/20">
+            <Button type="submit" disabled={!title.trim()} className="min-h-11 touch-manipulation px-6 md:min-h-10 shadow-md shadow-primary/20">
               Add
             </Button>
           </div>

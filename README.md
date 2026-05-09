@@ -83,6 +83,8 @@ Configure in the PocketBase Admin UI (`/_/`):
 
 Match **Collection API identifiers** (`name`, `description`, …) so the frontend records map correctly.
 
+- **`users`** (built-in auth) — optional **`avatar`** (type **file**): if set, it appears in the main page hero next to “Hey, …”. API rules must allow authenticated users to read their own file (default PocketBase user rules usually do).
+
 ### 4. Run locally
 
 Terminal 1 — PocketBase:
@@ -182,7 +184,7 @@ Prioritized **impact** ideas (not committed work)—see **`CLAUDE.md`** for the 
 4. **Goal templates** — fast reuse; good effort-to-impact ratio.  
 5. **Light analytics** (streaks / weekly completions) — optional Phase D–style expansion.  
 6. **PWA offline + sync** — high effort; only if mobile/offline is core.  
-7. **Code hygiene** — `ArchiveSection` exists but is **not wired** on `Index` (inline archive UI is used); merge or remove to avoid drift.  
+7. **Archive UX** — single inline archive section on `Index` (unused duplicate component removed).  
 8. **Email digest** — needs SMTP/Resend; complements weak browser-only reminders.  
 9. **Docker / Synology deploy docs** — ops credibility for self-hosters.
 

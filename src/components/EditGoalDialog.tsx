@@ -59,7 +59,7 @@ const EditGoalDialog = ({ goal, onEdit }: EditGoalDialogProps) => {
         <Button
           variant="ghost"
           size="icon"
-          className="shrink-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 dark:hover:bg-muted/40 dark:text-muted-foreground/90"
+            className="h-10 w-10 md:h-8 md:w-8 shrink-0 touch-manipulation rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 dark:hover:bg-muted/40 dark:text-muted-foreground/90"
         >
           <Pencil className="h-4 w-4" />
         </Button>
@@ -109,7 +109,7 @@ const EditGoalDialog = ({ goal, onEdit }: EditGoalDialogProps) => {
             />
           </div>
           <div className="flex justify-end pt-1">
-            <Button type="submit" disabled={!title.trim()} className="min-h-10 shadow-md shadow-primary/20">
+            <Button type="submit" disabled={!title.trim()} className="min-h-11 touch-manipulation px-6 md:min-h-10 shadow-md shadow-primary/20">
               Save
             </Button>
           </div>

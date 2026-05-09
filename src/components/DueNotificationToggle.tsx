@@ -80,7 +80,7 @@ export function DueNotificationToggle({
             onClick={handleClick}
             title={title}
             className={cn(
-              "h-9 w-9 shrink-0 rounded-lg transition-colors duration-200 active:scale-[0.97]",
+              "h-11 w-11 touch-manipulation md:h-9 md:w-9 shrink-0 rounded-lg transition-colors duration-200 active:scale-[0.97]",
               ghost,
               className,
             )}

@@ -33,12 +33,12 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col relative">
+    <div className="min-h-[100dvh] min-h-screen overflow-x-clip bg-background flex flex-col relative">
       <AuthAmbientBackground />
       {/* Gradient header */}
-      <div className="gradient-header px-4 pt-12 pb-16 text-center relative z-10">
-        <div className="absolute right-3 top-3 sm:right-6 sm:top-4">
-          <ThemeToggle variant="header" />
+      <div className="gradient-header px-4 pt-[max(3rem,calc(env(safe-area-inset-top,0px)+2.5rem))] pb-16 md:pt-12 text-center relative z-10">
+        <div className="absolute right-[max(0.75rem,calc(env(safe-area-inset-right,0px)+0.5rem))] top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.5rem))] md:right-6 md:top-4">
+          <ThemeToggle variant="header" className="h-11 w-11 touch-manipulation md:h-9 md:w-9" />
         </div>
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -55,7 +55,7 @@ const Login = () => {
       </div>
 
       {/* Form card — overlaps header */}
-      <div className="flex-1 flex items-start justify-center px-4 -mt-8 relative z-10">
+      <div className="flex-1 flex items-start justify-center px-4 pb-[max(1.5rem,calc(env(safe-area-inset-bottom,0px)+1rem))] -mt-8 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -80,6 +80,7 @@ const Login = () => {
                 required
                 autoFocus
                 className="h-11 rounded-lg app-surface-input transition-shadow duration-300"
+                autoComplete="username"
               />
             </div>
             <div className="space-y-2">
@@ -96,17 +97,19 @@ const Login = () => {
               />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="min-h-11 w-full touch-manipulation md:min-h-10" disabled={loading}>
               {loading ? 'Signing in…' : 'Sign in'}
             </Button>
           </form>
 
+          {/* Registration disabled for private use — uncomment to re-enable:
           <p className="text-center text-sm text-muted-foreground">
             No account?{' '}
             <Link to="/register" className="text-primary underline-offset-4 hover:underline">
               Register
             </Link>
           </p>
+          */}
         </motion.div>
       </div>
     </div>

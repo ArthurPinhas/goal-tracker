@@ -187,7 +187,6 @@ src/
     AddGoalDialog       — Create goal modal (+ due picker + emoji title)
     AddSubtaskDialog    — Add subtask modal
     PageSideParticles   — Side gutter particles on Index
-    ArchiveSection      — Collapsible archived list UI (currently **not imported** on Index — main page uses **inline** archive section; reconcile or remove to avoid drift)
     AuthAmbientBackground — Soft orbs on login/register
     CelebrationOverlay — Lottie full-screen celebration
     EmptyState          — Shared empty / no-results illustration
@@ -285,7 +284,7 @@ Not committed roadmap — for planning only (aligned with **V2**):
 4. **Goal templates** — strong effort-to-impact ratio.  
 5. **Light analytics** (streaks, weekly completions) — optional sidebar/Page without full “dashboard.”  
 6. **PWA offline + sync** — high effort.  
-7. **Wire or remove `ArchiveSection`** — avoid duplicate archive UX.  
+7. **Archive UX** — archived goals use the **inline** section on `Index` only (single implementation).  
 8. **Email digest** — SMTP/Resend; complements browser-only reminders.  
 9. **Docker / Synology deploy** — ops story for self-hosters.
 

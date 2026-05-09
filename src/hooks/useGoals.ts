@@ -17,6 +17,25 @@ const normalizeEmoji = (raw: unknown): string | null => {
 
 const normalizeNotes = (raw: unknown): string => (typeof raw === 'string' ? raw : '');
 
+/** PocketBase `subtasks` rows returned via `expand: 'subtasks_via_goal'` */
+type PocketBaseSubtaskRecord = {
+  id: string;
+  goal: string;
+  name: string;
+  completed: boolean;
+  effort?: number | null;
+  notes?: string | null;
+};
+
+const mapExpandedSubtask = (s: PocketBaseSubtaskRecord): Subtask => ({
+  id: s.id,
+  goal_id: s.goal,
+  title: s.name,
+  is_completed: s.completed,
+  effort: s.effort ?? null,
+  notes: normalizeNotes(s.notes),
+});
+
 const mapGoalRecord = (r: {
   id: string;
   user: string;
@@ -25,7 +44,7 @@ const mapGoalRecord = (r: {
   due_date?: string | null;
   emoji?: string | null;
   notes?: string | null;
-  expand?: Record<string, Subtask[]>;
+  expand?: { subtasks_via_goal?: PocketBaseSubtaskRecord[] };
 }): Goal => ({
   id: r.id,
   user_id: r.user,
@@ -34,14 +53,7 @@ const mapGoalRecord = (r: {
   due_date: normalizeDueDate(r.due_date),
   emoji: normalizeEmoji(r.emoji),
   notes: normalizeNotes(r.notes),
-  subtasks: (r.expand?.['subtasks_via_goal'] ?? []).map((s) => ({
-    id: s.id,
-    goal_id: (s as unknown as { goal: string }).goal,
-    title: (s as unknown as { name: string }).name,
-    is_completed: (s as unknown as { completed: boolean }).completed,
-    effort: (s as unknown as { effort: number | null }).effort ?? null,
-    notes: normalizeNotes((s as unknown as { notes?: string | null }).notes),
-  })),
+  subtasks: (r.expand?.subtasks_via_goal ?? []).map((s) => mapExpandedSubtask(s)),
 });
 
 export function useGoals() {

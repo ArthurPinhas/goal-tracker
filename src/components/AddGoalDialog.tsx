@@ -25,11 +25,13 @@ interface AddGoalDialogProps {
     notes: string
   ) => void;
   triggerClassName?: string;
+  /** In sticky / tight toolbars: show icon only below `md` to avoid overflow */
+  compactTriggerBelowMd?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
 
-const AddGoalDialog = ({ onAdd, triggerClassName, open: controlledOpen, onOpenChange: controlledOnOpenChange }: AddGoalDialogProps) => {
+const AddGoalDialog = ({ onAdd, triggerClassName, compactTriggerBelowMd, open: controlledOpen, onOpenChange: controlledOnOpenChange }: AddGoalDialogProps) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = controlledOnOpenChange ?? setInternalOpen;
@@ -56,13 +58,16 @@ const AddGoalDialog = ({ onAdd, triggerClassName, open: controlledOpen, onOpenCh
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
+          type="button"
+          title="New goal"
           className={cn(
-            "gap-2 min-h-10 shadow-md shadow-primary/25 transition-all duration-300 hover:shadow-lg hover:shadow-primary/30 dark:shadow-primary/20",
+            "gap-2 min-h-11 touch-manipulation px-4 md:min-h-10 shadow-md shadow-primary/25 transition-all duration-300 hover:shadow-lg hover:shadow-primary/30 dark:shadow-primary/20",
+            compactTriggerBelowMd && "max-md:px-3 max-md:min-w-11",
             triggerClassName
           )}
         >
           <Plus className="h-4 w-4" />
-          New Goal
+          <span className={cn(compactTriggerBelowMd && "max-md:sr-only")}>New Goal</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -112,7 +117,7 @@ const AddGoalDialog = ({ onAdd, triggerClassName, open: controlledOpen, onOpenCh
             />
           </div>
           <div className="flex justify-end pt-1">
-            <Button type="submit" disabled={!title.trim()} className="min-h-10 shadow-md shadow-primary/20">
+            <Button type="submit" disabled={!title.trim()} className="min-h-11 touch-manipulation px-6 md:min-h-10 shadow-md shadow-primary/20">
               Create
             </Button>
           </div>

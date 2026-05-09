@@ -1,12 +1,14 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, type ComponentProps } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence, Reorder } from "framer-motion";
+import { motion, AnimatePresence, Reorder, useDragControls } from "framer-motion";
 import toast from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useGoals } from "@/hooks/useGoals";
+import { useResponsiveUI } from "@/hooks/useResponsiveUI";
 import { useDueNotifications } from "@/hooks/useDueNotifications";
 import { Goal } from "@/types/goal";
 import { calcProgress } from "@/lib/goalUtils";
+import pb from "@/lib/pocketbase";
 import GoalCard from "@/components/GoalCard";
 import AddGoalDialog from "@/components/AddGoalDialog";
 import SkeletonGoalCard from "@/components/SkeletonGoalCard";
@@ -17,6 +19,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { DueNotificationToggle } from "@/components/DueNotificationToggle";
 import { showDueReminderInAppToast } from "@/components/DueReminderInAppToast";
 import { PageSideParticles } from "@/components/PageSideParticles";
+import { UserHeroAvatar } from "@/components/UserHeroAvatar";
 import { EmptyState } from "@/components/EmptyState";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -85,9 +88,68 @@ function matchesDueFilter(goal: Goal, df: DueFilter): boolean {
   return true;
 }
 
+type SharedGoalCardProps = Pick<
+  ComponentProps<typeof GoalCard>,
+  | "pendingSubtasks"
+  | "celebrationQuality"
+  | "onToggleSubtask"
+  | "onAddSubtask"
+  | "onDelete"
+  | "onDeleteSubtask"
+  | "onEdit"
+  | "onSetEffort"
+  | "onUpdateSubtaskNotes"
+>;
+
+function ActiveReorderGoalItem({
+  goal,
+  index,
+  celebratingGoals,
+  shared,
+  onArchive,
+  dragFromHandleOnly,
+  liteMotion,
+}: {
+  goal: Goal;
+  index: number;
+  celebratingGoals: Set<string>;
+  shared: SharedGoalCardProps;
+  onArchive: () => void;
+  dragFromHandleOnly: boolean;
+  liteMotion: boolean;
+}) {
+  const dragControls = useDragControls();
+  return (
+    <Reorder.Item
+      value={goal}
+      as="div"
+      dragListener={!dragFromHandleOnly}
+      dragControls={dragFromHandleOnly ? dragControls : undefined}
+      initial={liteMotion ? false : { opacity: 0, y: 16 }}
+      animate={{
+        opacity: 1,
+        y: 0,
+        transition: liteMotion ? { duration: 0 } : { delay: index * 0.05, ...springContent },
+      }}
+      exit={{ opacity: 0, y: 10, scale: 0.97, transition: { duration: 0.28, ease: smoothOut } }}
+    >
+      <GoalCard
+        goal={goal}
+        showDragHandle
+        isCelebrating={celebratingGoals.has(goal.id)}
+        onArchive={onArchive}
+        reorderHandlePointerDown={dragFromHandleOnly ? (e) => dragControls.start(e) : undefined}
+        {...shared}
+      />
+    </Reorder.Item>
+  );
+}
+
 const Index = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const ui = useResponsiveUI();
+  const liteAmbience = ui.isNarrowViewport || ui.isCoarsePointer;
   const { goals, loading, pendingSubtasks, saveStatus, archivedGoals, archivedLoading, createGoal, editGoal, deleteGoal, archiveGoal, restoreGoal, deleteArchivedGoal, fetchArchivedGoals, addSubtask, toggleSubtask, deleteSubtask, updateSubtaskEffort, updateSubtaskNotes, reorderGoals } = useGoals();
   const [orderedGoals, setOrderedGoals] = useState<Goal[]>([]);
   const [search, setSearch] = useState('');
@@ -126,14 +188,17 @@ const Index = () => {
       const prev = prevProgresses.current[goal.id];
       if (prev !== undefined && prev < 100 && pct >= 100 && goal.subtasks.length > 0) {
         setCelebratingGoals((s) => new Set([...s, goal.id]));
-        setShowCelebration(true);
+        // Full-screen Lottie is expensive on phones; card-level celebration + toast still run.
+        if (ui.celebrationQuality === "full") {
+          setShowCelebration(true);
+        }
         setTimeout(() => {
           setCelebratingGoals((s) => { const n = new Set(s); n.delete(goal.id); return n; });
-        }, 3500);
+        }, ui.celebrationGoalMs);
       }
       prevProgresses.current[goal.id] = pct;
     });
-  }, [orderedGoals]);
+  }, [orderedGoals, ui.celebrationGoalMs, ui.celebrationQuality]);
 
   useEffect(() => {
     setOrderedGoals((prev) => {
@@ -222,9 +287,19 @@ const Index = () => {
   const totalSubtasksDone = orderedGoals.reduce((sum, g) => sum + g.subtasks.filter((s) => s.is_completed).length, 0);
   const totalSubtasks = orderedGoals.reduce((sum, g) => sum + g.subtasks.length, 0);
   const username = (user as { name?: string })?.name ?? 'there';
+  const userAvatarUrl = useMemo(() => {
+    const r = user as { id?: string; avatar?: string } | null | undefined;
+    if (!r?.id || !r.avatar || typeof r.avatar !== "string") return null;
+    try {
+      return pb.files.getUrl(r, r.avatar);
+    } catch {
+      return null;
+    }
+  }, [user]);
 
   const sharedCardProps = {
     pendingSubtasks,
+    celebrationQuality: ui.celebrationQuality,
     onToggleSubtask: toggleSubtask,
     onAddSubtask: addSubtask,
     onDelete: deleteGoal,
@@ -252,34 +327,54 @@ const Index = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-[100dvh] min-h-screen overflow-x-clip bg-background relative">
       {/* Page-wide ambient orbs — fixed, edge-positioned */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        {PAGE_ORBS.map((orb, i) => (
-          <motion.div
-            key={i}
-            className="absolute rounded-full"
-            style={{
-              width: orb.w, height: orb.h,
-              left: orb.left, top: orb.top,
-              ...(('right' in orb && orb.right) ? { right: orb.right } : {}),
-              ...(('bottom' in orb && orb.bottom) ? { bottom: orb.bottom } : {}),
-              backgroundColor: orb.color,
-              opacity: orb.opacity,
-              filter: 'blur(92px)',
-            }}
-            animate={{ y: [0, -24, 8, -16, 0], x: [0, 12, -8, 14, 0] }}
-            transition={{ duration: orb.duration, delay: orb.delay, repeat: Infinity, ease: 'easeInOut' }}
-          />
-        ))}
+        {PAGE_ORBS.map((orb, i) =>
+          liteAmbience ? (
+            <div
+              key={i}
+              className="absolute rounded-full"
+              style={{
+                width: orb.w,
+                height: orb.h,
+                left: orb.left,
+                top: orb.top,
+                ...(("right" in orb && orb.right ? { right: orb.right } : {})),
+                ...(("bottom" in orb && orb.bottom ? { bottom: orb.bottom } : {})),
+                backgroundColor: orb.color,
+                opacity: orb.opacity * 0.92,
+                filter: "blur(92px)",
+              }}
+            />
+          ) : (
+            <motion.div
+              key={i}
+              className="absolute rounded-full"
+              style={{
+                width: orb.w,
+                height: orb.h,
+                left: orb.left,
+                top: orb.top,
+                ...(("right" in orb && orb.right ? { right: orb.right } : {})),
+                ...(("bottom" in orb && orb.bottom ? { bottom: orb.bottom } : {})),
+                backgroundColor: orb.color,
+                opacity: orb.opacity,
+                filter: "blur(92px)",
+              }}
+              animate={{ y: [0, -24, 8, -16, 0], x: [0, 12, -8, 14, 0] }}
+              transition={{ duration: orb.duration, delay: orb.delay, repeat: Infinity, ease: "easeInOut" }}
+            />
+          )
+        )}
       </div>
 
-      <PageSideParticles />
+      <PageSideParticles lite={liteAmbience} />
 
       {/* Lottie celebration overlay */}
       <AnimatePresence>
         {showCelebration && (
-          <CelebrationOverlay onComplete={() => setShowCelebration(false)} />
+          <CelebrationOverlay quality={ui.celebrationQuality} onComplete={() => setShowCelebration(false)} />
         )}
       </AnimatePresence>
 
@@ -299,61 +394,100 @@ const Index = () => {
       </AnimatePresence>
 
       {/* Goals hero: gradient + orbs clipped in the layer below — no extra bottom wash */}
-      <div ref={headerRef} className="index-hero relative z-10 overflow-visible px-4 sm:px-6 pt-10 pb-11">
+      <div ref={headerRef} className="index-hero relative z-10 overflow-visible px-4 sm:px-6 pt-[max(2.5rem,calc(env(safe-area-inset-top,0px)+1.25rem))] md:pt-10 pb-11">
         <div
           className="absolute inset-0 -z-10 overflow-hidden rounded-b-[1.75rem] md:rounded-b-[2rem] pointer-events-none shadow-[0_28px_64px_-20px_rgba(0,0,0,0.65)] ring-1 ring-white/[0.06]"
           aria-hidden
         >
           <div className="absolute inset-0 gradient-header-bg" />
-          {HEADER_ORBS.map((orb, i) => (
-            <motion.div
-              key={i}
-              className="absolute rounded-full pointer-events-none"
-              style={{
-                width: orb.w,
-                height: orb.h,
-                left: orb.left,
-                top: orb.top,
-                backgroundColor: orb.color,
-                opacity: orb.opacity,
-                filter: "blur(38px)",
-                zIndex: 1,
-              }}
-              animate={{
-                y: [0, -18, 6, -12, 0],
-                x: [0, 9, -6, 11, 0],
-                scale: [1, 1.06, 0.96, 1.04, 1],
-              }}
-              transition={{ duration: orb.duration, delay: orb.delay, repeat: Infinity, ease: "easeInOut" }}
-            />
-          ))}
+          {HEADER_ORBS.map((orb, i) =>
+            liteAmbience ? (
+              <div
+                key={i}
+                className="absolute rounded-full pointer-events-none"
+                style={{
+                  width: orb.w,
+                  height: orb.h,
+                  left: orb.left,
+                  top: orb.top,
+                  backgroundColor: orb.color,
+                  opacity: orb.opacity * 0.95,
+                  filter: "blur(38px)",
+                  zIndex: 1,
+                }}
+              />
+            ) : (
+              <motion.div
+                key={i}
+                className="absolute rounded-full pointer-events-none"
+                style={{
+                  width: orb.w,
+                  height: orb.h,
+                  left: orb.left,
+                  top: orb.top,
+                  backgroundColor: orb.color,
+                  opacity: orb.opacity,
+                  filter: "blur(38px)",
+                  zIndex: 1,
+                }}
+                animate={{
+                  y: [0, -18, 6, -12, 0],
+                  x: [0, 9, -6, 11, 0],
+                  scale: [1, 1.06, 0.96, 1.04, 1],
+                }}
+                transition={{ duration: orb.duration, delay: orb.delay, repeat: Infinity, ease: "easeInOut" }}
+              />
+            )
+          )}
         </div>
         <div className="relative z-10 max-w-5xl mx-auto">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-white/55" />
-                <span className="text-white/45 text-[11px] font-semibold tracking-[0.18em] uppercase">
-                  Goal Tracker
-                </span>
-              </div>
-              <h1 className="text-4xl sm:text-[2.5rem] font-semibold text-white tracking-tight text-balance [text-shadow:0_2px_24px_rgba(0,0,0,0.35)]">
-                Hey, {username}
-              </h1>
-              <p className="text-white/45 text-sm sm:text-[0.9375rem] italic leading-relaxed max-w-xl">
-                &ldquo;{quote}&rdquo;
-              </p>
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-4 min-w-0">
+            <div className="min-w-0 w-full md:flex-1">
+              {userAvatarUrl ? (
+                <div className="flex items-start gap-4 sm:gap-5">
+                  <UserHeroAvatar src={userAvatarUrl} displayName={username} />
+                  <div className="space-y-2 min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <Target className="h-4 w-4 text-white/55" />
+                      <span className="text-white/45 text-[11px] font-semibold tracking-[0.18em] uppercase">
+                        Goal Tracker
+                      </span>
+                    </div>
+                    <h1 className="text-3xl sm:text-[2.5rem] font-semibold text-white tracking-tight text-balance break-words [text-shadow:0_2px_24px_rgba(0,0,0,0.35)]">
+                      Hey, {username}
+                    </h1>
+                    <p className="text-white/45 text-sm sm:text-[0.9375rem] italic leading-relaxed max-w-xl">
+                      &ldquo;{quote}&rdquo;
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-white/55" />
+                    <span className="text-white/45 text-[11px] font-semibold tracking-[0.18em] uppercase">
+                      Goal Tracker
+                    </span>
+                  </div>
+                  <h1 className="text-3xl sm:text-[2.5rem] font-semibold text-white tracking-tight text-balance break-words [text-shadow:0_2px_24px_rgba(0,0,0,0.35)]">
+                    Hey, {username}
+                  </h1>
+                  <p className="text-white/45 text-sm sm:text-[0.9375rem] italic leading-relaxed max-w-xl">
+                    &ldquo;{quote}&rdquo;
+                  </p>
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-1 sm:gap-2 pt-1 flex-wrap justify-end">
+            <div className="flex flex-wrap items-center gap-1 sm:gap-2 max-md:min-h-11 md:pt-1 w-full md:w-auto shrink-0 justify-start md:justify-end">
               <AddGoalDialog onAdd={createGoal} open={addGoalOpen} onOpenChange={setAddGoalOpen} />
               {dueReminderToggle}
-              <ThemeToggle variant="header" />
+              <ThemeToggle variant="header" className="h-11 w-11 touch-manipulation md:h-9 md:w-9" />
               <Button variant="ghost" size="icon" onClick={handleToggleSound} title={soundOn ? 'Mute sounds' : 'Unmute sounds'}
-                className="text-white/50 hover:text-white hover:bg-white/10 h-10 w-10 sm:h-9 sm:w-9">
+                className="text-white/50 hover:text-white hover:bg-white/10 h-11 w-11 md:h-9 md:w-9 min-h-11 min-w-11 md:min-h-9 md:min-w-9 touch-manipulation">
                 {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
               </Button>
               <Button variant="ghost" size="icon" onClick={handleLogout} title="Log out"
-                className="text-white/50 hover:text-white hover:bg-white/10 h-10 w-10 sm:h-9 sm:w-9">
+                className="text-white/50 hover:text-white hover:bg-white/10 h-11 w-11 md:h-9 md:w-9 min-h-11 min-w-11 md:min-h-9 md:min-w-9 touch-manipulation">
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
@@ -365,7 +499,11 @@ const Index = () => {
               animate="visible"
               variants={{
                 hidden: {},
-                visible: { transition: { staggerChildren: 0.06, delayChildren: 0.18 } },
+                visible: {
+                  transition: ui.liteMotion
+                    ? { staggerChildren: 0, delayChildren: 0 }
+                    : { staggerChildren: 0.06, delayChildren: 0.18 },
+                },
               }}
               className="flex flex-wrap items-end gap-x-10 gap-y-4 mt-6 pt-5 border-t border-white/[0.12]"
             >
@@ -377,8 +515,12 @@ const Index = () => {
                 <motion.div
                   key={label}
                   variants={{
-                    hidden: { opacity: 0, y: 10 },
-                    visible: { opacity: 1, y: 0, transition: springContent },
+                    hidden: ui.liteMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 },
+                    visible: {
+                      opacity: 1,
+                      y: 0,
+                      transition: ui.liteMotion ? { duration: 0 } : springContent,
+                    },
                   }}
                 >
                   <div className="text-3xl font-semibold text-white tabular-nums tracking-tight [text-shadow:0_1px_16px_rgba(0,0,0,0.25)]">
@@ -395,7 +537,7 @@ const Index = () => {
       </div>
 
       {/* Content: tuck under hero with a hairline seam (no full-bleed color wash) */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-6 pt-8 sm:pt-10 relative z-10 -mt-3 sm:-mt-4">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-[max(1.5rem,calc(env(safe-area-inset-bottom,0px)+1rem))] pt-8 sm:pt-10 relative z-10 -mt-3 sm:-mt-4">
         <div
           className="pointer-events-none absolute left-4 right-4 sm:left-6 sm:right-6 top-0 h-px bg-gradient-to-r from-transparent via-border/70 to-transparent"
           aria-hidden
@@ -418,9 +560,9 @@ const Index = () => {
               </EmptyState>
             ) : (
               <motion.div
-                initial={{ opacity: 0, y: 12 }}
+                initial={ui.liteMotion ? false : { opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.45, ease: smoothOut }}
+                transition={ui.liteMotion ? { duration: 0 } : { duration: 0.45, ease: smoothOut }}
                 className="space-y-6"
               >
                 {/* Search + filter */}
@@ -429,7 +571,7 @@ const Index = () => {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary/80" />
                     <Input
                       placeholder="Search goals and subtasks…"
-                      className="pl-9 h-11 rounded-lg transition-all duration-300 ease-out focus-visible:ring-offset-background app-surface-input dark:focus-visible:shadow-md dark:focus-visible:shadow-primary/5"
+                      className="pl-9 max-md:min-h-11 h-11 md:h-10 rounded-lg transition-all duration-300 ease-out focus-visible:ring-offset-background app-surface-input dark:focus-visible:shadow-md dark:focus-visible:shadow-primary/5"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                     />
@@ -446,7 +588,7 @@ const Index = () => {
                         type="button"
                         onClick={() => setFilter(f)}
                         className={cn(
-                          "min-h-10 px-4 py-2 rounded-full text-xs font-semibold capitalize transition-all duration-300 ease-out",
+                          "max-md:min-h-11 min-h-10 touch-manipulation px-4 py-2 rounded-full text-xs font-semibold capitalize transition-all duration-300 ease-out",
                           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                           filter === f
                             ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 scale-[1.02] ring-2 ring-primary/25"
@@ -458,7 +600,7 @@ const Index = () => {
                     ))}
                   </div>
                   {filter !== 'archived' && (
-                    <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between pt-3 mt-1 border-t border-border/50">
+                    <div className="flex flex-col gap-2.5 md:flex-row md:flex-wrap md:items-end md:justify-between pt-3 mt-1 border-t border-border/50">
                       <div className="flex flex-col gap-2">
                         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.12em]">
                           Deadline
@@ -475,7 +617,7 @@ const Index = () => {
                               type="button"
                               onClick={() => setDueFilter(df)}
                               className={cn(
-                                "min-h-10 px-4 py-2 rounded-full text-xs font-semibold transition-all duration-300 ease-out",
+                                "max-md:min-h-11 min-h-10 touch-manipulation px-4 py-2 rounded-full text-xs font-semibold transition-all duration-300 ease-out",
                                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                                 dueFilter === df
                                   ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 scale-[1.02] ring-2 ring-primary/25"
@@ -487,12 +629,12 @@ const Index = () => {
                           ))}
                         </div>
                       </div>
-                      <div className="flex flex-col gap-1.5 sm:items-end">
+                      <div className="flex flex-col gap-1.5 md:items-end">
                         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.12em]">
                           Sort
                         </span>
                         <Select value={goalSortMode} onValueChange={(v) => setGoalSortMode(v as GoalSortMode)}>
-                          <SelectTrigger className="min-h-10 h-10 w-full max-w-full sm:max-w-[220px] text-xs rounded-lg transition-all duration-300 app-surface-input">
+                          <SelectTrigger className="max-md:min-h-11 min-h-10 h-auto w-full max-w-full md:max-w-[220px] text-xs rounded-lg transition-all duration-300 app-surface-input">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -524,20 +666,20 @@ const Index = () => {
                         reorderTimer.current = setTimeout(() => reorderGoals(next), 600);
                       }}
                       as="div"
-                      className="space-y-4"
+                      className="space-y-4 max-md:touch-pan-y"
                     >
                       <AnimatePresence initial={false}>
                         {activeGoals.map((goal, i) => (
-                          <Reorder.Item
+                          <ActiveReorderGoalItem
                             key={goal.id}
-                            value={goal}
-                            as="div"
-                            initial={{ opacity: 0, y: 16 }}
-                            animate={{ opacity: 1, y: 0, transition: { delay: i * 0.05, ...springContent } }}
-                            exit={{ opacity: 0, y: 10, scale: 0.97, transition: { duration: 0.28, ease: smoothOut } }}
-                          >
-                            <GoalCard goal={goal} showDragHandle isCelebrating={celebratingGoals.has(goal.id)} onArchive={() => archiveGoal(goal.id)} {...sharedCardProps} />
-                          </Reorder.Item>
+                            goal={goal}
+                            index={i}
+                            celebratingGoals={celebratingGoals}
+                            shared={sharedCardProps}
+                            onArchive={() => archiveGoal(goal.id)}
+                            dragFromHandleOnly={!ui.reorderDragWholeCard}
+                            liteMotion={ui.liteMotion}
+                          />
                         ))}
                       </AnimatePresence>
                     </Reorder.Group>
@@ -547,8 +689,12 @@ const Index = () => {
                         {activeGoals.map((goal, i) => (
                           <motion.div
                             key={goal.id}
-                            initial={{ opacity: 0, y: 16 }}
-                            animate={{ opacity: 1, y: 0, transition: { delay: i * 0.05, ...springContent } }}
+                            initial={ui.liteMotion ? false : { opacity: 0, y: 16 }}
+                            animate={{
+                              opacity: 1,
+                              y: 0,
+                              transition: ui.liteMotion ? { duration: 0 } : { delay: i * 0.05, ...springContent },
+                            }}
                             exit={{ opacity: 0, y: 10, scale: 0.97, transition: { duration: 0.28, ease: smoothOut } }}
                           >
                             <GoalCard goal={goal} showDragHandle={false} isCelebrating={celebratingGoals.has(goal.id)} onArchive={() => archiveGoal(goal.id)} {...sharedCardProps} />
@@ -573,8 +719,14 @@ const Index = () => {
                       {completedGoals.map((goal, i) => (
                         <motion.div
                           key={goal.id}
-                          initial={{ opacity: 0, y: 16 }}
-                          animate={{ opacity: 1, y: 0, transition: { delay: 0.28 + i * 0.05, ...springContent } }}
+                          initial={ui.liteMotion ? false : { opacity: 0, y: 16 }}
+                          animate={{
+                            opacity: 1,
+                            y: 0,
+                            transition: ui.liteMotion
+                              ? { duration: 0 }
+                              : { delay: 0.28 + i * 0.05, ...springContent },
+                          }}
                           exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.25, ease: smoothOut } }}
                         >
                           <GoalCard goal={goal} showDragHandle={false} isCelebrating={celebratingGoals.has(goal.id)} onArchive={() => archiveGoal(goal.id)} {...sharedCardProps} />
@@ -604,32 +756,34 @@ const Index = () => {
                       const pct = calcProgress(goal);
                       const done = goal.subtasks.filter((s) => s.is_completed).length;
                       return (
-                        <div key={goal.id} className="group rounded-2xl border border-border/55 bg-card/60 backdrop-blur-sm px-4 py-4 flex items-start gap-3 opacity-90 hover:opacity-100 transition-all duration-300 hover:border-border/80 hover:shadow-xl hover:shadow-black/25 dark:bg-card/55 dark:hover:shadow-black/40">
-                          <Archive className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm flex items-center gap-1.5 min-w-0">
-                              {goal.emoji && <span className="shrink-0 text-base leading-none">{goal.emoji}</span>}
-                              <span className="truncate min-w-0">{goal.title}</span>
-                            </p>
-                            {goal.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{goal.description}</p>}
-                            {goal.due_date && (
-                              <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                                <CalendarDays className="h-3 w-3 shrink-0 opacity-80" />
-                                <span>Due {formatDueChip(goal.due_date)}</span>
+                        <div key={goal.id} className="group rounded-2xl border border-border/55 bg-card/60 backdrop-blur-sm px-4 py-4 flex flex-col gap-3 sm:flex-row sm:items-start opacity-90 hover:opacity-100 transition-all duration-300 hover:border-border/80 hover:shadow-xl hover:shadow-black/25 dark:bg-card/55 dark:hover:shadow-black/40">
+                          <div className="flex items-start gap-3 min-w-0 flex-1">
+                            <Archive className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm flex items-center gap-1.5 min-w-0">
+                                {goal.emoji && <span className="shrink-0 text-base leading-none">{goal.emoji}</span>}
+                                <span className="truncate min-w-0">{goal.title}</span>
+                              </p>
+                              {goal.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{goal.description}</p>}
+                              {goal.due_date && (
+                                <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                                  <CalendarDays className="h-3 w-3 shrink-0 opacity-80" />
+                                  <span>Due {formatDueChip(goal.due_date)}</span>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-1.5 mt-1.5">
+                                <CheckSquare className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground tabular-nums">{done}/{goal.subtasks.length} subtasks · {pct}%</span>
                               </div>
-                            )}
-                            <div className="flex items-center gap-1.5 mt-1.5">
-                              <CheckSquare className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-xs text-muted-foreground tabular-nums">{done}/{goal.subtasks.length} subtasks · {pct}%</span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => restoreGoal(goal.id)} title="Restore to active">
+                          <div className="flex items-center justify-end gap-1 shrink-0 sm:pt-0.5 max-md:min-h-10">
+                            <Button variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-foreground touch-manipulation" onClick={() => restoreGoal(goal.id)} title="Restore to active">
                               <RotateCcw className="h-3.5 w-3.5" />
                             </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
+                                <Button variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-destructive touch-manipulation">
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
                               </AlertDialogTrigger>
@@ -712,7 +866,7 @@ const Index = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ duration: 0.18 }}
-            className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-3.5 py-2.5 rounded-full text-xs font-medium backdrop-blur-xl shadow-2xl border ${
+            className={`fixed z-50 flex items-center gap-2.5 px-3.5 py-2.5 rounded-full text-xs font-medium backdrop-blur-xl shadow-2xl border bottom-[max(1.5rem,calc(env(safe-area-inset-bottom,0px)+1rem))] right-[max(1.5rem,calc(env(safe-area-inset-right,0px)+0.5rem))] ${
               saveStatus === 'error'
                 ? 'bg-destructive/95 text-destructive-foreground border-destructive'
                 : 'bg-card/90 text-foreground border-border/55'

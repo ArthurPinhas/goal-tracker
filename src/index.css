@@ -96,11 +96,16 @@
 }
 
 @layer base {
+  html {
+    overflow-x: clip;
+  }
+
   * {
     @apply border-border;
   }
 
   body {
+    overflow-x: clip;
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
     background-image: radial-gradient(rgba(0, 0, 0, 0.035) 1px, transparent 1px);
@@ -109,6 +114,14 @@
 
   .dark body {
     background-image: radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  }
+
+  @media (max-width: 767px) and (pointer: coarse) {
+    button,
+    [role="button"],
+    a {
+      -webkit-tap-highlight-color: rgba(255, 255, 255, 0.06);
+    }
   }
 }
 
@@ -152,15 +165,33 @@
 
 @keyframes celebration-glow {
   0%, 100% {
-    box-shadow: 0 0 20px rgba(245,158,11,0.4), 0 4px 30px rgba(0,0,0,0.5);
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.38), 0 4px 18px rgba(0, 0, 0, 0.48);
   }
   50% {
-    box-shadow: 0 0 60px rgba(245,158,11,0.9), 0 0 120px rgba(245,158,11,0.45), 0 4px 30px rgba(0,0,0,0.5);
+    box-shadow: 0 0 32px rgba(245, 158, 11, 0.62), 0 0 48px rgba(245, 158, 11, 0.28), 0 4px 18px rgba(0, 0, 0, 0.48);
+  }
+}
+
+@keyframes celebration-glow-once {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.35);
+  }
+  55% {
+    box-shadow: 0 0 28px rgba(245, 158, 11, 0.55), 0 0 40px rgba(245, 158, 11, 0.22), 0 4px 16px rgba(0, 0, 0, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.35), 0 4px 18px rgba(0, 0, 0, 0.45);
   }
 }
 
 .celebration-card {
-  animation: celebration-glow 1.2s ease-in-out infinite;
+  animation: celebration-glow 1.45s ease-in-out infinite;
+  will-change: box-shadow;
+}
+
+.celebration-card-minimal {
+  animation: celebration-glow-once 0.9s ease-out 1 forwards;
+  will-change: box-shadow;
 }
 
 .shimmer-bar {

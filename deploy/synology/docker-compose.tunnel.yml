@@ -1,0 +1,23 @@
+# Optional reference for Route 2 (Cloudflare Tunnel): host ports bound to 127.0.0.1 only.
+# Prefer editing your own compose the same way if you already maintain one.
+
+services:
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:latest
+    container_name: pocketbase
+    restart: unless-stopped
+    command: ["serve", "--http=0.0.0.0:8090", "--dir=/pb/pb_data"]
+    volumes:
+      - /volume1/docker/pocketbase/pb_data:/pb/pb_data
+    ports:
+      - "127.0.0.1:8090:8090"
+
+  goal-tracker-frontend:
+    image: docker.io/library/nginx:alpine
+    container_name: goal-tracker-frontend
+    restart: unless-stopped
+    volumes:
+      - /volume1/docker/goal-tracker-frontend:/usr/share/nginx/html:ro
+      - /volume1/docker/goal-tracker-nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "127.0.0.1:8888:80"
