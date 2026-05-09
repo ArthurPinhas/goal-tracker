@@ -2,6 +2,15 @@
 
 A personal goal-tracking app: break goals into weighted subtasks, see **live progress**, and get small **celebrations** as you finish work. Built for a tactile, rewarding feel—not a flat checklist.
 
+## About
+
+**Goal Tracker** is a self-hosted personal productivity app: you define goals, split them into subtasks, optionally weight progress with effort points (1–5), set optional due dates with overdue and due-soon cues, attach plain-text notes, and export your data (JSON, CSV, PDF) from the browser. Auth and persistence use **PocketBase** (SQLite); the UI is **React 18**, **TypeScript**, **Vite**, **Tailwind CSS**, and **shadcn/ui**, with a dark-first theme, Framer Motion polish, optional sounds, milestone celebrations, and a **PWA**-friendly build. Reminders use the browser **Notification** API (tab/PWA active—no background push). See **Prerequisites** and **Quick start** below to run the app and PocketBase locally.
+
+**Suggested GitHub “About” (copy-paste):**
+
+- **Description:** Personal goal tracker with weighted subtasks, due dates, notes, and celebrations — React, Vite, Tailwind, PocketBase.
+- **Topics:** `react` `typescript` `vite` `pocketbase` `tailwindcss` `shadcn-ui` `framer-motion` `goal-tracking` `productivity` `pwa` `self-hosted`
+
 ---
 
 ## Tech stack
@@ -49,12 +58,12 @@ The app is **dark-first** with a shared visual language: design tokens in `src/i
 ### 1. Clone & install
 
 ```bash
-git clone https://github.com/<YOUR_USERNAME>/goal-tracker.git
+git clone https://github.com/ArthurPinhas/goal-tracker.git
 cd goal-tracker
 npm install
 ```
 
-The **publish URL** Cursor/Claude (or anyone) uses for `git push` is whatever you configured locally: run `git remote -v`. It is stored in `.git/config`—not in the README—so simplifying the README clone line does **not** change where pushes go.
+The **remote you push to** is whatever you configured locally (`git remote -v`); this clone URL matches the default upstream for this project.
 
 
 ### 2. Environment
