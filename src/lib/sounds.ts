@@ -1,7 +1,13 @@
-const STORAGE_KEY = 'sounds-enabled';
+import { playUiSample, preloadUiSamples } from "@/lib/soundSamples";
+
+const STORAGE_KEY = "sounds-enabled";
 
 export const isSoundEnabled = (): boolean => {
-  try { return localStorage.getItem(STORAGE_KEY) !== 'false'; } catch { return true; }
+  try {
+    return localStorage.getItem(STORAGE_KEY) !== "false";
+  } catch {
+    return true;
+  }
 };
 export const toggleSound = (): boolean => {
   const next = !isSoundEnabled();
@@ -13,25 +19,58 @@ let _ctx: AudioContext | null = null;
 
 const getCtx = (): AudioContext | null => {
   try {
-    if (!_ctx) _ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    if (_ctx.state === 'suspended') _ctx.resume();
+    if (!_ctx)
+      _ctx = new (window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    if (_ctx.state === "suspended") _ctx.resume();
     return _ctx;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 };
 
-// Primed compressor wired to destination — gives punch and prevents clipping
-const makeCompressor = (c: AudioContext) => {
+/** Decode CC0 UI WAVs from `/public/sounds` into memory (safe no-op if missing). */
+export function preloadUiSoundSamples(): void {
+  const c = getCtx();
+  if (!c) return;
+  preloadUiSamples(c);
+}
+
+/** Mild saturation before dynamics — reads fuller / less “cheap oscillator” */
+const makeSoftClipper = (c: AudioContext): WaveShaperNode => {
+  const n = 1024;
+  const curve = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = i / (n / 2) - 1;
+    curve[i] = Math.tanh(x * 2.35) * 0.9;
+  }
+  const w = c.createWaveShaper();
+  w.curve = curve;
+  w.oversample = "4x";
+  return w;
+};
+
+/** Glue + peak control — slower release preserves low-end weight */
+const makeMasterCompressor = (c: AudioContext): DynamicsCompressorNode => {
   const comp = c.createDynamicsCompressor();
-  comp.threshold.value = -10;
-  comp.knee.value = 6;
-  comp.ratio.value = 6;
-  comp.attack.value = 0.002;
-  comp.release.value = 0.1;
+  comp.threshold.value = -15;
+  comp.knee.value = 10;
+  comp.ratio.value = 4;
+  comp.attack.value = 0.006;
+  comp.release.value = 0.26;
   comp.connect(c.destination);
   return comp;
 };
 
-// Synthetic reverb via noise impulse
+/** Single entry point per sound event — clip → comp → speakers */
+const createMasterIn = (c: AudioContext): AudioNode => {
+  const clip = makeSoftClipper(c);
+  const comp = makeMasterCompressor(c);
+  clip.connect(comp);
+  return clip;
+};
+
+// Synthetic reverb via noise impulse — slightly longer tail for goal fanfare
 const makeReverb = (c: AudioContext, duration = 0.8, decay = 3): ConvolverNode => {
   const conv = c.createConvolver();
   const len = Math.floor(c.sampleRate * duration);
@@ -44,7 +83,13 @@ const makeReverb = (c: AudioContext, duration = 0.8, decay = 3): ConvolverNode =
   return conv;
 };
 
-type OscDef = { freq: number; type?: OscillatorType; gain: number; freqEnd?: number };
+type OscDef = {
+  freq: number;
+  type?: OscillatorType;
+  gain: number;
+  freqEnd?: number;
+  pan?: number;
+};
 
 const playOscGroup = (
   c: AudioContext,
@@ -54,115 +99,286 @@ const playOscGroup = (
   attack: number,
   decay: number,
 ) => {
-  oscs.forEach(({ freq, type = 'sine', gain, freqEnd }) => {
+  oscs.forEach(({ freq, type = "sine", gain, freqEnd, pan }) => {
     const osc = c.createOscillator();
     const g = c.createGain();
     osc.connect(g);
-    g.connect(dest);
+    if (pan !== undefined) {
+      const p = c.createStereoPanner();
+      p.pan.value = pan;
+      g.connect(p);
+      p.connect(dest);
+    } else {
+      g.connect(dest);
+    }
     osc.type = type;
     osc.frequency.setValueAtTime(freq, startTime);
-    if (freqEnd !== undefined) osc.frequency.linearRampToValueAtTime(freqEnd, startTime + attack + 0.04);
+    if (freqEnd !== undefined)
+      osc.frequency.linearRampToValueAtTime(freqEnd, startTime + attack + 0.05);
     g.gain.setValueAtTime(0, startTime);
     g.gain.linearRampToValueAtTime(gain, startTime + attack);
     g.gain.exponentialRampToValueAtTime(0.0001, startTime + decay);
     osc.start(startTime);
-    osc.stop(startTime + decay + 0.05);
+    osc.stop(startTime + decay + 0.06);
   });
 };
 
-// ─── Subtask complete — satisfying bright chime with harmonics ─────────────
+/** Bandpassed noise = crisp transient impact without harsh digital edges */
+const playNoiseBurst = (
+  c: AudioContext,
+  dest: AudioNode,
+  startTime: number,
+  duration: number,
+  peakGain: number,
+  centerFreq: number,
+  q = 4,
+) => {
+  const len = Math.max(64, Math.floor(c.sampleRate * duration));
+  const buf = c.createBuffer(1, len, c.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) {
+    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.4);
+  }
+  const src = c.createBufferSource();
+  src.buffer = buf;
+  const bp = c.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.frequency.value = centerFreq;
+  bp.Q.value = q;
+  const g = c.createGain();
+  src.connect(bp);
+  bp.connect(g);
+  g.connect(dest);
+  g.gain.setValueAtTime(0, startTime);
+  g.gain.linearRampToValueAtTime(peakGain, startTime + 0.002);
+  g.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+  src.start(startTime);
+  src.stop(startTime + duration + 0.04);
+};
+
+// ─── Subtask complete — sample first + synth weight tail ─────────────────────
 export const playSubtaskDone = () => {
   if (!isSoundEnabled()) return;
   const c = getCtx();
   if (!c) return;
-  const comp = makeCompressor(c);
+  preloadUiSamples(c);
+  const master = createMasterIn(c);
   const t = c.currentTime;
-  // Fundamental + 2nd harmonic + minor 7th overtone → bell-like character
-  playOscGroup(c, comp, [
-    { freq: 880,  gain: 0.18, type: 'sine' },
-    { freq: 1320, gain: 0.08, type: 'sine' },
-    { freq: 1760, gain: 0.05, type: 'sine' },
-  ], t, 0.006, 0.28);
-  // Tiny low "thud" gives tactile weight
-  playOscGroup(c, comp, [
-    { freq: 120, gain: 0.12, type: 'sine', freqEnd: 60 },
-  ], t, 0.003, 0.08);
+
+  if (playUiSample(c, master, "subtask")) {
+    playOscGroup(
+      c,
+      master,
+      [{ freq: 98, gain: 0.085, type: "sine", freqEnd: 58, pan: 0 }],
+      t,
+      0.002,
+      0.12,
+    );
+    return;
+  }
+
+  playNoiseBurst(c, master, t, 0.048, 0.24, 2650, 5.5);
+
+  playOscGroup(
+    c,
+    master,
+    [
+      { freq: 880, gain: 0.13, type: "triangle", pan: -0.28 },
+      { freq: 880, gain: 0.11, type: "sine", pan: -0.28 },
+      { freq: 1320, gain: 0.095, type: "sine", pan: 0.15 },
+      { freq: 1760, gain: 0.068, type: "sine", pan: 0.38 },
+      { freq: 2200, gain: 0.038, type: "sine", pan: 0 },
+    ],
+    t,
+    0.004,
+    0.36,
+  );
+
+  playOscGroup(
+    c,
+    master,
+    [
+      { freq: 128, gain: 0.17, type: "sine", freqEnd: 68, pan: 0 },
+      { freq: 58, gain: 0.1, type: "triangle", freqEnd: 46, pan: -0.12 },
+    ],
+    t,
+    0.002,
+    0.15,
+  );
 };
 
-// ─── Goal complete — triumphant fanfare chord with reverb ──────────────────
+// ─── Goal complete — sample first + low foundation; else full procedural ─────
 export const playGoalDone = () => {
   if (!isSoundEnabled()) return;
   const c = getCtx();
   if (!c) return;
-  const comp = makeCompressor(c);
-  const reverb = makeReverb(c, 1.2, 2.5);
-  reverb.connect(comp);
+  preloadUiSamples(c);
+  const master = createMasterIn(c);
   const t = c.currentTime;
 
-  // Strum C major chord: C4 → E4 → G4 → C5 ascending with slight delay
+  if (playUiSample(c, master, "goal")) {
+    playOscGroup(
+      c,
+      master,
+      [
+        { freq: 65.41, gain: 0.12, type: "triangle" },
+        { freq: 130.81, gain: 0.08, type: "sine" },
+      ],
+      t,
+      0.018,
+      0.48,
+    );
+    return;
+  }
+
+  const reverb = makeReverb(c, 1.55, 2.15);
+  reverb.connect(master);
+
+  playNoiseBurst(c, master, t, 0.058, 0.2, 1650, 3.8);
+  playNoiseBurst(c, master, t + 0.018, 0.045, 0.11, 380, 1.8);
+
+  playOscGroup(
+    c,
+    master,
+    [
+      { freq: 65.41, gain: 0.15, type: "triangle" },
+      { freq: 130.81, gain: 0.12, type: "sine" },
+      { freq: 98.0, gain: 0.06, type: "sine" },
+    ],
+    t,
+    0.022,
+    2.55,
+  );
+
   const chord = [
     { freq: 261.6, delay: 0 },
-    { freq: 329.6, delay: 0.07 },
-    { freq: 392.0, delay: 0.14 },
-    { freq: 523.3, delay: 0.21 },
-    { freq: 659.3, delay: 0.28 }, // E5 on top — bright finish
+    { freq: 329.6, delay: 0.065 },
+    { freq: 392.0, delay: 0.13 },
+    { freq: 523.3, delay: 0.195 },
+    { freq: 659.3, delay: 0.26 },
   ];
 
-  chord.forEach(({ freq, delay }) => {
+  chord.forEach(({ freq, delay }, i) => {
     const start = t + delay;
-    // Main tone → reverb
-    playOscGroup(c, reverb, [
-      { freq, gain: 0.22, type: 'triangle' },
-      { freq: freq * 2, gain: 0.07, type: 'sine' },
-    ], start, 0.01, 1.6);
-    // Dry layer → comp direct (add presence)
-    playOscGroup(c, comp, [
-      { freq, gain: 0.08, type: 'sine' },
-    ], start, 0.01, 0.5);
+    const pan = i % 2 === 0 ? -0.42 : 0.42;
+
+    playOscGroup(
+      c,
+      reverb,
+      [
+        { freq, gain: 0.27, type: "triangle" },
+        { freq: freq * 2, gain: 0.095, type: "sine" },
+        { freq: freq * 3, gain: 0.038, type: "sine" },
+      ],
+      start,
+      0.012,
+      1.92,
+    );
+
+    playOscGroup(
+      c,
+      master,
+      [
+        { freq, gain: 0.12, type: "sine", pan },
+        { freq: freq * 2, gain: 0.048, type: "triangle", pan: pan * 0.55 },
+      ],
+      start,
+      0.008,
+      0.72,
+    );
   });
 
-  // Final shimmer — high sparkle at top
-  playOscGroup(c, reverb, [
-    { freq: 1318.5, gain: 0.10, type: 'sine' },
-    { freq: 1760,   gain: 0.06, type: 'sine' },
-  ], t + 0.35, 0.015, 1.4);
+  playOscGroup(
+    c,
+    reverb,
+    [
+      { freq: 1318.5, gain: 0.13, type: "triangle", pan: -0.32 },
+      { freq: 1760, gain: 0.085, type: "sine", pan: 0.32 },
+      { freq: 2093, gain: 0.055, type: "sine", pan: 0.08 },
+    ],
+    t + 0.33,
+    0.016,
+    1.72,
+  );
 };
 
-// ─── Emoji picked / suggestion accepted — tiny sparkle ────────────────────
+// ─── Emoji picked ───────────────────────────────────────────────────────────
 export const playEmojiSpark = () => {
   if (!isSoundEnabled()) return;
   const c = getCtx();
   if (!c) return;
-  const comp = makeCompressor(c);
+  preloadUiSamples(c);
+  const master = createMasterIn(c);
   const t = c.currentTime;
-  playOscGroup(c, comp, [
-    { freq: 990, gain: 0.09, type: 'sine', freqEnd: 1320 },
-    { freq: 1320, gain: 0.04, type: 'sine', freqEnd: 1760 },
-  ], t, 0.004, 0.07);
+
+  if (playUiSample(c, master, "emoji")) return;
+
+  playNoiseBurst(c, master, t, 0.024, 0.065, 3200, 6);
+
+  playOscGroup(
+    c,
+    master,
+    [
+      { freq: 990, gain: 0.11, type: "triangle", freqEnd: 1320, pan: -0.2 },
+      { freq: 1320, gain: 0.055, type: "sine", freqEnd: 1760, pan: 0.22 },
+      { freq: 1980, gain: 0.032, type: "sine", freqEnd: 2340, pan: 0 },
+    ],
+    t,
+    0.003,
+    0.09,
+  );
 };
 
-// ─── Add goal/subtask — airy rising pop ───────────────────────────────────
+// ─── Add goal/subtask ────────────────────────────────────────────────────────
 export const playPop = () => {
   if (!isSoundEnabled()) return;
   const c = getCtx();
   if (!c) return;
-  const comp = makeCompressor(c);
+  preloadUiSamples(c);
+  const master = createMasterIn(c);
   const t = c.currentTime;
-  playOscGroup(c, comp, [
-    { freq: 520, gain: 0.13, type: 'sine', freqEnd: 780 },
-    { freq: 780, gain: 0.06, type: 'sine', freqEnd: 1040 },
-  ], t, 0.008, 0.18);
+
+  if (playUiSample(c, master, "pop")) return;
+
+  playNoiseBurst(c, master, t, 0.038, 0.13, 820, 2.2);
+
+  playOscGroup(
+    c,
+    master,
+    [
+      { freq: 420, gain: 0.07, type: "triangle", freqEnd: 620, pan: -0.18 },
+      { freq: 520, gain: 0.14, type: "sine", freqEnd: 800, pan: 0 },
+      { freq: 780, gain: 0.075, type: "triangle", freqEnd: 1080, pan: 0.2 },
+    ],
+    t,
+    0.007,
+    0.22,
+  );
 };
 
-// ─── Delete — soft descending dismiss ─────────────────────────────────────
+// ─── Delete ─────────────────────────────────────────────────────────────────
 export const playRemove = () => {
   if (!isSoundEnabled()) return;
   const c = getCtx();
   if (!c) return;
-  const comp = makeCompressor(c);
+  preloadUiSamples(c);
+  const master = createMasterIn(c);
   const t = c.currentTime;
-  playOscGroup(c, comp, [
-    { freq: 500, gain: 0.10, type: 'sine', freqEnd: 300 },
-    { freq: 380, gain: 0.05, type: 'sine', freqEnd: 220 },
-  ], t, 0.006, 0.18);
+
+  if (playUiSample(c, master, "remove")) return;
+
+  playNoiseBurst(c, master, t, 0.032, 0.09, 520, 1.5);
+
+  playOscGroup(
+    c,
+    master,
+    [
+      { freq: 420, gain: 0.09, type: "triangle", freqEnd: 260, pan: -0.15 },
+      { freq: 500, gain: 0.11, type: "sine", freqEnd: 280, pan: 0.12 },
+      { freq: 320, gain: 0.045, type: "sine", freqEnd: 180, pan: 0 },
+    ],
+    t,
+    0.005,
+    0.22,
+  );
 };

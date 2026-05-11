@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import IndexRouteFallback from "@/components/IndexRouteFallback";
 import { pageTransition } from "@/lib/motion";
 import { useAuth } from "@/hooks/useAuth";
+import { preloadUiSoundSamples } from "@/lib/sounds";
 import Login from "./pages/Login.tsx";
 import Register from "./pages/Register.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -53,8 +54,19 @@ function AnimatedRoutes() {
   );
 }
 
+function SoundAssetWarmup() {
+  useEffect(() => {
+    preloadUiSoundSamples();
+    const touchPrime = () => preloadUiSoundSamples();
+    window.addEventListener("pointerdown", touchPrime, { passive: true });
+    return () => window.removeEventListener("pointerdown", touchPrime);
+  }, []);
+  return null;
+}
+
 const App = () => (
   <TooltipProvider>
+    <SoundAssetWarmup />
     <Toaster />
     <Sonner />
     <HotToaster
