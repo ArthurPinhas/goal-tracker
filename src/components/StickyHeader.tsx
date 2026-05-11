@@ -4,6 +4,7 @@ import { Target, LogOut, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AddGoalDialog from "./AddGoalDialog";
 import ThemeToggle from "./ThemeToggle";
+import { appleSpring } from "@/lib/motion";
 
 import type { GoalCategory } from "@/types/goal";
 
@@ -41,13 +42,13 @@ const StickyHeader = ({
     initial={{ y: -56, opacity: 0 }}
     animate={{ y: 0, opacity: 1 }}
     exit={{ y: -56, opacity: 0 }}
-    transition={{ duration: 0.22, ease: 'easeOut' }}
+    transition={appleSpring}
     className="fixed top-0 left-0 right-0 z-40 border-b border-border/50 bg-background/80 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl dark:bg-background/72 dark:border-border/40 dark:shadow-lg dark:shadow-black/30"
   >
     <div className="max-w-5xl mx-auto px-[max(1rem,calc(env(safe-area-inset-left,0px)+1rem))] pr-[max(1rem,calc(env(safe-area-inset-right,0px)+1rem))] h-14 flex items-center justify-between gap-2 md:gap-4">
       <div className="flex items-center gap-2">
         <Target className="h-4 w-4 text-primary" />
-        <span className="text-sm font-semibold tracking-tight">Goal Tracker</span>
+        <span className="text-sm font-semibold tracking-tight font-heading">Goal Tracker</span>
       </div>
       <div className="flex items-center gap-1">
         <AddGoalDialog

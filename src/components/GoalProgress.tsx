@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
-import { smoothOut } from "@/lib/motion";
+import { appleSpring } from "@/lib/motion";
 
 interface GoalProgressProps {
   percentage: number;
@@ -14,7 +14,7 @@ const getProgressColor = (pct: number): string => {
 
 const GoalProgress = ({ percentage }: GoalProgressProps) => {
   const motionPct = useMotionValue(0);
-  const spring = useSpring(motionPct, { stiffness: 120, damping: 22, mass: 0.9 });
+  const spring = useSpring(motionPct, { stiffness: 200, damping: 28, mass: 0.88 });
   const displayPct = useTransform(spring, (v) => `${Math.round(v)}%`);
 
   useEffect(() => {
@@ -36,16 +36,16 @@ const GoalProgress = ({ percentage }: GoalProgressProps) => {
           {displayPct}
         </motion.span>
       </div>
-      <div className="relative h-2.5 w-full rounded-full bg-secondary/90 overflow-hidden ring-1 ring-inset ring-black/[0.06] dark:bg-secondary dark:ring-white/[0.08] shadow-inner dark:shadow-black/40">
+      <div className="relative h-2.5 w-full rounded-full overflow-hidden ring-1 ring-inset ring-black/[0.06] dark:ring-white/[0.08] shadow-inner dark:shadow-black/40 te-segment-track">
         <motion.div
-          className={`h-full rounded-full relative ${percentage > 0 && percentage < 100 ? "shimmer-bar" : ""}`}
+          className="h-full rounded-full relative overflow-hidden progress-fill-sheen"
           style={{
             backgroundColor: color,
             boxShadow: `0 0 16px -2px ${color}88`,
           }}
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}
-          transition={{ duration: 0.65, ease: smoothOut }}
+          transition={appleSpring}
         />
       </div>
     </div>

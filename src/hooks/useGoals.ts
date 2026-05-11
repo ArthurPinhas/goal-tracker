@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import pb from '@/lib/pocketbase';
+import { playGoalDone } from '@/lib/sounds';
+import { isGoalComplete } from '@/lib/goalUtils';
 import { Goal, GoalCategory, Subtask, GoalShowcaseFileOptions } from '@/types/goal';
 import { normalizeDueDate } from '@/lib/dueDateUtils';
 
@@ -8,6 +10,16 @@ type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 const isNetworkError = (err: unknown): boolean =>
   err instanceof Error && (err.message === 'Failed to fetch' || err.message.includes('NetworkError'));
+
+/** PocketBase returns 404 when the collection name does not exist on this server. */
+function isNotFound(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'status' in err &&
+    (err as { status: number }).status === 404
+  );
+}
 
 const normalizeEmoji = (raw: unknown): string | null => {
   if (typeof raw !== 'string') return null;
@@ -122,9 +134,23 @@ export function useGoals() {
   };
   const markError = () => setSaveStatus('error');
 
+  /** Optional “folders” collection — older PB setups & users who skipped README may not have it; 404 must not block goals. */
   const fetchCategories = useCallback(async () => {
-    const records = await pb.collection('categories').getFullList({ sort: 'name' });
-    setCategories(records.map((r) => ({ id: r.id, name: String(r.name ?? '') })));
+    try {
+      const records = await pb.collection('categories').getFullList({ sort: 'name' });
+      setCategories(records.map((r) => ({ id: r.id, name: String(r.name ?? '') })));
+    } catch (err) {
+      if (isNotFound(err)) {
+        setCategories([]);
+        if (import.meta.env.DEV) {
+          console.warn(
+            '[useGoals] No categories collection (404) — folder picker disabled until you add it in PocketBase (README). Goals still load.'
+          );
+        }
+        return;
+      }
+      throw err;
+    }
   }, []);
 
   const fetchGoals = async () => {
@@ -375,11 +401,21 @@ export function useGoals() {
     if (!subtask) return;
     const newValue = !subtask.is_completed;
 
-    setGoals((prev) => prev.map((g) =>
-      g.id === goalId
-        ? { ...g, subtasks: g.subtasks.map((s) => s.id === subtaskId ? { ...s, is_completed: newValue } : s) }
-        : g
-    ));
+    const wasComplete = isGoalComplete(goal);
+    const nextSubs = goal.subtasks.map((s) => (s.id === subtaskId ? { ...s, is_completed: newValue } : s));
+    const nextGoal = { ...goal, subtasks: nextSubs };
+    const nowComplete = isGoalComplete(nextGoal);
+
+    setGoals((prev) =>
+      prev.map((g) =>
+        g.id === goalId ? { ...g, subtasks: g.subtasks.map((s) => (s.id === subtaskId ? { ...s, is_completed: newValue } : s)) } : g,
+      ),
+    );
+
+    if (newValue && nowComplete && !wasComplete && goal.subtasks.length > 0) {
+      playGoalDone();
+    }
+
     addPending(subtaskId);
 
     try {
@@ -402,6 +438,9 @@ export function useGoals() {
     const newValue = !goal.is_completed;
 
     setGoals((prev) => prev.map((g) => (g.id === goalId ? { ...g, is_completed: newValue } : g)));
+    if (newValue && !goal.is_completed) {
+      playGoalDone();
+    }
     addPendingGoalComplete(goalId);
 
     try {

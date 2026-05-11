@@ -1,8 +1,15 @@
 import * as React from "react";
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
+import { motion, useReducedMotion } from "framer-motion";
+
+import { type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+import { premiumSpring, tactileHover, tactileTap } from "@/lib/motion";
+
+const MotionAlertDialogAction = motion.create(AlertDialogPrimitive.Action);
+const MotionAlertDialogCancel = motion.create(AlertDialogPrimitive.Cancel);
 
 const AlertDialog = AlertDialogPrimitive.Root;
 
@@ -57,7 +64,7 @@ const AlertDialogTitle = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Title>
 >(({ className, ...props }, ref) => (
-  <AlertDialogPrimitive.Title ref={ref} className={cn("text-xl font-semibold tracking-tight", className)} {...props} />
+  <AlertDialogPrimitive.Title ref={ref} className={cn("text-xl font-semibold font-heading tracking-tight", className)} {...props} />
 ));
 AlertDialogTitle.displayName = AlertDialogPrimitive.Title.displayName;
 
@@ -69,24 +76,46 @@ const AlertDialogDescription = React.forwardRef<
 ));
 AlertDialogDescription.displayName = AlertDialogPrimitive.Description.displayName;
 
+export type AlertDialogActionProps = React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action> &
+  Pick<VariantProps<typeof buttonVariants>, "variant" | "size">;
+
 const AlertDialogAction = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Action>,
-  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action>
->(({ className, ...props }, ref) => (
-  <AlertDialogPrimitive.Action ref={ref} className={cn(buttonVariants(), className)} {...props} />
-));
+  AlertDialogActionProps
+>(({ className, variant = "default", size = "default", ...props }, ref) => {
+  const reduceMotion = useReducedMotion();
+  return (
+    <MotionAlertDialogAction
+      ref={ref}
+      className={cn(buttonVariants({ variant, size }), className)}
+      whileHover={reduceMotion ? undefined : tactileHover}
+      whileTap={reduceMotion ? undefined : tactileTap}
+      transition={premiumSpring}
+      {...props}
+    />
+  );
+});
 AlertDialogAction.displayName = AlertDialogPrimitive.Action.displayName;
+
+export type AlertDialogCancelProps = React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Cancel> &
+  Pick<VariantProps<typeof buttonVariants>, "variant" | "size">;
 
 const AlertDialogCancel = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Cancel>,
-  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Cancel>
->(({ className, ...props }, ref) => (
-  <AlertDialogPrimitive.Cancel
-    ref={ref}
-    className={cn(buttonVariants({ variant: "outline" }), "mt-2 sm:mt-0", className)}
-    {...props}
-  />
-));
+  AlertDialogCancelProps
+>(({ className, variant = "outline", size = "default", ...props }, ref) => {
+  const reduceMotion = useReducedMotion();
+  return (
+    <MotionAlertDialogCancel
+      ref={ref}
+      className={cn(buttonVariants({ variant, size }), "mt-2 sm:mt-0", className)}
+      whileHover={reduceMotion ? undefined : tactileHover}
+      whileTap={reduceMotion ? undefined : tactileTap}
+      transition={premiumSpring}
+      {...props}
+    />
+  );
+});
 AlertDialogCancel.displayName = AlertDialogPrimitive.Cancel.displayName;
 
 export {

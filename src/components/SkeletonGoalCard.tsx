@@ -1,5 +1,5 @@
 const SkeletonGoalCard = () => (
-  <div className="rounded-2xl border bg-card p-6 space-y-5 shadow-sm dark:border-border/50 dark:shadow-lg dark:shadow-black/40 animate-pulse">
+  <div className="rounded-2xl border border-white/10 bg-card/85 backdrop-blur-md p-6 space-y-5 shadow-lg shadow-black/35 dark:shadow-2xl dark:shadow-black/50 animate-pulse">
     <div className="flex items-start justify-between gap-2">
       <div className="space-y-2 flex-1">
         <div className="h-5 w-2/5 rounded bg-secondary" />

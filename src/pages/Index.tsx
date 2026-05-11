@@ -31,7 +31,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Target, LogOut, Search, Volume2, VolumeX, Check, Loader2, AlertCircle, Archive, RotateCcw, CheckSquare, Trash2, CalendarDays, SearchX, Sparkles, Trophy, FolderTree } from "lucide-react";
 import { isSoundEnabled, toggleSound } from "@/lib/sounds";
 import { formatDueChip, getDueUrgency, isIncompleteForDueDate } from "@/lib/dueDateUtils";
-import { smoothOut, springContent } from "@/lib/motion";
+import { appleEase, appleSpring, appleSpringGentle, smoothOut } from "@/lib/motion";
 import {
   Select,
   SelectContent,
@@ -39,19 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const QUOTES = [
-  "The secret of getting ahead is getting started.",
-  "Progress is progress, no matter how small.",
-  "Done is better than perfect.",
-  "One goal at a time. One step at a time.",
-  "What you do today shapes who you become tomorrow.",
-  "Small wins build big momentum.",
-  "Your future self will thank you.",
-  "Every expert was once a beginner.",
-];
-
-const quote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+import { pickRandom, HERO_HEADER_QUOTES } from "@/lib/motivationalCopy";
 
 const HEADER_ORBS = [
   { w: 118, h: 82, left: '6%',  top: '-30%', color: '#34d399', opacity: 0.13, duration: 9,  delay: 0 },
@@ -132,11 +120,13 @@ function ActiveReorderGoalItem({
       as="div"
       dragListener={!dragFromHandleOnly}
       dragControls={dragFromHandleOnly ? dragControls : undefined}
+      whileDrag={{ scale: 1, zIndex: 40, cursor: "grabbing" }}
       initial={liteMotion ? false : { opacity: 0, y: 16 }}
       animate={{
         opacity: 1,
         y: 0,
-        transition: liteMotion ? { duration: 0 } : { delay: index * 0.05, ...springContent },
+        scale: 1,
+        transition: liteMotion ? { duration: 0 } : { delay: index * 0.05, ...appleSpringGentle },
       }}
       exit={{ opacity: 0, y: 10, scale: 0.97, transition: { duration: 0.28, ease: smoothOut } }}
     >
@@ -158,6 +148,7 @@ const Index = () => {
   const ui = useResponsiveUI();
   const liteAmbience = ui.isNarrowViewport || ui.isCoarsePointer;
   const { goals, categories, loading, pendingSubtasks, pendingGoalComplete, saveStatus, archivedGoals, archivedLoading, createGoal, createCategory, editGoal, deleteGoal, archiveGoal, restoreGoal, deleteArchivedGoal, fetchArchivedGoals, addSubtask, toggleSubtask, toggleGoalStandaloneComplete, deleteSubtask, updateSubtaskEffort, updateSubtaskNotes, reorderGoals } = useGoals();
+  const heroLine = useMemo(() => pickRandom(HERO_HEADER_QUOTES), []);
   const [orderedGoals, setOrderedGoals] = useState<Goal[]>([]);
   const [search, setSearch] = useState('');
   const [categoryFilterId, setCategoryFilterId] = useState<string | null>(null);
@@ -197,7 +188,7 @@ const Index = () => {
       const prev = prevProgresses.current[goal.id];
       if (prev !== undefined && prev < 100 && pct >= 100 && (goal.subtasks.length > 0 || goal.is_completed)) {
         setCelebratingGoals((s) => new Set([...s, goal.id]));
-        // Full-screen Lottie is expensive on phones; card-level celebration + toast still run.
+        // Full-screen celebration overlay (CSS on desktop); card chrome still animates.
         if (ui.celebrationQuality === "full") {
           setShowCelebration(true);
         }
@@ -420,7 +411,7 @@ const Index = () => {
 
       <PageSideParticles lite={liteAmbience} />
 
-      {/* Lottie celebration overlay */}
+      {/* Goal win overlay — CSS rings; Lottie removed for performance */}
       <AnimatePresence>
         {showCelebration && (
           <CelebrationOverlay quality={ui.celebrationQuality} onComplete={() => setShowCelebration(false)} />
@@ -497,35 +488,65 @@ const Index = () => {
               {userAvatarUrl ? (
                 <div className="flex items-start gap-4 sm:gap-5">
                   <UserHeroAvatar src={userAvatarUrl} displayName={username} />
-                  <div className="space-y-2 min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                  <div className="space-y-2 min-w-0 flex-1 relative">
+                    <div className="header-hero-aura -translate-x-1 sm:translate-x-0" aria-hidden />
+                    <div className="flex items-center gap-2 relative z-[1]">
                       <Target className="h-4 w-4 text-white/55" />
                       <span className="text-white/45 text-[11px] font-semibold tracking-[0.18em] uppercase">
                         Goal Tracker
                       </span>
                     </div>
-                    <h1 className="text-3xl sm:text-[2.5rem] font-semibold text-white tracking-tight text-balance break-words [text-shadow:0_2px_24px_rgba(0,0,0,0.35)]">
+                    <motion.h1
+                      initial={ui.liteMotion ? false : { opacity: 0, y: 14 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={
+                        ui.liteMotion ? { duration: 0 } : { duration: 0.52, ease: appleEase, delay: 0.05 }
+                      }
+                      className="relative z-[1] text-3xl sm:text-[2.5rem] font-semibold font-heading text-white tracking-tight text-balance break-words [text-shadow:0_2px_24px_rgba(0,0,0,0.35)]"
+                    >
                       Hey, {username}
-                    </h1>
-                    <p className="text-white/45 text-sm sm:text-[0.9375rem] italic leading-relaxed max-w-xl">
-                      &ldquo;{quote}&rdquo;
-                    </p>
+                    </motion.h1>
+                    <motion.p
+                      initial={ui.liteMotion ? false : { opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={
+                        ui.liteMotion ? { duration: 0 } : { duration: 0.52, ease: appleEase, delay: 0.12 }
+                      }
+                      className="text-white/45 text-sm sm:text-[0.9375rem] italic leading-relaxed max-w-xl"
+                    >
+                      &ldquo;{heroLine}&rdquo;
+                    </motion.p>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
+                <div className="space-y-2 relative">
+                  <div className="header-hero-aura left-[42%] sm:left-1/2" aria-hidden />
+                  <div className="flex items-center gap-2 relative z-[1]">
                     <Target className="h-4 w-4 text-white/55" />
                     <span className="text-white/45 text-[11px] font-semibold tracking-[0.18em] uppercase">
                       Goal Tracker
                     </span>
                   </div>
-                  <h1 className="text-3xl sm:text-[2.5rem] font-semibold text-white tracking-tight text-balance break-words [text-shadow:0_2px_24px_rgba(0,0,0,0.35)]">
+                  <motion.h1
+                    initial={ui.liteMotion ? false : { opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={
+                      ui.liteMotion ? { duration: 0 } : { duration: 0.52, ease: appleEase, delay: 0.05 }
+                    }
+                    className="relative z-[1] text-3xl sm:text-[2.5rem] font-semibold font-heading text-white tracking-tight text-balance break-words [text-shadow:0_2px_24px_rgba(0,0,0,0.35)]"
+                  >
                     Hey, {username}
-                  </h1>
-                  <p className="text-white/45 text-sm sm:text-[0.9375rem] italic leading-relaxed max-w-xl">
-                    &ldquo;{quote}&rdquo;
-                  </p>
+                  </motion.h1>
+                  <motion.p
+                    initial={ui.liteMotion ? false : { opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={
+                      ui.liteMotion ? { duration: 0 } : { duration: 0.52, ease: appleEase, delay: 0.12 }
+                    }
+                    className="text-white/45 text-sm sm:text-[0.9375rem] italic leading-relaxed max-w-xl"
+                  >
+                    &ldquo;{heroLine}&rdquo;
+                  </motion.p>
                 </div>
               )}
             </div>
@@ -587,7 +608,7 @@ const Index = () => {
                     visible: {
                       opacity: 1,
                       y: 0,
-                      transition: ui.liteMotion ? { duration: 0 } : springContent,
+                      transition: ui.liteMotion ? { duration: 0 } : appleSpringGentle,
                     },
                   }}
                 >
@@ -630,7 +651,7 @@ const Index = () => {
               <motion.div
                 initial={ui.liteMotion ? false : { opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={ui.liteMotion ? { duration: 0 } : { duration: 0.45, ease: smoothOut }}
+                transition={ui.liteMotion ? { duration: 0 } : { duration: 0.5, ease: appleEase }}
                 className="space-y-6"
                 ref={mainGoalListRef}
               >
@@ -678,10 +699,12 @@ const Index = () => {
                       { f: 'showcase', label: `On display (${showcaseCount})` },
                       { f: 'archived', label: `Archived${archivedGoals.length > 0 ? ` (${archivedGoals.length})` : ''}` },
                     ] as { f: Filter; label: string }[]).map(({ f, label }) => (
-                      <button
+                      <motion.button
                         key={f}
                         type="button"
                         onClick={() => setFilter(f)}
+                        whileTap={ui.liteMotion ? undefined : { scale: 0.97 }}
+                        transition={appleSpring}
                         className={cn(
                           "max-md:min-h-11 min-h-10 touch-manipulation px-4 py-2 rounded-full text-xs font-semibold capitalize transition-all duration-300 ease-out",
                           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
@@ -691,7 +714,7 @@ const Index = () => {
                         )}
                       >
                         {label}
-                      </button>
+                      </motion.button>
                     ))}
                   </div>
                   {filter !== 'archived' && filter !== 'showcase' && (
@@ -707,10 +730,12 @@ const Index = () => {
                             { df: 'overdue', label: 'Overdue' },
                             { df: 'due_soon', label: '≤7 days' },
                           ] as const).map(({ df, label }) => (
-                            <button
+                            <motion.button
                               key={df}
                               type="button"
                               onClick={() => setDueFilter(df)}
+                              whileTap={ui.liteMotion ? undefined : { scale: 0.97 }}
+                              transition={appleSpring}
                               className={cn(
                                 "max-md:min-h-11 min-h-10 touch-manipulation px-4 py-2 rounded-full text-xs font-semibold transition-all duration-300 ease-out",
                                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
@@ -720,7 +745,7 @@ const Index = () => {
                               )}
                             >
                               {label}
-                            </button>
+                            </motion.button>
                           ))}
                         </div>
                       </div>
@@ -761,7 +786,7 @@ const Index = () => {
                         reorderTimer.current = setTimeout(() => reorderGoals(next), 600);
                       }}
                       as="div"
-                      className="space-y-4 max-md:touch-pan-y"
+                      className="space-y-4 max-md:touch-pan-y overflow-visible"
                     >
                       <AnimatePresence initial={false}>
                         {activeGoals.map((goal, i) => (
@@ -783,12 +808,13 @@ const Index = () => {
                       <AnimatePresence initial={false}>
                       {completedGoals.map((goal, i) => (
                         <motion.div
+                          layout
                           key={goal.id}
                           initial={ui.liteMotion ? false : { opacity: 0, y: 16 }}
                             animate={{
                               opacity: 1,
                               y: 0,
-                              transition: ui.liteMotion ? { duration: 0 } : { delay: i * 0.05, ...springContent },
+                              transition: ui.liteMotion ? { duration: 0 } : { delay: i * 0.05, ...appleSpringGentle },
                             }}
                             exit={{ opacity: 0, y: 10, scale: 0.97, transition: { duration: 0.28, ease: smoothOut } }}
                           >
@@ -815,6 +841,7 @@ const Index = () => {
                     <AnimatePresence initial={false}>
                       {completedGoals.map((goal, i) => (
                         <motion.div
+                          layout
                           key={goal.id}
                           initial={ui.liteMotion ? false : { opacity: 0, y: 16 }}
                           animate={{
@@ -822,7 +849,7 @@ const Index = () => {
                             y: 0,
                             transition: ui.liteMotion
                               ? { duration: 0 }
-                              : { delay: 0.28 + i * 0.05, ...springContent },
+                              : { delay: 0.28 + i * 0.05, ...appleSpringGentle },
                           }}
                           exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.25, ease: smoothOut } }}
                         >
@@ -897,7 +924,7 @@ const Index = () => {
                             </div>
                           </div>
                           <div className="flex items-center justify-end gap-1 shrink-0 sm:pt-0.5 max-md:min-h-10">
-                            <Button variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-foreground touch-manipulation" onClick={() => restoreGoal(goal.id)} title="Restore to active">
+                            <Button variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-mint hover:bg-mint/12 touch-manipulation" onClick={() => restoreGoal(goal.id)} title="Restore to active">
                               <RotateCcw className="h-3.5 w-3.5" />
                             </Button>
                             <AlertDialog>
@@ -913,7 +940,9 @@ const Index = () => {
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => deleteArchivedGoal(goal.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                                  <AlertDialogAction variant="destructive" onClick={() => deleteArchivedGoal(goal.id)}>
+                                    Delete
+                                  </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
@@ -985,7 +1014,6 @@ const Index = () => {
               completedCount={completedGoalsBase.length}
               totalSubtasksDone={totalSubtasksDone}
               totalSubtasks={totalSubtasks}
-              quote={quote}
               overdueCount={overdueCount}
               dueSoonCount={dueSoonCount}
             />

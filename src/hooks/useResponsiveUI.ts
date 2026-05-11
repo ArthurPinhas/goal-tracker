@@ -13,7 +13,7 @@ type ResponsiveUI = {
   /** OS / browser reduced-motion preference */
   prefersReducedMotion: boolean;
   /**
-   * Skip heavy list motion, confetti, and `height: auto` subtree animations.
+   * Skip heavy list motion, subtask checkbox spark burst, and `height: auto` subtree animations.
    * True when narrow, coarse pointer, or user prefers reduced motion.
    */
   liteMotion: boolean;

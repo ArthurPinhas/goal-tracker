@@ -47,51 +47,59 @@
     --progress-track: 220 14% 90%;
     --progress-fill: 158 52% 40%;
     --success: 158 55% 36%;
+
+    --mint: 158 58% 42%;
+    --coral: 11 82% 58%;
+    --gold: 43 92% 52%;
   }
 
-  /* Dark is the primary product look — slightly lifted cards & clearer edges vs background */
+  /* Premium dark — deep indigo/slate foundation, mint primary, coral + gold accents */
   .dark {
     color-scheme: dark;
-    --background: 220 21% 9%;
-    --foreground: 210 20% 92%;
+    --background: 239 38% 9%;
+    --foreground: 210 22% 93%;
 
-    --card: 220 18% 14%;
-    --card-foreground: 210 20% 92%;
+    --card: 239 32% 13%;
+    --card-foreground: 210 22% 93%;
 
-    --popover: 220 18% 15%;
-    --popover-foreground: 210 20% 92%;
+    --popover: 239 30% 14%;
+    --popover-foreground: 210 22% 93%;
 
-    --primary: 160 60% 45%;
-    --primary-foreground: 220 20% 10%;
+    --primary: 158 64% 48%;
+    --primary-foreground: 239 42% 10%;
 
-    --secondary: 220 16% 19%;
-    --secondary-foreground: 210 20% 82%;
+    --secondary: 239 22% 18%;
+    --secondary-foreground: 210 18% 84%;
 
-    --muted: 220 14% 17%;
+    --muted: 239 18% 16%;
     --muted-foreground: 215 14% 58%;
 
-    --accent: 160 48% 38%;
-    --accent-foreground: 210 25% 96%;
+    --accent: 158 26% 17%;
+    --accent-foreground: 158 40% 92%;
 
-    --destructive: 0 65% 50%;
+    --destructive: 0 62% 52%;
     --destructive-foreground: 210 20% 95%;
 
-    --border: 220 13% 23%;
-    --input: 220 13% 22%;
-    --ring: 160 60% 45%;
+    --border: 239 22% 22%;
+    --input: 239 22% 21%;
+    --ring: 158 64% 48%;
 
-    --sidebar-background: 220 18% 11%;
-    --sidebar-foreground: 210 20% 85%;
-    --sidebar-primary: 160 60% 45%;
-    --sidebar-primary-foreground: 220 20% 10%;
-    --sidebar-accent: 220 15% 16%;
-    --sidebar-accent-foreground: 210 20% 85%;
-    --sidebar-border: 220 15% 20%;
-    --sidebar-ring: 160 60% 45%;
+    --sidebar-background: 239 36% 8%;
+    --sidebar-foreground: 210 20% 86%;
+    --sidebar-primary: 158 64% 48%;
+    --sidebar-primary-foreground: 239 42% 10%;
+    --sidebar-accent: 239 22% 15%;
+    --sidebar-accent-foreground: 210 20% 86%;
+    --sidebar-border: 239 22% 18%;
+    --sidebar-ring: 158 64% 48%;
 
-    --progress-track: 220 15% 18%;
-    --progress-fill: 160 60% 45%;
-    --success: 160 60% 45%;
+    --progress-track: 239 22% 17%;
+    --progress-fill: 158 64% 48%;
+    --success: 158 64% 48%;
+
+    --mint: 158 72% 52%;
+    --coral: 11 86% 64%;
+    --gold: 43 96% 58%;
   }
 }
 
@@ -106,10 +114,19 @@
 
   body {
     overflow-x: clip;
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground antialiased font-sans;
     font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
     background-image: radial-gradient(rgba(0, 0, 0, 0.035) 1px, transparent 1px);
     background-size: 28px 28px;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading tracking-tight;
   }
 
   .dark body {
@@ -128,18 +145,90 @@
 @layer utilities {
   /* Consistent tool chrome in dark — avoids flat inputs on flat bg */
   .dark .app-surface-input {
-    @apply bg-card/65 border-border/85 shadow-md shadow-black/20 backdrop-blur-sm;
+    @apply bg-card/65 border-border/85 shadow-neo-card backdrop-blur-sm;
   }
 
   /* Dialogs / forms — matches Index filter row labels */
   .ui-section-label {
     @apply text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground;
   }
+
+  /* Segmented track groove — subtle TE-style mechanical texture */
+  .te-segment-track {
+    background-image: repeating-linear-gradient(
+      90deg,
+      hsl(var(--secondary) / 0.92) 0px,
+      hsl(var(--secondary) / 0.92) 7px,
+      hsl(var(--border) / 0.38) 7px,
+      hsl(var(--border) / 0.38) 8px
+    );
+  }
 }
 
 @keyframes shimmer {
   0% { transform: translateX(-150%); }
   100% { transform: translateX(250%); }
+}
+
+@keyframes progress-sweep {
+  0% { transform: translateX(-120%) skewX(-12deg); }
+  100% { transform: translateX(220%) skewX(-12deg); }
+}
+
+@keyframes liquid-gold-shimmer {
+  0% { background-position: 0% 40%; }
+  50% { background-position: 100% 60%; }
+  100% { background-position: 0% 40%; }
+}
+
+@keyframes header-hero-aura-pulse {
+  0%,
+  100% {
+    opacity: 0.38;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.62;
+    transform: scale(1.06);
+  }
+}
+
+/* Full-screen goal win overlay — GPU-only transform + opacity */
+@keyframes celebration-win-ring-expand {
+  0% {
+    transform: scale(0.38);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.75);
+    opacity: 0;
+  }
+}
+
+.celebration-win-ring {
+  animation: celebration-win-ring-expand 1.08s cubic-bezier(0.17, 0.84, 0.25, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.celebration-win-ring-slow {
+  animation-duration: 1.38s;
+}
+
+/* Card-local triumph rings (lighter than overlay) */
+@keyframes goal-card-triumph-ring {
+  0% {
+    transform: translate(-50%, -50%) scale(0.22);
+    opacity: 0.82;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(5.5);
+    opacity: 0;
+  }
+}
+
+.goal-card-triumph-ring {
+  animation: goal-card-triumph-ring 0.78s cubic-bezier(0.2, 0.85, 0.28, 1) forwards;
+  will-change: transform, opacity;
 }
 
 @keyframes gradient-shift {
@@ -164,23 +253,83 @@
 }
 
 @keyframes celebration-glow {
-  0%, 100% {
-    box-shadow: 0 0 14px rgba(245, 158, 11, 0.38), 0 4px 18px rgba(0, 0, 0, 0.48);
+  0%,
+  100% {
+    box-shadow:
+      0 0 18px rgba(52, 211, 153, 0.35),
+      0 0 36px rgba(250, 204, 21, 0.14),
+      0 10px 28px rgba(0, 0, 0, 0.52);
   }
   50% {
-    box-shadow: 0 0 32px rgba(245, 158, 11, 0.62), 0 0 48px rgba(245, 158, 11, 0.28), 0 4px 18px rgba(0, 0, 0, 0.48);
+    box-shadow:
+      0 0 34px rgba(52, 211, 153, 0.48),
+      0 0 52px rgba(250, 204, 21, 0.22),
+      0 12px 32px rgba(0, 0, 0, 0.52);
   }
 }
 
 @keyframes celebration-glow-once {
   0% {
-    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.35);
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.28);
   }
   55% {
-    box-shadow: 0 0 28px rgba(245, 158, 11, 0.55), 0 0 40px rgba(245, 158, 11, 0.22), 0 4px 16px rgba(0, 0, 0, 0.5);
+    box-shadow:
+      0 0 32px rgba(52, 211, 153, 0.42),
+      0 0 44px rgba(250, 204, 21, 0.18),
+      0 8px 22px rgba(0, 0, 0, 0.52);
   }
   100% {
-    box-shadow: 0 0 16px rgba(245, 158, 11, 0.35), 0 4px 18px rgba(0, 0, 0, 0.45);
+    box-shadow:
+      0 0 18px rgba(52, 211, 153, 0.32),
+      0 0 28px rgba(250, 204, 21, 0.12),
+      0 10px 26px rgba(0, 0, 0, 0.48);
+  }
+}
+
+/* Rare foil sweep — goal-complete hologram (GPU-friendly transform) */
+@keyframes goal-hologram-foil-sweep {
+  0% {
+    transform: translateX(-115%) skewX(-13deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(115%) skewX(-13deg);
+    opacity: 0;
+  }
+}
+
+.goal-hologram-foil-band {
+  position: absolute;
+  inset: -12% -35%;
+  width: 58%;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    98deg,
+    transparent 0%,
+    rgba(52, 211, 153, 0.08) 18%,
+    rgba(250, 204, 21, 0.42) 36%,
+    rgba(251, 113, 133, 0.28) 48%,
+    rgba(167, 139, 250, 0.32) 60%,
+    rgba(52, 211, 153, 0.14) 74%,
+    transparent 100%
+  );
+  mix-blend-mode: plus-lighter;
+  filter: saturate(1.15);
+  animation: goal-hologram-foil-sweep 1.12s cubic-bezier(0.33, 0.82, 0.26, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goal-hologram-foil-band {
+    animation-duration: 0.01ms;
+    opacity: 0;
   }
 }
 
@@ -205,6 +354,120 @@
   inset: 0;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
   animation: shimmer 2.4s ease-in-out infinite;
+}
+
+/* Brighter “light sweep” — progress fill */
+.progress-fill-sheen {
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-fill-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 35%,
+    rgba(255, 255, 255, 0.42) 50%,
+    rgba(255, 255, 255, 0.1) 65%,
+    transparent 100%
+  );
+  animation: progress-sweep 2.1s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.dark .progress-fill-sheen::after {
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.04) 38%,
+    rgba(255, 250, 220, 0.35) 50%,
+    rgba(255, 255, 255, 0.12) 62%,
+    transparent 100%
+  );
+}
+
+/* Fine noise grain — neo-skeu / glass surfaces */
+.surface-grain {
+  position: relative;
+}
+
+.surface-grain::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  z-index: 1;
+}
+
+.dark .surface-grain::before {
+  opacity: 0.072;
+}
+
+/* Index hero — soft pulsing aura behind greeting */
+.header-hero-aura {
+  position: absolute;
+  width: min(92vw, 28rem);
+  height: min(42vw, 13rem);
+  left: 50%;
+  top: 52%;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(34, 211, 238, 0.22) 0%,
+    rgba(163, 230, 53, 0.12) 38%,
+    rgba(244, 114, 182, 0.1) 58%,
+    transparent 72%
+  );
+  filter: blur(42px);
+  animation: header-hero-aura-pulse 7s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 100% goal card — mint/gold rim + soft persistent win glow */
+.goal-card-hero-shell {
+  position: relative;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 28px -8px rgba(52, 211, 153, 0.35),
+    0 0 48px -12px rgba(250, 204, 21, 0.18),
+    0 14px 36px -14px rgba(0, 0, 0, 0.55),
+    1px 0 14px rgba(251, 113, 133, 0.1),
+    -1px 0 14px rgba(52, 211, 153, 0.12);
+}
+
+.goal-card-hero-gold {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0.32;
+  background: linear-gradient(
+    125deg,
+    rgba(52, 211, 153, 0.28) 0%,
+    rgba(250, 204, 21, 0.32) 28%,
+    rgba(167, 139, 250, 0.14) 52%,
+    rgba(250, 204, 21, 0.26) 72%,
+    rgba(52, 211, 153, 0.22) 100%
+  );
+  background-size: 240% 240%;
+  animation: liquid-gold-shimmer 5s ease-in-out infinite;
+  mix-blend-mode: plus-lighter;
+  z-index: 0;
+}
+
+.dark .goal-card-hero-gold {
+  opacity: 0.38;
 }
 
 /* Shared animated fill (Index hero uses this inside a clipped layer) */
@@ -257,4 +520,20 @@
 
 .cta-glow {
   animation: cta-pulse 2s ease-in-out infinite;
+}
+
+/* Celebration overlay — CSS-only rotation (compositor-friendly vs JS-driven spin) */
+@keyframes celebration-orbit-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .celebration-orbit-css {
+    animation: none !important;
+  }
 }

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import toast from "react-hot-toast";
-import { playGoalDone } from "@/lib/sounds";
-import { motion, AnimatePresence, useAnimation } from "framer-motion";
+import { motion, AnimatePresence, useAnimation, useReducedMotion } from "framer-motion";
 import type { Goal, GoalCategory, GoalShowcaseFileOptions } from "@/types/goal";
 import { calcProgress, getProgressColor, isGoalComplete } from "@/lib/goalUtils";
 import { goalHasShowcaseMedia, getGoalShowcaseImageUrl } from "@/lib/goalShowcaseAsset";
@@ -18,9 +17,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { CalendarDays, Trash2, Trophy, GripVertical, ChevronDown, Archive, StickyNote, Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { smoothOut } from "@/lib/motion";
+import { getEnergyAccent } from "@/lib/energyAccent";
+import { premiumSpring, smoothOut, tactileHover, tactileTap } from "@/lib/motion";
 import type { CelebrationQuality } from "@/hooks/useResponsiveUI";
 import { formatDueChip, getDueUrgency, isIncompleteForDueDate } from "@/lib/dueDateUtils";
+import { GOAL_COMPLETE_TOASTS, HALFWAY_TOASTS, pickRandom } from "@/lib/motivationalCopy";
 
 interface GoalCardProps {
   goal: Goal;
@@ -57,32 +58,6 @@ interface GoalCardProps {
   reorderHandlePointerDown?: (event: PointerEvent<HTMLSpanElement>) => void;
 }
 
-const HALFWAY_MESSAGES = [
-  "Halfway there, keep going!",
-  "You're on fire — 50% done!",
-  "Half the battle won. Push through!",
-  "Great progress, don't stop now!",
-];
-
-const COMPLETE_MESSAGES = [
-  "Goal complete! Outstanding work!",
-  "You crushed it! On to the next one.",
-  "100%! That took real effort.",
-  "Goal achieved. Well done!",
-];
-
-const ACCENT_COLORS = ['#a78bfa', '#60a5fa', '#34d399', '#fb7185', '#fbbf24', '#f472b6', '#22d3ee', '#fb923c'];
-const getAccentColor = (id: string) => ACCENT_COLORS[id.charCodeAt(id.length - 1) % ACCENT_COLORS.length];
-
-
-const PARTICLE_DEFS = Array.from({ length: 10 }, (_, i) => ({
-  left: `${6 + i * 9}%`,
-  yOffset: -60 - (i % 4) * 20,
-  delay: i * 0.06,
-  size: i % 3 === 0 ? 8 : 5,
-  color: ['#f59e0b', '#a78bfa', '#34d399', '#fb7185', '#60a5fa'][i % 5],
-}));
-
 const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebrating = false, onToggleSubtask, onAddSubtask, onDelete, onDeleteSubtask, onEdit, categories, onCreateCategory, onSetEffort, onUpdateSubtaskNotes, onToggleGoalStandaloneComplete, pendingGoalComplete, onArchive, showDragHandle = true, reorderHandlePointerDown }: GoalCardProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const [showGoalNotes, setShowGoalNotes] = useState(false);
@@ -94,9 +69,10 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
   const isInProgress = percentage > 0 && !isComplete;
   const incompleteForDue = isIncompleteForDueDate(goal);
   const dueUrgency = getDueUrgency(goal.due_date, incompleteForDue && !isComplete);
-  const accentColor = getAccentColor(goal.id);
+  const energy = getEnergyAccent(goal.id, goal.category?.id);
   const doneCount = goal.subtasks.filter((s) => s.is_completed).length;
   const controls = useAnimation();
+  const reduceMotion = useReducedMotion();
   /** Desktop-only: sweep, particles, infinite glow, scale bounce — too heavy on touch devices */
   const heavyCelebration = celebrationQuality === "full";
   /** Skip `height: auto` animations on subtasks / expand — mobile + reduced celebration tier */
@@ -114,16 +90,23 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
     const prev = prevPercentage.current ?? 0;
     if (prev < 100 && percentage >= 100 && (goal.subtasks.length > 0 || goal.is_completed)) {
       const runCompleteFx = () => {
-        playGoalDone();
-        toast.success(COMPLETE_MESSAGES[Math.floor(Math.random() * COMPLETE_MESSAGES.length)], {
+        toast.success(pickRandom(GOAL_COMPLETE_TOASTS), {
           icon: "🏆",
           duration: heavyCelebration ? 5000 : 3200,
         });
-        if (heavyCelebration) {
-          void controls.start({
-            scale: [1, 1.05, 1.02, 1.04, 1],
-            transition: { duration: 0.6, times: [0, 0.25, 0.5, 0.75, 1] },
-          });
+        if (!reduceMotion) {
+          const bump = heavyCelebration ? 1.048 : 1.026;
+          void controls
+            .start({
+              scale: bump,
+              transition: { type: "spring", stiffness: heavyCelebration ? 560 : 620, damping: heavyCelebration ? 22 : 26 },
+            })
+            .then(() =>
+              controls.start({
+                scale: 1,
+                transition: { type: "spring", stiffness: 420, damping: 28, mass: 0.85 },
+              }),
+            );
         }
       };
       if (heavyCelebration) {
@@ -132,10 +115,10 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
         requestAnimationFrame(() => requestAnimationFrame(runCompleteFx));
       }
     } else if (prev < 50 && percentage >= 50 && goal.subtasks.length > 0) {
-      toast(HALFWAY_MESSAGES[Math.floor(Math.random() * HALFWAY_MESSAGES.length)], { icon: "🔥" });
+      toast(pickRandom(HALFWAY_TOASTS), { icon: "🔥" });
     }
     prevPercentage.current = percentage;
-  }, [percentage, goal.subtasks.length, goal.is_completed, controls, heavyCelebration]);
+  }, [percentage, goal.subtasks.length, goal.is_completed, controls, heavyCelebration, reduceMotion]);
 
   useEffect(() => {
     setGoalNoteDraft(goal.notes);
@@ -158,8 +141,6 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
     }
   };
 
-  const celebrationParticles = heavyCelebration ? PARTICLE_DEFS : [];
-
   // Force expand during celebration
   useEffect(() => {
     if (isCelebrating) setCollapsed(false);
@@ -169,70 +150,92 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
     <motion.div
       id={`goal-card-${goal.id}`}
       animate={controls}
-      whileHover={!isCelebrating && celebrationQuality === "full" ? { y: -2 } : undefined}
-      transition={{ type: "spring", stiffness: 400, damping: 32 }}
+      whileHover={
+        !isCelebrating && !reduceMotion ? tactileHover : undefined
+      }
+      transition={premiumSpring}
       className={cn(
-        "rounded-2xl border shadow-sm relative bg-card transition-[transform,box-shadow] duration-300 ease-out",
-        "dark:border-border/50 dark:shadow-lg dark:shadow-black/45",
-        "dark:hover:border-border/80 dark:hover:shadow-2xl dark:hover:shadow-black/55",
-        isCelebrating && heavyCelebration && "celebration-card ring-2 ring-amber-400/80",
-        isCelebrating && !heavyCelebration && "celebration-card-minimal ring-2 ring-amber-400/80",
-        !isCelebrating && isComplete && "ring-2 ring-amber-400",
+        "relative isolate z-[1] overflow-visible rounded-2xl border transition-[transform,box-shadow] duration-300 ease-out",
+        "surface-grain backdrop-blur-sm border-border/45 bg-card shadow-neo-card",
+        "dark:border-white/[0.09]",
+        isComplete && !isCelebrating && "scale-[1.01] origin-center will-change-transform motion-reduce:scale-100",
+        isCelebrating && heavyCelebration && "celebration-card ring-2 ring-mint/75 ring-offset-2 ring-offset-background dark:ring-offset-background",
+        isCelebrating && !heavyCelebration && "celebration-card-minimal ring-2 ring-gold/70 ring-offset-2 ring-offset-background dark:ring-offset-background",
+        !isCelebrating && isComplete && "ring-2 ring-mint/80 goal-card-hero-shell",
         !isCelebrating && !isComplete && dueUrgency === "overdue" && "ring-2 ring-red-500/45",
-        !isCelebrating && !isComplete && dueUrgency === "soon" && "ring-2 ring-amber-500/40",
-        !isCelebrating && isInProgress && "goal-pulse-ring"
+        !isCelebrating && !isComplete && dueUrgency === "soon" && "ring-2 ring-gold/45",
+        !isCelebrating && isInProgress && "goal-pulse-ring",
       )}
       style={{
-        borderLeft: `3px solid ${isCelebrating ? '#f59e0b' : accentColor}`,
-        background: isCelebrating && heavyCelebration
-          ? 'linear-gradient(135deg, hsl(220,18%,13%) 0%, hsl(40,28%,14%) 55%, hsl(220,18%,13%) 100%)'
-          : undefined,
+        borderLeft: `2px solid ${isCelebrating ? "rgba(52, 211, 153, 0.65)" : `rgba(${energy.ringRgb}, 0.3)`}`,
+        background:
+          isCelebrating && heavyCelebration
+            ? "linear-gradient(135deg, hsl(239,32%,12%) 0%, hsl(258,28%,15%) 38%, hsl(158,22%,14%) 52%, hsl(239,32%,12%) 100%)"
+            : undefined,
       }}
     >
-      {/* Inner container — clips sweep to rounded corners */}
-      <div className="rounded-2xl overflow-hidden relative before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:z-10 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/[0.14] before:to-transparent dark:before:via-white/[0.08]">
-        {/* Sweep — framer-motion so it respects rounded corners */}
+        {/* Energy halo — inside same motion node as surface so it stays aligned during reorder drag */}
+        {!isCelebrating && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-[-1px] z-0 rounded-2xl"
+            style={{
+              boxShadow: isComplete
+                ? `
+                  0 0 0 1px rgba(${energy.ringRgb}, 0.07),
+                  0 6px 32px -14px rgba(${energy.ringRgb}, 0.14),
+                  0 0 40px -16px rgba(${energy.ringRgb}, 0.09)
+                `
+                : `
+                  0 0 0 1px rgba(${energy.ringRgb}, 0.11),
+                  0 7px 36px -12px rgba(${energy.ringRgb}, 0.22),
+                  0 0 44px -14px rgba(${energy.ringRgb}, 0.14)
+                `,
+            }}
+          />
+        )}
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 z-10 h-px bg-gradient-to-r from-transparent via-white/[0.14] to-transparent dark:via-white/[0.08]"
+          aria-hidden
+        />
+        {isComplete && !isCelebrating && (
+          <>
+            <div className="goal-card-hero-gold" aria-hidden />
+            <div
+              className="pointer-events-none absolute inset-0 z-[2] rounded-2xl opacity-25 mix-blend-screen"
+              style={{
+                background: `radial-gradient(circle at 50% 0%, rgba(${energy.ringRgb},0.16), transparent 55%)`,
+              }}
+              aria-hidden
+            />
+          </>
+        )}
+        {/* Rare-card hologram — foil sweep (subtask sparks stay separate; no goal-level particle burst) */}
         <AnimatePresence>
           {isCelebrating && heavyCelebration && (
             <motion.div
-              key="sweep"
-              className="absolute inset-y-0 pointer-events-none will-change-transform"
-              style={{ zIndex: 1, width: '55%', background: 'linear-gradient(90deg, transparent, rgba(255,220,120,0.22), transparent)' }}
-              initial={{ x: '-100%', skewX: -15 }}
-              animate={{ x: '280%', skewX: -15 }}
-              transition={{
-                duration: 0.95,
-                ease: 'easeInOut',
-                repeat: 2,
-                repeatDelay: 0.38,
-              }}
+              key="goal-holo-flash"
+              className="pointer-events-none absolute inset-0 z-[6] rounded-2xl bg-gradient-to-b from-mint/35 via-gold/18 to-transparent dark:from-mint/30 dark:via-gold/14"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 0.5, 0] }}
+              transition={{ duration: 0.88, times: [0, 0.14, 1], ease: "easeOut" }}
+            />
+          )}
+          {isCelebrating && !heavyCelebration && (
+            <motion.div
+              key="goal-holo-flash-lite"
+              className="pointer-events-none absolute inset-0 z-[6] rounded-2xl bg-gradient-to-b from-mint/40 via-transparent to-gold/15"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 0.58, 0] }}
+              transition={{ duration: 0.62, times: [0, 0.18, 1] }}
             />
           )}
         </AnimatePresence>
-
-        {/* Floating particles */}
-        <AnimatePresence>
-          {isCelebrating && celebrationParticles.length > 0 && (
-            <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 2 }}>
-              {celebrationParticles.map((p, i) => (
-                <motion.div
-                  key={i}
-                  className="absolute rounded-full will-change-transform"
-                  style={{ left: p.left, bottom: '20%', width: p.size, height: p.size, backgroundColor: p.color }}
-                  initial={{ y: 0, opacity: 1, scale: 1 }}
-                  animate={{ y: p.yOffset, opacity: 0, scale: 0.3 }}
-                  transition={{
-                    duration: 1.05,
-                    delay: p.delay,
-                    ease: 'easeOut',
-                    repeat: 2,
-                    repeatDelay: 0.48,
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </AnimatePresence>
+        {isCelebrating && !reduceMotion && (
+          <div className="pointer-events-none absolute inset-0 z-[7] overflow-hidden rounded-2xl" aria-hidden>
+            <div className="goal-hologram-foil-band" />
+          </div>
+        )}
 
         {/* Header — grid so title + actions don’t collide on narrow widths */}
         <div
@@ -241,8 +244,11 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
         >
           {showDragHandle ? (
             reorderHandlePointerDown ? (
-              <button
+              <motion.button
                 type="button"
+                whileHover={reduceMotion ? undefined : tactileHover}
+                whileTap={reduceMotion ? undefined : tactileTap}
+                transition={premiumSpring}
                 className={cn(
                   "col-start-1 row-start-1 -ml-1.5 flex h-11 min-w-11 shrink-0 items-center justify-center touch-manipulation rounded-xl",
                   "cursor-grab active:cursor-grabbing touch-none select-none",
@@ -257,7 +263,7 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
                 }}
               >
                 <GripVertical className="h-5 w-5 pointer-events-none" aria-hidden />
-              </button>
+              </motion.button>
             ) : (
               <div
                 className="col-start-1 row-start-1 -ml-1.5 flex h-11 min-w-11 shrink-0 items-center justify-center text-muted-foreground/35 pointer-events-none"
@@ -270,8 +276,12 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
             <div className="col-start-1 row-start-1 w-11 shrink-0" aria-hidden />
           )}
 
-          <button
-            className="col-start-2 row-start-1 flex min-w-0 items-start gap-2 text-left md:col-span-1"
+          <motion.button
+            type="button"
+            whileHover={reduceMotion ? undefined : tactileHover}
+            whileTap={reduceMotion ? undefined : tactileTap}
+            transition={premiumSpring}
+            className="col-start-2 row-start-1 flex min-w-0 items-start gap-2 text-left md:col-span-1 rounded-xl transition-transform duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.97]"
             onClick={() => setCollapsed((v) => !v)}
           >
             <AnimatePresence>
@@ -294,14 +304,14 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
                   transition={{ type: 'spring', stiffness: 300, damping: 15 }}
                   className="shrink-0 mt-0.5"
                 >
-                  <Trophy className={`h-4 w-4 ${isCelebrating ? 'text-amber-300' : 'text-amber-400'}`} />
+                  <Trophy className={`h-4 w-4 ${isCelebrating ? "text-gold" : "text-mint"}`} />
                 </motion.div>
               )}
             </AnimatePresence>
             <div className="min-w-0 flex-1">
               <div className={cn('flex items-center gap-2 min-w-0', collapsed && 'w-full justify-between')}>
                 <span
-                  className={`text-base font-semibold tracking-tight min-w-0 break-words line-clamp-2 md:line-clamp-none md:truncate ${collapsed ? 'flex-1' : ''} ${isComplete ? 'text-amber-400' : 'text-card-foreground'}`}
+                  className={`text-base font-semibold tracking-tight min-w-0 break-words line-clamp-2 md:line-clamp-none md:truncate ${collapsed ? 'flex-1' : ''} ${isComplete ? 'text-mint' : 'text-card-foreground'}`}
                 >
                   {goal.title}
                 </span>
@@ -335,18 +345,18 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
                   className={cn(
                     'flex items-center gap-1 mt-1 text-xs',
                     dueUrgency === 'overdue' && 'text-red-400 font-medium',
-                    dueUrgency === 'soon' && 'text-amber-400/90',
+                    dueUrgency === 'soon' && 'text-gold/95',
                     dueUrgency === 'none' && 'text-muted-foreground'
                   )}
                 >
                   <CalendarDays className="h-3 w-3 shrink-0 opacity-80" />
                   <span>{formatDueChip(goal.due_date)}</span>
                   {dueUrgency === 'overdue' && <span className="text-red-400/90">· Overdue</span>}
-                  {dueUrgency === 'soon' && <span className="text-amber-400/80">· Due soon</span>}
+                  {dueUrgency === 'soon' && <span className="text-gold/85">· Due soon</span>}
                 </div>
               )}
             </div>
-          </button>
+          </motion.button>
 
           <div className="col-span-2 flex items-center justify-end gap-0.5 max-md:min-h-11 md:col-span-1 md:col-start-3 md:row-start-1 md:gap-1">
             <EditGoalDialog goal={goal} categories={categories} onCreateCategory={onCreateCategory} onEdit={onEdit} />
@@ -354,7 +364,7 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-10 w-10 touch-manipulation md:h-7 md:w-7 text-muted-foreground hover:text-amber-400"
+                className="h-10 w-10 touch-manipulation md:h-7 md:w-7 text-muted-foreground hover:text-gold hover:bg-gold/12"
                 onClick={onArchive}
                 title="Archive goal"
               >
@@ -378,10 +388,7 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => onDelete(goal.id)}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
+                  <AlertDialogAction variant="destructive" onClick={() => onDelete(goal.id)}>
                     Delete
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -418,7 +425,7 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
                   />
                 )}
                 {isComplete && !goalHasShowcaseMedia(goal) && (
-                  <div className="rounded-2xl border border-dashed border-amber-500/35 bg-amber-500/[0.06] px-3.5 py-3 dark:bg-amber-500/[0.05]">
+                  <div className="rounded-2xl border border-dashed border-mint/45 bg-mint/[0.06] px-3.5 py-3 dark:bg-mint/[0.05]">
                     <p className="text-xs text-muted-foreground leading-relaxed mb-2.5">
                       Want to save a clip, screenshot, or link to this win? Optional — upload an image or paste a URL.
                     </p>
@@ -426,7 +433,7 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="rounded-xl border-amber-500/40 text-amber-700 hover:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/10"
+                      className="rounded-xl border-gold/45 text-gold hover:bg-gold/10 dark:text-gold dark:hover:bg-gold/10"
                       onClick={() => setQuickShowcaseOpen(true)}
                     >
                       Link your win
@@ -470,8 +477,8 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
                       variant="ghost"
                       size="icon"
                       className={cn(
-                        "h-10 w-10 shrink-0 touch-manipulation text-muted-foreground hover:text-foreground md:h-8 md:w-8",
-                        (showGoalNotes || goal.notes?.trim()) && "text-amber-500/90"
+                        "h-10 w-10 shrink-0 touch-manipulation text-muted-foreground hover:text-gold hover:bg-gold/12 md:h-8 md:w-8",
+                        (showGoalNotes || goal.notes?.trim()) && "text-gold"
                       )}
                       title={showGoalNotes ? "Hide notes" : "Notes"}
                       aria-pressed={showGoalNotes}
@@ -519,7 +526,7 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
                   </div>
                   <AnimatePresence initial={false}>
                     {goal.subtasks.length === 0 && (
-                      <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/10 px-3 py-2.5 dark:bg-card/25">
+                      <div className="flex items-center gap-3 rounded-xl border border-border/40 bg-secondary/25 px-3 py-2.5 dark:bg-secondary/20">
                         {standalonePending && (
                           <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" aria-hidden />
                         )}
@@ -534,7 +541,7 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
                           htmlFor={`goal-standalone-${goal.id}`}
                           className={cn(
                             "text-sm cursor-pointer select-none flex-1 min-w-0 leading-snug",
-                            goal.is_completed ? "text-amber-400/95 font-medium" : "text-card-foreground"
+                            goal.is_completed ? "text-mint font-medium" : "text-card-foreground"
                           )}
                         >
                           {goal.is_completed ? "Marked complete" : "Mark goal complete (no subtasks)"}
@@ -547,6 +554,7 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
                           <SubtaskItem
                             subtask={subtask}
                             isPending={pendingSubtasks.has(subtask.id)}
+                            particleAccent={energy.particle}
                             onToggle={(subtaskId) => onToggleSubtask(goal.id, subtaskId)}
                             onDelete={onDeleteSubtask}
                             onSetEffort={onSetEffort}
@@ -565,6 +573,7 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
                           <SubtaskItem
                             subtask={subtask}
                             isPending={pendingSubtasks.has(subtask.id)}
+                            particleAccent={energy.particle}
                             onToggle={(subtaskId) => onToggleSubtask(goal.id, subtaskId)}
                             onDelete={onDeleteSubtask}
                             onSetEffort={onSetEffort}
@@ -579,8 +588,7 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-    </motion.div>
+      </motion.div>
   );
 };
 
