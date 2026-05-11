@@ -1,6 +1,13 @@
-import { playUiSample, preloadUiSamples } from "@/lib/soundSamples";
+import { playUiSampleAccent, preloadUiSamples } from "@/lib/soundSamples";
+import type { UiSoundKey } from "@/lib/soundSamples";
 
 const STORAGE_KEY = "sounds-enabled";
+
+/**
+ * Kenney WAV blend layered *under* procedural audio (0 = off — punchiest / what shipped before samples).
+ * Try 0.18–0.27 if you want subtle real-world texture without dulling the synth impact.
+ */
+const SAMPLE_BLEND = 0;
 
 export const isSoundEnabled = (): boolean => {
   try {
@@ -29,69 +36,24 @@ const getCtx = (): AudioContext | null => {
   }
 };
 
-/** Decode CC0 UI WAVs from `/public/sounds` into memory (safe no-op if missing). */
+/** When > 0, Kenney WAVs are preloaded for optional accent. */
+export const PRELOAD_UI_SAMPLES = SAMPLE_BLEND > 0;
+
+/** Decode CC0 UI WAVs from `/public/sounds` into memory (skipped when SAMPLE_BLEND is 0). */
 export function preloadUiSoundSamples(): void {
+  if (!PRELOAD_UI_SAMPLES) return;
   const c = getCtx();
   if (!c) return;
   preloadUiSamples(c);
 }
 
-/** Master FX flavour — wetter / longer for wins; dry / fast for utility clicks */
-type FxProfile = "celebrate" | "standard" | "tight";
+function maybeSampleAccent(c: AudioContext, master: AudioNode, key: UiSoundKey): void {
+  if (SAMPLE_BLEND <= 0) return;
+  preloadUiSamples(c);
+  playUiSampleAccent(c, master, key, SAMPLE_BLEND);
+}
 
-type FxPreset = {
-  dry: number;
-  wetSend: number;
-  wetHpHz: number;
-  delayS: number;
-  fb: number;
-  fbLpHz: number;
-  revWet: number;
-  irDur: number;
-  irDecay: number;
-  makeup: number;
-};
-
-const FX: Record<FxProfile, FxPreset> = {
-  celebrate: {
-    dry: 0.84,
-    wetSend: 0.38,
-    wetHpHz: 160,
-    delayS: 0.058,
-    fb: 0.2,
-    fbLpHz: 3400,
-    revWet: 0.48,
-    irDur: 1.28,
-    irDecay: 2.35,
-    makeup: 1.06,
-  },
-  standard: {
-    dry: 0.9,
-    wetSend: 0.26,
-    wetHpHz: 200,
-    delayS: 0.045,
-    fb: 0.16,
-    fbLpHz: 4000,
-    revWet: 0.32,
-    irDur: 0.88,
-    irDecay: 2.75,
-    makeup: 1.04,
-  },
-  tight: {
-    dry: 0.96,
-    wetSend: 0.14,
-    wetHpHz: 280,
-    delayS: 0.03,
-    fb: 0.1,
-    fbLpHz: 5200,
-    revWet: 0.2,
-    irDur: 0.55,
-    irDecay: 3.1,
-    makeup: 1.02,
-  },
-};
-
-/** Mild saturation before dynamics — reads fuller / less “cheap oscillator” */
+/** Mild saturation before dynamics */
 const makeSoftClipper = (c: AudioContext): WaveShaperNode => {
   const n = 1024;
   const curve = new Float32Array(n);
@@ -105,28 +67,32 @@ const makeSoftClipper = (c: AudioContext): WaveShaperNode => {
   return w;
 };
 
-const makeMasterCompressor = (c: AudioContext, profile: FxProfile): DynamicsCompressorNode => {
+/** Dry bus — fast attack lets transients hit before compression */
+type PunchProfile = "celebrate" | "standard" | "tight";
+
+const createMasterIn = (c: AudioContext, profile: PunchProfile): AudioNode => {
+  const clip = makeSoftClipper(c);
   const comp = c.createDynamicsCompressor();
-  comp.knee.value = 10;
-  comp.ratio.value = 4;
+  comp.knee.value = 8;
+  comp.ratio.value = 5;
   if (profile === "celebrate") {
-    comp.threshold.value = -17;
-    comp.attack.value = 0.008;
-    comp.release.value = 0.34;
+    comp.threshold.value = -14;
+    comp.attack.value = 0.003;
+    comp.release.value = 0.22;
   } else if (profile === "tight") {
-    comp.threshold.value = -13;
-    comp.attack.value = 0.004;
-    comp.release.value = 0.17;
+    comp.threshold.value = -11;
+    comp.attack.value = 0.002;
+    comp.release.value = 0.12;
   } else {
-    comp.threshold.value = -15;
-    comp.attack.value = 0.006;
-    comp.release.value = 0.26;
+    comp.threshold.value = -12;
+    comp.attack.value = 0.003;
+    comp.release.value = 0.16;
   }
   comp.connect(c.destination);
-  return comp;
+  clip.connect(comp);
+  return clip;
 };
 
-/** Convolution room — separate IR per profile keeps tails matched to use-case */
 const makeReverb = (c: AudioContext, duration: number, decay: number): ConvolverNode => {
   const conv = c.createConvolver();
   const len = Math.floor(c.sampleRate * duration);
@@ -139,66 +105,6 @@ const makeReverb = (c: AudioContext, duration: number, decay: number): Convolver
   return conv;
 };
 
-/**
- * Everything feeds `masterIn`:
- * dry branch stays punchy; wet branch = HP → feedback delay → reverb → sum → clip → compressor.
- */
-const createMasterFxIn = (c: AudioContext, profile: FxProfile): AudioNode => {
-  const p = FX[profile];
-  const masterIn = c.createGain();
-  masterIn.gain.value = 1;
-
-  const dryGain = c.createGain();
-  dryGain.gain.value = p.dry;
-
-  const wetSend = c.createGain();
-  wetSend.gain.value = p.wetSend;
-
-  const wetHp = c.createBiquadFilter();
-  wetHp.type = "highpass";
-  wetHp.frequency.value = p.wetHpHz;
-  wetHp.Q.value = 0.71;
-
-  const delay = c.createDelay(Math.max(0.2, p.delayS + 0.05));
-  delay.delayTime.value = p.delayS;
-
-  const fbLp = c.createBiquadFilter();
-  fbLp.type = "lowpass";
-  fbLp.frequency.value = p.fbLpHz;
-  fbLp.Q.value = 0.7;
-
-  const fbGain = c.createGain();
-  fbGain.gain.value = p.fb;
-
-  const conv = makeReverb(c, p.irDur, p.irDecay);
-  const revWet = c.createGain();
-  revWet.gain.value = p.revWet;
-
-  const summer = c.createGain();
-  summer.gain.value = p.makeup;
-
-  masterIn.connect(dryGain);
-  dryGain.connect(summer);
-
-  masterIn.connect(wetSend);
-  wetSend.connect(wetHp);
-  wetHp.connect(delay);
-  delay.connect(fbLp);
-  fbLp.connect(fbGain);
-  fbGain.connect(delay);
-  delay.connect(conv);
-  conv.connect(revWet);
-  revWet.connect(summer);
-
-  const clip = makeSoftClipper(c);
-  const comp = makeMasterCompressor(c, profile);
-  summer.connect(clip);
-  clip.connect(comp);
-
-  return masterIn;
-};
-
-/** Lush parallel verb for procedural goal fanfare chords (in addition to master FX glue). */
 const makeFanfareReverb = (c: AudioContext): ConvolverNode => makeReverb(c, 1.55, 2.15);
 
 type OscDef = {
@@ -241,7 +147,6 @@ const playOscGroup = (
   });
 };
 
-/** Bandpassed noise = crisp transient impact without harsh digital edges */
 const playNoiseBurst = (
   c: AudioContext,
   dest: AudioNode,
@@ -274,38 +179,25 @@ const playNoiseBurst = (
   src.stop(startTime + duration + 0.04);
 };
 
-// ─── Subtask complete — sample first + synth weight tail ─────────────────────
+// ─── Subtask complete — full procedural + optional sample tuck ───────────────
 export const playSubtaskDone = () => {
   if (!isSoundEnabled()) return;
   const c = getCtx();
   if (!c) return;
-  preloadUiSamples(c);
-  const master = createMasterFxIn(c, "standard");
+  const master = createMasterIn(c, "standard");
   const t = c.currentTime;
 
-  if (playUiSample(c, master, "subtask")) {
-    playOscGroup(
-      c,
-      master,
-      [{ freq: 98, gain: 0.085, type: "sine", freqEnd: 58, pan: 0 }],
-      t,
-      0.002,
-      0.12,
-    );
-    return;
-  }
-
-  playNoiseBurst(c, master, t, 0.048, 0.24, 2650, 5.5);
+  playNoiseBurst(c, master, t, 0.048, 0.26, 2650, 5.5);
 
   playOscGroup(
     c,
     master,
     [
-      { freq: 880, gain: 0.13, type: "triangle", pan: -0.28 },
-      { freq: 880, gain: 0.11, type: "sine", pan: -0.28 },
-      { freq: 1320, gain: 0.095, type: "sine", pan: 0.15 },
-      { freq: 1760, gain: 0.068, type: "sine", pan: 0.38 },
-      { freq: 2200, gain: 0.038, type: "sine", pan: 0 },
+      { freq: 880, gain: 0.14, type: "triangle", pan: -0.28 },
+      { freq: 880, gain: 0.12, type: "sine", pan: -0.28 },
+      { freq: 1320, gain: 0.1, type: "sine", pan: 0.15 },
+      { freq: 1760, gain: 0.072, type: "sine", pan: 0.38 },
+      { freq: 2200, gain: 0.042, type: "sine", pan: 0 },
     ],
     t,
     0.004,
@@ -316,52 +208,38 @@ export const playSubtaskDone = () => {
     c,
     master,
     [
-      { freq: 128, gain: 0.17, type: "sine", freqEnd: 68, pan: 0 },
-      { freq: 58, gain: 0.1, type: "triangle", freqEnd: 46, pan: -0.12 },
+      { freq: 128, gain: 0.18, type: "sine", freqEnd: 68, pan: 0 },
+      { freq: 58, gain: 0.11, type: "triangle", freqEnd: 46, pan: -0.12 },
     ],
     t,
     0.002,
     0.15,
   );
+
+  maybeSampleAccent(c, master, "subtask");
 };
 
-// ─── Goal complete — sample first + low foundation; else full procedural ─────
+// ─── Goal complete — full procedural fanfare + optional sample tuck ──────────
 export const playGoalDone = () => {
   if (!isSoundEnabled()) return;
   const c = getCtx();
   if (!c) return;
-  preloadUiSamples(c);
-  const master = createMasterFxIn(c, "celebrate");
+  const master = createMasterIn(c, "celebrate");
   const t = c.currentTime;
-
-  if (playUiSample(c, master, "goal")) {
-    playOscGroup(
-      c,
-      master,
-      [
-        { freq: 65.41, gain: 0.12, type: "triangle" },
-        { freq: 130.81, gain: 0.08, type: "sine" },
-      ],
-      t,
-      0.018,
-      0.48,
-    );
-    return;
-  }
 
   const fanVerb = makeFanfareReverb(c);
   fanVerb.connect(master);
 
-  playNoiseBurst(c, master, t, 0.058, 0.2, 1650, 3.8);
-  playNoiseBurst(c, master, t + 0.018, 0.045, 0.11, 380, 1.8);
+  playNoiseBurst(c, master, t, 0.058, 0.22, 1650, 3.8);
+  playNoiseBurst(c, master, t + 0.018, 0.048, 0.11, 380, 1.8);
 
   playOscGroup(
     c,
     master,
     [
-      { freq: 65.41, gain: 0.15, type: "triangle" },
-      { freq: 130.81, gain: 0.12, type: "sine" },
-      { freq: 98.0, gain: 0.06, type: "sine" },
+      { freq: 65.41, gain: 0.16, type: "triangle" },
+      { freq: 130.81, gain: 0.13, type: "sine" },
+      { freq: 98.0, gain: 0.065, type: "sine" },
     ],
     t,
     0.022,
@@ -384,9 +262,9 @@ export const playGoalDone = () => {
       c,
       fanVerb,
       [
-        { freq, gain: 0.27, type: "triangle" },
-        { freq: freq * 2, gain: 0.095, type: "sine" },
-        { freq: freq * 3, gain: 0.038, type: "sine" },
+        { freq, gain: 0.28, type: "triangle" },
+        { freq: freq * 2, gain: 0.1, type: "sine" },
+        { freq: freq * 3, gain: 0.04, type: "sine" },
       ],
       start,
       0.012,
@@ -397,8 +275,8 @@ export const playGoalDone = () => {
       c,
       master,
       [
-        { freq, gain: 0.12, type: "sine", pan },
-        { freq: freq * 2, gain: 0.048, type: "triangle", pan: pan * 0.55 },
+        { freq, gain: 0.125, type: "sine", pan },
+        { freq: freq * 2, gain: 0.052, type: "triangle", pan: pan * 0.55 },
       ],
       start,
       0.008,
@@ -410,14 +288,16 @@ export const playGoalDone = () => {
     c,
     fanVerb,
     [
-      { freq: 1318.5, gain: 0.13, type: "triangle", pan: -0.32 },
-      { freq: 1760, gain: 0.085, type: "sine", pan: 0.32 },
-      { freq: 2093, gain: 0.055, type: "sine", pan: 0.08 },
+      { freq: 1318.5, gain: 0.135, type: "triangle", pan: -0.32 },
+      { freq: 1760, gain: 0.09, type: "sine", pan: 0.32 },
+      { freq: 2093, gain: 0.058, type: "sine", pan: 0.08 },
     ],
     t + 0.33,
     0.016,
     1.72,
   );
+
+  maybeSampleAccent(c, master, "goal");
 };
 
 // ─── Emoji picked ───────────────────────────────────────────────────────────
@@ -425,26 +305,25 @@ export const playEmojiSpark = () => {
   if (!isSoundEnabled()) return;
   const c = getCtx();
   if (!c) return;
-  preloadUiSamples(c);
-  const master = createMasterFxIn(c, "standard");
+  const master = createMasterIn(c, "standard");
   const t = c.currentTime;
 
-  if (playUiSample(c, master, "emoji")) return;
-
-  playNoiseBurst(c, master, t, 0.024, 0.065, 3200, 6);
+  playNoiseBurst(c, master, t, 0.024, 0.07, 3200, 6);
 
   playOscGroup(
     c,
     master,
     [
-      { freq: 990, gain: 0.11, type: "triangle", freqEnd: 1320, pan: -0.2 },
-      { freq: 1320, gain: 0.055, type: "sine", freqEnd: 1760, pan: 0.22 },
-      { freq: 1980, gain: 0.032, type: "sine", freqEnd: 2340, pan: 0 },
+      { freq: 990, gain: 0.115, type: "triangle", freqEnd: 1320, pan: -0.2 },
+      { freq: 1320, gain: 0.058, type: "sine", freqEnd: 1760, pan: 0.22 },
+      { freq: 1980, gain: 0.035, type: "sine", freqEnd: 2340, pan: 0 },
     ],
     t,
     0.003,
     0.09,
   );
+
+  maybeSampleAccent(c, master, "emoji");
 };
 
 // ─── Add goal/subtask ────────────────────────────────────────────────────────
@@ -452,26 +331,25 @@ export const playPop = () => {
   if (!isSoundEnabled()) return;
   const c = getCtx();
   if (!c) return;
-  preloadUiSamples(c);
-  const master = createMasterFxIn(c, "tight");
+  const master = createMasterIn(c, "tight");
   const t = c.currentTime;
 
-  if (playUiSample(c, master, "pop")) return;
-
-  playNoiseBurst(c, master, t, 0.038, 0.13, 820, 2.2);
+  playNoiseBurst(c, master, t, 0.038, 0.14, 820, 2.2);
 
   playOscGroup(
     c,
     master,
     [
-      { freq: 420, gain: 0.07, type: "triangle", freqEnd: 620, pan: -0.18 },
-      { freq: 520, gain: 0.14, type: "sine", freqEnd: 800, pan: 0 },
-      { freq: 780, gain: 0.075, type: "triangle", freqEnd: 1080, pan: 0.2 },
+      { freq: 420, gain: 0.075, type: "triangle", freqEnd: 620, pan: -0.18 },
+      { freq: 520, gain: 0.15, type: "sine", freqEnd: 800, pan: 0 },
+      { freq: 780, gain: 0.082, type: "triangle", freqEnd: 1080, pan: 0.2 },
     ],
     t,
     0.007,
     0.22,
   );
+
+  maybeSampleAccent(c, master, "pop");
 };
 
 // ─── Delete ─────────────────────────────────────────────────────────────────
@@ -479,24 +357,23 @@ export const playRemove = () => {
   if (!isSoundEnabled()) return;
   const c = getCtx();
   if (!c) return;
-  preloadUiSamples(c);
-  const master = createMasterFxIn(c, "tight");
+  const master = createMasterIn(c, "tight");
   const t = c.currentTime;
 
-  if (playUiSample(c, master, "remove")) return;
-
-  playNoiseBurst(c, master, t, 0.032, 0.09, 520, 1.5);
+  playNoiseBurst(c, master, t, 0.032, 0.095, 520, 1.5);
 
   playOscGroup(
     c,
     master,
     [
-      { freq: 420, gain: 0.09, type: "triangle", freqEnd: 260, pan: -0.15 },
-      { freq: 500, gain: 0.11, type: "sine", freqEnd: 280, pan: 0.12 },
-      { freq: 320, gain: 0.045, type: "sine", freqEnd: 180, pan: 0 },
+      { freq: 420, gain: 0.095, type: "triangle", freqEnd: 260, pan: -0.15 },
+      { freq: 500, gain: 0.115, type: "sine", freqEnd: 280, pan: 0.12 },
+      { freq: 320, gain: 0.048, type: "sine", freqEnd: 180, pan: 0 },
     ],
     t,
     0.005,
     0.22,
   );
+
+  maybeSampleAccent(c, master, "remove");
 };

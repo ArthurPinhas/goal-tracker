@@ -8,7 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import IndexRouteFallback from "@/components/IndexRouteFallback";
 import { pageTransition } from "@/lib/motion";
 import { useAuth } from "@/hooks/useAuth";
-import { preloadUiSoundSamples } from "@/lib/sounds";
+import { preloadUiSoundSamples, PRELOAD_UI_SAMPLES } from "@/lib/sounds";
 import Login from "./pages/Login.tsx";
 import Register from "./pages/Register.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -56,6 +56,7 @@ function AnimatedRoutes() {
 
 function SoundAssetWarmup() {
   useEffect(() => {
+    if (!PRELOAD_UI_SAMPLES) return;
     preloadUiSoundSamples();
     const touchPrime = () => preloadUiSoundSamples();
     window.addEventListener("pointerdown", touchPrime, { passive: true });

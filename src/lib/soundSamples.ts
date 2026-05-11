@@ -68,3 +68,23 @@ export function playUiSample(c: AudioContext, dest: AudioNode, key: UiSoundKey):
   src.start(c.currentTime);
   return true;
 }
+
+/** Like playUiSample but gain scaled by `blend` (0–1). Use to tuck samples under synth. */
+export function playUiSampleAccent(
+  c: AudioContext,
+  dest: AudioNode,
+  key: UiSoundKey,
+  blend: number,
+): boolean {
+  if (blend <= 0) return false;
+  const buf = buffers[key];
+  if (!buf) return false;
+  const src = c.createBufferSource();
+  const g = c.createGain();
+  src.buffer = buf;
+  g.gain.value = SAMPLE_GAIN[key] * blend;
+  src.connect(g);
+  g.connect(dest);
+  src.start(c.currentTime);
+  return true;
+}
