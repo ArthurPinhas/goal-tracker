@@ -161,6 +161,7 @@ const Index = () => {
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const [addGoalOpen, setAddGoalOpen] = useState(false);
   const prevProgresses = useRef<Record<string, number>>({});
+  const prevGoalComplete = useRef<Record<string, boolean>>({});
   const headerRef = useRef<HTMLDivElement>(null);
   const mainGoalListRef = useRef<HTMLDivElement>(null);
   const reorderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -183,20 +184,42 @@ const Index = () => {
   }, [loading, orderedGoals.length]);
 
   useEffect(() => {
+    const ids = new Set(orderedGoals.map((g) => g.id));
+    for (const id of Object.keys(prevProgresses.current)) {
+      if (!ids.has(id)) {
+        delete prevProgresses.current[id];
+        delete prevGoalComplete.current[id];
+      }
+    }
+
     orderedGoals.forEach((goal) => {
       const pct = calcProgress(goal);
-      const prev = prevProgresses.current[goal.id];
-      if (prev !== undefined && prev < 100 && pct >= 100 && (goal.subtasks.length > 0 || goal.is_completed)) {
-        setCelebratingGoals((s) => new Set([...s, goal.id]));
-        // Full-screen celebration overlay (CSS on desktop); card chrome still animates.
-        if (ui.celebrationQuality === "full") {
-          setShowCelebration(true);
+      const complete = isGoalComplete(goal);
+      const prevPct = prevProgresses.current[goal.id];
+      const prevDone = prevGoalComplete.current[goal.id];
+
+      if (prevPct !== undefined && prevDone !== undefined) {
+        if (
+          !prevDone &&
+          complete &&
+          (goal.subtasks.length > 0 || goal.is_completed)
+        ) {
+          setCelebratingGoals((s) => new Set([...s, goal.id]));
+          if (ui.celebrationQuality === "full") {
+            setShowCelebration(true);
+          }
+          setTimeout(() => {
+            setCelebratingGoals((s) => {
+              const n = new Set(s);
+              n.delete(goal.id);
+              return n;
+            });
+          }, ui.celebrationGoalMs);
         }
-        setTimeout(() => {
-          setCelebratingGoals((s) => { const n = new Set(s); n.delete(goal.id); return n; });
-        }, ui.celebrationGoalMs);
       }
+
       prevProgresses.current[goal.id] = pct;
+      prevGoalComplete.current[goal.id] = complete;
     });
   }, [orderedGoals, ui.celebrationGoalMs, ui.celebrationQuality]);
 
@@ -806,7 +829,7 @@ const Index = () => {
                   ) : (
                     <div className="space-y-4">
                       <AnimatePresence initial={false}>
-                      {completedGoals.map((goal, i) => (
+                      {activeGoals.map((goal, i) => (
                         <motion.div
                           layout
                           key={goal.id}

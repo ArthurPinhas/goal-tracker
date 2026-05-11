@@ -105,7 +105,8 @@ const makeReverb = (c: AudioContext, duration: number, decay: number): Convolver
   return conv;
 };
 
-const makeFanfareReverb = (c: AudioContext): ConvolverNode => makeReverb(c, 1.55, 2.15);
+/** Longer, softer IR — airy “finish” behind the fanfare */
+const makeFanfareReverb = (c: AudioContext): ConvolverNode => makeReverb(c, 2.05, 1.95);
 
 type OscDef = {
   freq: number;
@@ -230,20 +231,20 @@ export const playGoalDone = () => {
   const fanVerb = makeFanfareReverb(c);
   fanVerb.connect(master);
 
-  playNoiseBurst(c, master, t, 0.058, 0.22, 1650, 3.8);
-  playNoiseBurst(c, master, t + 0.018, 0.048, 0.11, 380, 1.8);
+  playNoiseBurst(c, master, t, 0.052, 0.11, 2200, 4.2);
+  playNoiseBurst(c, master, t + 0.024, 0.036, 0.075, 520, 2);
 
   playOscGroup(
     c,
     master,
     [
-      { freq: 65.41, gain: 0.16, type: "triangle" },
-      { freq: 130.81, gain: 0.13, type: "sine" },
-      { freq: 98.0, gain: 0.065, type: "sine" },
+      { freq: 65.41, gain: 0.13, type: "sine" },
+      { freq: 130.81, gain: 0.1, type: "triangle" },
+      { freq: 98.0, gain: 0.048, type: "sine" },
     ],
     t,
-    0.022,
-    2.55,
+    0.04,
+    2.65,
   );
 
   const chord = [
@@ -262,25 +263,25 @@ export const playGoalDone = () => {
       c,
       fanVerb,
       [
-        { freq, gain: 0.28, type: "triangle" },
-        { freq: freq * 2, gain: 0.1, type: "sine" },
-        { freq: freq * 3, gain: 0.04, type: "sine" },
+        { freq, gain: 0.22, type: "sine" },
+        { freq: freq * 2, gain: 0.085, type: "sine" },
+        { freq: freq * 3, gain: 0.032, type: "triangle" },
       ],
       start,
-      0.012,
-      1.92,
+      0.028,
+      2.05,
     );
 
     playOscGroup(
       c,
       master,
       [
-        { freq, gain: 0.125, type: "sine", pan },
-        { freq: freq * 2, gain: 0.052, type: "triangle", pan: pan * 0.55 },
+        { freq, gain: 0.095, type: "sine", pan },
+        { freq: freq * 2, gain: 0.038, type: "triangle", pan: pan * 0.55 },
       ],
       start,
-      0.008,
-      0.72,
+      0.014,
+      0.78,
     );
   });
 
@@ -288,13 +289,14 @@ export const playGoalDone = () => {
     c,
     fanVerb,
     [
-      { freq: 1318.5, gain: 0.135, type: "triangle", pan: -0.32 },
-      { freq: 1760, gain: 0.09, type: "sine", pan: 0.32 },
-      { freq: 2093, gain: 0.058, type: "sine", pan: 0.08 },
+      { freq: 1318.5, gain: 0.1, type: "sine", pan: -0.28 },
+      { freq: 1760, gain: 0.068, type: "sine", pan: 0.28 },
+      { freq: 2093, gain: 0.045, type: "sine", pan: 0 },
+      { freq: 2638, gain: 0.028, type: "sine", pan: 0.15 },
     ],
     t + 0.33,
-    0.016,
-    1.72,
+    0.045,
+    1.95,
   );
 
   maybeSampleAccent(c, master, "goal");

@@ -79,18 +79,30 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
   const liteSubtreeMotion = celebrationQuality !== "full";
 
   const prevPercentage = useRef<number | null>(null);
-  const mounted = useRef(false);
+  /** Tracks real completion transitions — avoids spurious toasts when % flickers */
+  const prevCompleteRef = useRef<boolean | null>(null);
 
   useEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true;
+    const complete = isGoalComplete(goal);
+    if (prevCompleteRef.current === null) {
+      prevCompleteRef.current = complete;
       prevPercentage.current = percentage;
       return;
     }
-    const prev = prevPercentage.current ?? 0;
-    if (prev < 100 && percentage >= 100 && (goal.subtasks.length > 0 || goal.is_completed)) {
+
+    const wasComplete = prevCompleteRef.current;
+    prevCompleteRef.current = complete;
+    const prevPct = prevPercentage.current ?? 0;
+
+    const crossedToDone =
+      !wasComplete &&
+      complete &&
+      (goal.subtasks.length > 0 || goal.is_completed);
+
+    if (crossedToDone) {
       const runCompleteFx = () => {
         toast.success(pickRandom(GOAL_COMPLETE_TOASTS), {
+          id: `goal-complete-${goal.id}`,
           icon: "🏆",
           duration: heavyCelebration ? 5000 : 3200,
         });
@@ -114,11 +126,29 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
       } else {
         requestAnimationFrame(() => requestAnimationFrame(runCompleteFx));
       }
-    } else if (prev < 50 && percentage >= 50 && goal.subtasks.length > 0) {
-      toast(pickRandom(HALFWAY_TOASTS), { icon: "🔥" });
+    } else if (
+      prevPct < 50 &&
+      percentage >= 50 &&
+      percentage < 100 &&
+      goal.subtasks.length > 0 &&
+      !complete
+    ) {
+      toast(pickRandom(HALFWAY_TOASTS), {
+        id: `goal-half-${goal.id}`,
+        icon: "🔥",
+      });
     }
+
     prevPercentage.current = percentage;
-  }, [percentage, goal.subtasks.length, goal.is_completed, controls, heavyCelebration, reduceMotion]);
+  }, [
+    percentage,
+    goal.id,
+    goal.subtasks.length,
+    goal.is_completed,
+    controls,
+    heavyCelebration,
+    reduceMotion,
+  ]);
 
   useEffect(() => {
     setGoalNoteDraft(goal.notes);
