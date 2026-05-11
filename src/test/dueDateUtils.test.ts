@@ -10,6 +10,11 @@ const baseGoal = (overrides: Partial<Goal> & Pick<Goal, 'id'>): Goal => ({
   due_date: null,
   emoji: null,
   notes: '',
+  showcase_url: null,
+  showcase_caption: null,
+  showcase_image: null,
+  is_completed: false,
+  category: null,
   subtasks: [],
   ...overrides,
 });
@@ -86,6 +91,10 @@ describe('isIncompleteForDueDate', () => {
         { id: 's1', goal_id: '1', title: 'a', is_completed: true, effort: null, notes: '' },
       ],
     });
+    expect(isIncompleteForDueDate(g)).toBe(false);
+  });
+  it('treats standalone completed goal as complete for due purposes', () => {
+    const g = baseGoal({ id: '1', subtasks: [], is_completed: true });
     expect(isIncompleteForDueDate(g)).toBe(false);
   });
 });

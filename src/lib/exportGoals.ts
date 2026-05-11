@@ -17,9 +17,13 @@ const timestamp = () => new Date().toISOString().slice(0, 10);
 export const exportJSON = (goals: Goal[]) => {
   const data = goals.map((g) => ({
     title: g.title,
+    category: g.category?.name ?? null,
     emoji: g.emoji,
     description: g.description,
     notes: g.notes,
+    showcase_url: g.showcase_url,
+    showcase_caption: g.showcase_caption,
+    showcase_image: g.showcase_image,
     due_date: g.due_date,
     progress: Math.round(calcProgress(g)),
     subtasks: g.subtasks.map((s) => ({
@@ -35,7 +39,7 @@ export const exportJSON = (goals: Goal[]) => {
 
 export const exportCSV = (goals: Goal[]) => {
   const rows: string[] = [
-    'Goal,Emoji,Description,Goal notes,Due date,Progress,Subtask,Subtask notes,Completed,Effort',
+    'Category,Goal,Emoji,Description,Goal notes,Showcase caption,Showcase URL,Showcase image file,Due date,Progress,Subtask,Subtask notes,Completed,Effort',
   ];
   const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   for (const g of goals) {
@@ -43,18 +47,26 @@ export const exportCSV = (goals: Goal[]) => {
     const due = g.due_date ?? '';
     const em = g.emoji ?? '';
     const gn = g.notes ?? '';
+    const showCap = g.showcase_caption ?? '';
+    const showUrl = g.showcase_url ?? '';
+    const showImg = g.showcase_image ?? '';
+    const cat = g.category?.name ?? '';
     if (g.subtasks.length === 0) {
       rows.push(
-        [g.title, em, g.description, gn, due, progress, '', '', '', ''].map(esc).join(',')
+        [cat, g.title, em, g.description, gn, showCap, showUrl, showImg, due, progress, '', '', '', ''].map(esc).join(',')
       );
     } else {
       for (const s of g.subtasks) {
         rows.push(
           [
+            cat,
             g.title,
             em,
             g.description,
             gn,
+            showCap,
+            showUrl,
+            showImg,
             due,
             progress,
             s.title,
@@ -124,6 +136,15 @@ export const exportPDF = (goals: Goal[]) => {
     doc.text(`${pct}%`, pageW - margin - 11, y + 6.5, { align: 'center' });
     y += 13;
 
+    if (goal.category?.name) {
+      checkPage(5);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 100, 115);
+      doc.text(`Category: ${goal.category.name}`, margin + 3, y);
+      y += 5;
+    }
+
     if (goal.due_date) {
       checkPage(6);
       doc.setFontSize(8);
@@ -154,6 +175,34 @@ export const exportPDF = (goals: Goal[]) => {
       const noteLines = doc.splitTextToSize(goal.notes.trim(), contentW - 4);
       doc.text(noteLines, margin + 3, y);
       y += noteLines.length * 4.5 + 2;
+    }
+
+    if (goal.showcase_url?.trim() || goal.showcase_image?.trim()) {
+      checkPage(10);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(180, 130, 40);
+      doc.text('Showcase:', margin + 3, y);
+      y += 4;
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(90, 90, 100);
+      if (goal.showcase_caption?.trim()) {
+        const capLines = doc.splitTextToSize(goal.showcase_caption.trim(), contentW - 4);
+        doc.text(capLines, margin + 3, y);
+        y += capLines.length * 4.5 + 1;
+      }
+      if (goal.showcase_image?.trim()) {
+        doc.text(`Screenshot (file): ${goal.showcase_image.trim()}`, margin + 3, y);
+        y += 5;
+      }
+      if (goal.showcase_url?.trim()) {
+        doc.setTextColor(40, 80, 160);
+        const urlLines = doc.splitTextToSize(goal.showcase_url.trim(), contentW - 4);
+        doc.text(urlLines, margin + 3, y);
+        y += urlLines.length * 4.5 + 2;
+      } else {
+        y += 2;
+      }
     }
 
     // Subtask count line
@@ -199,12 +248,25 @@ export const exportPDF = (goals: Goal[]) => {
         }
       }
     } else {
-      checkPage(5);
+      checkPage(6);
       doc.setFontSize(8);
-      doc.setFont('helvetica', 'italic');
-      doc.setTextColor(150, 150, 160);
-      doc.text('No subtasks yet.', margin + 3, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120, 120, 130);
+      doc.text(
+        goal.is_completed ? 'Standalone goal · marked complete' : 'No subtasks yet.',
+        margin + 3,
+        y
+      );
       y += 5;
+
+      checkPage(6);
+      doc.setFillColor(230, 230, 235);
+      doc.roundedRect(margin + 3, y, contentW - 6, 3, 1, 1, 'F');
+      if (pct > 0) {
+        doc.setFillColor(...(badgeColor as [number, number, number]));
+        doc.roundedRect(margin + 3, y, ((contentW - 6) * pct) / 100, 3, 1, 1, 'F');
+      }
+      y += 7;
     }
 
     y += 6;

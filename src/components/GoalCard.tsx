@@ -2,16 +2,21 @@ import { useEffect, useRef, useState, type PointerEvent } from "react";
 import toast from "react-hot-toast";
 import { playGoalDone } from "@/lib/sounds";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
-import { Goal } from "@/types/goal";
-import { calcProgress, getProgressColor } from "@/lib/goalUtils";
+import type { Goal, GoalCategory, GoalShowcaseFileOptions } from "@/types/goal";
+import { calcProgress, getProgressColor, isGoalComplete } from "@/lib/goalUtils";
+import { goalHasShowcaseMedia, getGoalShowcaseImageUrl } from "@/lib/goalShowcaseAsset";
 import GoalProgress from "./GoalProgress";
 import SubtaskItem from "./SubtaskItem";
 import AddSubtaskDialog from "./AddSubtaskDialog";
 import EditGoalDialog from "./EditGoalDialog";
+import { GoalShowcaseBlock } from "./GoalShowcaseBlock";
+import { ShowcaseQuickDialog } from "./ShowcaseQuickDialog";
+import { LinkifiedText } from "@/components/LinkifiedText";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { CalendarDays, Trash2, Trophy, GripVertical, ChevronDown, Archive, StickyNote } from "lucide-react";
+import { CalendarDays, Trash2, Trophy, GripVertical, ChevronDown, Archive, StickyNote, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { smoothOut } from "@/lib/motion";
 import type { CelebrationQuality } from "@/hooks/useResponsiveUI";
@@ -33,10 +38,19 @@ interface GoalCardProps {
     description: string,
     dueDate: string | null,
     emoji: string | null,
-    notes: string
+    notes: string,
+    categoryId: string | null,
+    showcaseUrl: string | null,
+    showcaseCaption: string | null,
+    showcaseFile?: GoalShowcaseFileOptions
   ) => void;
+  categories: GoalCategory[];
+  onCreateCategory: (name: string) => Promise<string | null>;
   onSetEffort: (subtaskId: string, effort: number | null) => void;
   onUpdateSubtaskNotes: (subtaskId: string, notes: string) => void;
+  /** No-subtask goals: toggle PocketBase `completed` on the goal */
+  onToggleGoalStandaloneComplete: (goalId: string) => void;
+  pendingGoalComplete: Set<string>;
   onArchive?: () => void;
   showDragHandle?: boolean;
   /** When set (touch / narrow layouts), drag-to-reorder only starts from the grip — avoids scroll fighting. */
@@ -69,12 +83,14 @@ const PARTICLE_DEFS = Array.from({ length: 10 }, (_, i) => ({
   color: ['#f59e0b', '#a78bfa', '#34d399', '#fb7185', '#60a5fa'][i % 5],
 }));
 
-const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebrating = false, onToggleSubtask, onAddSubtask, onDelete, onDeleteSubtask, onEdit, onSetEffort, onUpdateSubtaskNotes, onArchive, showDragHandle = true, reorderHandlePointerDown }: GoalCardProps) => {
+const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebrating = false, onToggleSubtask, onAddSubtask, onDelete, onDeleteSubtask, onEdit, categories, onCreateCategory, onSetEffort, onUpdateSubtaskNotes, onToggleGoalStandaloneComplete, pendingGoalComplete, onArchive, showDragHandle = true, reorderHandlePointerDown }: GoalCardProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const [showGoalNotes, setShowGoalNotes] = useState(false);
+  const [quickShowcaseOpen, setQuickShowcaseOpen] = useState(false);
   const [goalNoteDraft, setGoalNoteDraft] = useState(goal.notes);
   const percentage = calcProgress(goal);
-  const isComplete = percentage >= 100 && goal.subtasks.length > 0;
+  const isComplete = isGoalComplete(goal);
+  const standalonePending = pendingGoalComplete.has(goal.id);
   const isInProgress = percentage > 0 && !isComplete;
   const incompleteForDue = isIncompleteForDueDate(goal);
   const dueUrgency = getDueUrgency(goal.due_date, incompleteForDue && !isComplete);
@@ -96,7 +112,7 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
       return;
     }
     const prev = prevPercentage.current ?? 0;
-    if (prev < 100 && percentage >= 100 && goal.subtasks.length > 0) {
+    if (prev < 100 && percentage >= 100 && (goal.subtasks.length > 0 || goal.is_completed)) {
       const runCompleteFx = () => {
         playGoalDone();
         toast.success(COMPLETE_MESSAGES[Math.floor(Math.random() * COMPLETE_MESSAGES.length)], {
@@ -115,11 +131,11 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
       } else {
         requestAnimationFrame(() => requestAnimationFrame(runCompleteFx));
       }
-    } else if (prev < 50 && percentage >= 50) {
+    } else if (prev < 50 && percentage >= 50 && goal.subtasks.length > 0) {
       toast(HALFWAY_MESSAGES[Math.floor(Math.random() * HALFWAY_MESSAGES.length)], { icon: "🔥" });
     }
     prevPercentage.current = percentage;
-  }, [percentage, goal.subtasks.length, controls, heavyCelebration]);
+  }, [percentage, goal.subtasks.length, goal.is_completed, controls, heavyCelebration]);
 
   useEffect(() => {
     setGoalNoteDraft(goal.notes);
@@ -128,7 +144,17 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
   const flushGoalNotes = () => {
     const t = goalNoteDraft.trim();
     if (t !== (goal.notes || "").trim()) {
-      onEdit(goal.id, goal.title, goal.description, goal.due_date, goal.emoji, t);
+      onEdit(
+        goal.id,
+        goal.title,
+        goal.description,
+        goal.due_date,
+        goal.emoji,
+        t,
+        goal.category?.id ?? null,
+        goal.showcase_url,
+        goal.showcase_caption
+      );
     }
   };
 
@@ -141,6 +167,7 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
 
   return (
     <motion.div
+      id={`goal-card-${goal.id}`}
       animate={controls}
       whileHover={!isCelebrating && celebrationQuality === "full" ? { y: -2 } : undefined}
       transition={{ type: "spring", stiffness: 400, damping: 32 }}
@@ -286,10 +313,23 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
                         style={{ width: `${percentage}%`, backgroundColor: getProgressColor(percentage) }}
                       />
                     </div>
-                    <span className="text-xs text-muted-foreground tabular-nums">{doneCount}/{goal.subtasks.length}</span>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {goal.subtasks.length > 0
+                        ? `${doneCount}/${goal.subtasks.length}`
+                        : goal.is_completed
+                          ? 'Done'
+                          : '—'}
+                    </span>
                   </div>
                 )}
               </div>
+              {goal.category && (
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  <span className="inline-flex max-w-full min-w-0 items-center truncate rounded-md border border-border/60 bg-secondary/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground dark:bg-secondary/30">
+                    {goal.category.name}
+                  </span>
+                </div>
+              )}
               {goal.due_date && (
                 <div
                   className={cn(
@@ -309,7 +349,7 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
           </button>
 
           <div className="col-span-2 flex items-center justify-end gap-0.5 max-md:min-h-11 md:col-span-1 md:col-start-3 md:row-start-1 md:gap-1">
-            <EditGoalDialog goal={goal} onEdit={onEdit} />
+            <EditGoalDialog goal={goal} categories={categories} onCreateCategory={onCreateCategory} onEdit={onEdit} />
             {isComplete && !isCelebrating && onArchive && (
               <Button
                 variant="ghost"
@@ -371,8 +411,55 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
             >
               <div className="px-4 pb-5 space-y-5 border-t border-border/60 pt-4 min-w-0">
                 {goal.description && (
-                  <p className="text-sm text-muted-foreground leading-relaxed">{goal.description}</p>
+                  <LinkifiedText
+                    text={goal.description}
+                    as="p"
+                    className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap break-words"
+                  />
                 )}
+                {isComplete && !goalHasShowcaseMedia(goal) && (
+                  <div className="rounded-2xl border border-dashed border-amber-500/35 bg-amber-500/[0.06] px-3.5 py-3 dark:bg-amber-500/[0.05]">
+                    <p className="text-xs text-muted-foreground leading-relaxed mb-2.5">
+                      Want to save a clip, screenshot, or link to this win? Optional — upload an image or paste a URL.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl border-amber-500/40 text-amber-700 hover:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/10"
+                      onClick={() => setQuickShowcaseOpen(true)}
+                    >
+                      Link your win
+                    </Button>
+                  </div>
+                )}
+                {isComplete && goalHasShowcaseMedia(goal) && (
+                  <GoalShowcaseBlock
+                    url={goal.showcase_url}
+                    uploadedImageUrl={getGoalShowcaseImageUrl(goal)}
+                    caption={goal.showcase_caption}
+                    onEditShowcase={() => setQuickShowcaseOpen(true)}
+                  />
+                )}
+                <ShowcaseQuickDialog
+                  goal={goal}
+                  open={quickShowcaseOpen}
+                  onOpenChange={setQuickShowcaseOpen}
+                  onSave={(url, cap, fileOpts) => {
+                    onEdit(
+                      goal.id,
+                      goal.title,
+                      goal.description,
+                      goal.due_date,
+                      goal.emoji,
+                      goal.notes,
+                      goal.category?.id ?? null,
+                      url,
+                      cap,
+                      fileOpts
+                    );
+                  }}
+                />
                 <div className="space-y-2 min-w-0">
                   <div className="flex items-center justify-between gap-2 min-w-0">
                     <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.12em]">
@@ -397,9 +484,12 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
                     <button
                       type="button"
                       className="text-left text-sm text-card-foreground rounded-xl border border-border/55 bg-muted/15 px-3 py-2.5 w-full min-w-0 max-w-full whitespace-pre-wrap break-words line-clamp-4 hover:bg-muted/30 hover:border-border dark:bg-card/30 dark:hover:bg-card/45 transition-all duration-300"
-                      onClick={() => setShowGoalNotes(true)}
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).closest("a")) return;
+                        setShowGoalNotes(true);
+                      }}
                     >
-                      {goal.notes}
+                      <LinkifiedText text={goal.notes} as="span" />
                     </button>
                   )}
                   {showGoalNotes && (
@@ -418,11 +508,39 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
                 <div className="space-y-0.5 min-w-0">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.12em]">
-                      Subtasks · {doneCount}/{goal.subtasks.length}
+                      Subtasks ·{' '}
+                      {goal.subtasks.length > 0
+                        ? `${doneCount}/${goal.subtasks.length}`
+                        : goal.is_completed
+                          ? 'done'
+                          : '—'}
                     </span>
                     <AddSubtaskDialog onAdd={(t, n) => onAddSubtask(goal.id, t, n)} />
                   </div>
                   <AnimatePresence initial={false}>
+                    {goal.subtasks.length === 0 && (
+                      <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/10 px-3 py-2.5 dark:bg-card/25">
+                        {standalonePending && (
+                          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" aria-hidden />
+                        )}
+                        <Checkbox
+                          id={`goal-standalone-${goal.id}`}
+                          checked={goal.is_completed}
+                          onCheckedChange={() => onToggleGoalStandaloneComplete(goal.id)}
+                          className="shrink-0"
+                          disabled={standalonePending}
+                        />
+                        <label
+                          htmlFor={`goal-standalone-${goal.id}`}
+                          className={cn(
+                            "text-sm cursor-pointer select-none flex-1 min-w-0 leading-snug",
+                            goal.is_completed ? "text-amber-400/95 font-medium" : "text-card-foreground"
+                          )}
+                        >
+                          {goal.is_completed ? "Marked complete" : "Mark goal complete (no subtasks)"}
+                        </label>
+                      </div>
+                    )}
                     {goal.subtasks.map((subtask) =>
                       liteSubtreeMotion ? (
                         <div key={subtask.id} className="min-w-0">
@@ -456,9 +574,6 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
                       ),
                     )}
                   </AnimatePresence>
-                  {goal.subtasks.length === 0 && (
-                    <p className="text-sm text-muted-foreground italic py-1.5">No subtasks yet.</p>
-                  )}
                 </div>
               </div>
             </motion.div>

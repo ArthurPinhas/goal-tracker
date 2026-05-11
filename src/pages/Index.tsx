@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, type ComponentProps } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, type ComponentProps } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, Reorder, useDragControls } from "framer-motion";
 import toast from "react-hot-toast";
@@ -7,7 +7,8 @@ import { useGoals } from "@/hooks/useGoals";
 import { useResponsiveUI } from "@/hooks/useResponsiveUI";
 import { useDueNotifications } from "@/hooks/useDueNotifications";
 import { Goal } from "@/types/goal";
-import { calcProgress } from "@/lib/goalUtils";
+import { calcProgress, isGoalComplete } from "@/lib/goalUtils";
+import { goalHasShowcaseMedia } from "@/lib/goalShowcaseAsset";
 import pb from "@/lib/pocketbase";
 import GoalCard from "@/components/GoalCard";
 import AddGoalDialog from "@/components/AddGoalDialog";
@@ -15,17 +16,19 @@ import SkeletonGoalCard from "@/components/SkeletonGoalCard";
 import CelebrationOverlay from "@/components/CelebrationOverlay";
 import StickyHeader from "@/components/StickyHeader";
 import GoalSidebar from "@/components/GoalSidebar";
+import { LinkifiedText } from "@/components/LinkifiedText";
 import ThemeToggle from "@/components/ThemeToggle";
 import { DueNotificationToggle } from "@/components/DueNotificationToggle";
 import { showDueReminderInAppToast } from "@/components/DueReminderInAppToast";
 import { PageSideParticles } from "@/components/PageSideParticles";
 import { UserHeroAvatar } from "@/components/UserHeroAvatar";
+import { HeroShowcaseStrip } from "@/components/HeroShowcaseStrip";
 import { EmptyState } from "@/components/EmptyState";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Target, LogOut, Search, Volume2, VolumeX, Check, Loader2, AlertCircle, Archive, RotateCcw, CheckSquare, Trash2, CalendarDays, SearchX, Sparkles, Trophy } from "lucide-react";
+import { Target, LogOut, Search, Volume2, VolumeX, Check, Loader2, AlertCircle, Archive, RotateCcw, CheckSquare, Trash2, CalendarDays, SearchX, Sparkles, Trophy, FolderTree } from "lucide-react";
 import { isSoundEnabled, toggleSound } from "@/lib/sounds";
 import { formatDueChip, getDueUrgency, isIncompleteForDueDate } from "@/lib/dueDateUtils";
 import { smoothOut, springContent } from "@/lib/motion";
@@ -65,7 +68,7 @@ const PAGE_ORBS = [
   { w: 165, h: 138, left: '2%',    top: 'auto',  bottom: '16%',  color: '#60a5fa', opacity: 0.03, duration: 26, delay: 7 },
 ];
 
-type Filter = 'all' | 'active' | 'done' | 'archived';
+type Filter = 'all' | 'active' | 'done' | 'showcase' | 'archived';
 type DueFilter = 'all' | 'has_due' | 'overdue' | 'due_soon';
 type GoalSortMode = 'manual' | 'due_asc';
 
@@ -91,6 +94,7 @@ function matchesDueFilter(goal: Goal, df: DueFilter): boolean {
 type SharedGoalCardProps = Pick<
   ComponentProps<typeof GoalCard>,
   | "pendingSubtasks"
+  | "pendingGoalComplete"
   | "celebrationQuality"
   | "onToggleSubtask"
   | "onAddSubtask"
@@ -99,6 +103,9 @@ type SharedGoalCardProps = Pick<
   | "onEdit"
   | "onSetEffort"
   | "onUpdateSubtaskNotes"
+  | "onToggleGoalStandaloneComplete"
+  | "categories"
+  | "onCreateCategory"
 >;
 
 function ActiveReorderGoalItem({
@@ -150,9 +157,10 @@ const Index = () => {
   const navigate = useNavigate();
   const ui = useResponsiveUI();
   const liteAmbience = ui.isNarrowViewport || ui.isCoarsePointer;
-  const { goals, loading, pendingSubtasks, saveStatus, archivedGoals, archivedLoading, createGoal, editGoal, deleteGoal, archiveGoal, restoreGoal, deleteArchivedGoal, fetchArchivedGoals, addSubtask, toggleSubtask, deleteSubtask, updateSubtaskEffort, updateSubtaskNotes, reorderGoals } = useGoals();
+  const { goals, categories, loading, pendingSubtasks, pendingGoalComplete, saveStatus, archivedGoals, archivedLoading, createGoal, createCategory, editGoal, deleteGoal, archiveGoal, restoreGoal, deleteArchivedGoal, fetchArchivedGoals, addSubtask, toggleSubtask, toggleGoalStandaloneComplete, deleteSubtask, updateSubtaskEffort, updateSubtaskNotes, reorderGoals } = useGoals();
   const [orderedGoals, setOrderedGoals] = useState<Goal[]>([]);
   const [search, setSearch] = useState('');
+  const [categoryFilterId, setCategoryFilterId] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [dueFilter, setDueFilter] = useState<DueFilter>('all');
   const [goalSortMode, setGoalSortMode] = useState<GoalSortMode>('manual');
@@ -163,6 +171,7 @@ const Index = () => {
   const [addGoalOpen, setAddGoalOpen] = useState(false);
   const prevProgresses = useRef<Record<string, number>>({});
   const headerRef = useRef<HTMLDivElement>(null);
+  const mainGoalListRef = useRef<HTMLDivElement>(null);
   const reorderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dueNotify = useDueNotifications(goals, {
     onDelivered: ({ title, body }) => {
@@ -186,7 +195,7 @@ const Index = () => {
     orderedGoals.forEach((goal) => {
       const pct = calcProgress(goal);
       const prev = prevProgresses.current[goal.id];
-      if (prev !== undefined && prev < 100 && pct >= 100 && goal.subtasks.length > 0) {
+      if (prev !== undefined && prev < 100 && pct >= 100 && (goal.subtasks.length > 0 || goal.is_completed)) {
         setCelebratingGoals((s) => new Set([...s, goal.id]));
         // Full-screen Lottie is expensive on phones; card-level celebration + toast still run.
         if (ui.celebrationQuality === "full") {
@@ -249,12 +258,16 @@ const Index = () => {
   const handleToggleSound = () => setSoundOn(toggleSound());
 
   const searchLower = search.toLowerCase().trim();
+  const matchesCategory = (g: Goal) => !categoryFilterId || g.category?.id === categoryFilterId;
   const matchesSearch = (g: Goal) => {
     if (!searchLower) return true;
     return (
       g.title.toLowerCase().includes(searchLower) ||
       g.description?.toLowerCase().includes(searchLower) ||
       (g.notes && g.notes.toLowerCase().includes(searchLower)) ||
+      (g.category && g.category.name.toLowerCase().includes(searchLower)) ||
+      (g.showcase_url && g.showcase_url.toLowerCase().includes(searchLower)) ||
+      (g.showcase_caption && g.showcase_caption.toLowerCase().includes(searchLower)) ||
       g.subtasks.some(
         (s) =>
           s.title.toLowerCase().includes(searchLower) ||
@@ -263,11 +276,43 @@ const Index = () => {
     );
   };
 
-  const activeGoalsBase = orderedGoals.filter((g) => (calcProgress(g) < 100 || celebratingGoals.has(g.id)) && matchesSearch(g));
-  const completedGoalsBase = orderedGoals.filter((g) => calcProgress(g) >= 100 && g.subtasks.length > 0 && !celebratingGoals.has(g.id) && matchesSearch(g));
+  const activeGoalsBase = orderedGoals.filter((g) => (!isGoalComplete(g) || celebratingGoals.has(g.id)) && matchesSearch(g) && matchesCategory(g));
+  const completedGoalsBase = orderedGoals.filter((g) => isGoalComplete(g) && !celebratingGoals.has(g.id) && matchesSearch(g) && matchesCategory(g));
+
+  const showcaseCount = useMemo(
+    () => orderedGoals.filter((g) => isGoalComplete(g) && goalHasShowcaseMedia(g)).length,
+    [orderedGoals]
+  );
+  const showcaseSpotlightGoals = useMemo(
+    () => orderedGoals.filter((g) => isGoalComplete(g) && goalHasShowcaseMedia(g)).slice(0, 8),
+    [orderedGoals]
+  );
+  const showShowcaseHeroNudge = useMemo(
+    () =>
+      orderedGoals.length > 0 &&
+      showcaseCount === 0 &&
+      orderedGoals.some((g) => isGoalComplete(g)),
+    [orderedGoals, showcaseCount]
+  );
+
+  const jumpToShowcaseGoal = useCallback((goalId: string) => {
+    setFilter("all");
+    requestAnimationFrame(() => {
+      document.getElementById(`goal-card-${goalId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, []);
+
+  const seeAllShowcases = useCallback(() => {
+    setFilter("showcase");
+    requestAnimationFrame(() => {
+      mainGoalListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
 
   const activeGoalsFiltered = activeGoalsBase.filter((g) => matchesDueFilter(g, dueFilter));
-  const completedGoalsFiltered = completedGoalsBase.filter((g) => matchesDueFilter(g, dueFilter));
+  const completedGoalsAfterDue = completedGoalsBase.filter((g) => matchesDueFilter(g, dueFilter));
+  const completedGoalsFiltered =
+    filter === "showcase" ? completedGoalsAfterDue.filter((g) => goalHasShowcaseMedia(g)) : completedGoalsAfterDue;
 
   const activeGoals = goalSortMode === 'due_asc' ? sortGoalsByDueAsc(activeGoalsFiltered) : activeGoalsFiltered;
   const completedGoals = completedGoalsFiltered;
@@ -281,7 +326,7 @@ const Index = () => {
     (g) => getDueUrgency(g.due_date, isIncompleteForDueDate(g)) === 'soon'
   ).length;
 
-  const showActive = filter !== 'done' && filter !== 'archived';
+  const showActive = filter !== 'done' && filter !== 'archived' && filter !== 'showcase';
   const showCompleted = filter !== 'active' && filter !== 'archived';
 
   const totalSubtasksDone = orderedGoals.reduce((sum, g) => sum + g.subtasks.filter((s) => s.is_completed).length, 0);
@@ -299,6 +344,7 @@ const Index = () => {
 
   const sharedCardProps = {
     pendingSubtasks,
+    pendingGoalComplete,
     celebrationQuality: ui.celebrationQuality,
     onToggleSubtask: toggleSubtask,
     onAddSubtask: addSubtask,
@@ -307,6 +353,9 @@ const Index = () => {
     onEdit: editGoal,
     onSetEffort: updateSubtaskEffort,
     onUpdateSubtaskNotes: updateSubtaskNotes,
+    onToggleGoalStandaloneComplete: toggleGoalStandaloneComplete,
+    categories,
+    onCreateCategory: createCategory,
   };
 
   const dueReminderToggle = (
@@ -386,6 +435,8 @@ const Index = () => {
             onToggleSound={handleToggleSound}
             onLogout={handleLogout}
             onAdd={createGoal}
+            categories={categories}
+            onCreateCategory={createCategory}
             addGoalOpen={addGoalOpen}
             onAddGoalOpenChange={setAddGoalOpen}
             dueNotificationsSlot={dueReminderToggle}
@@ -479,7 +530,13 @@ const Index = () => {
               )}
             </div>
             <div className="flex flex-wrap items-center gap-1 sm:gap-2 max-md:min-h-11 md:pt-1 w-full md:w-auto shrink-0 justify-start md:justify-end">
-              <AddGoalDialog onAdd={createGoal} open={addGoalOpen} onOpenChange={setAddGoalOpen} />
+              <AddGoalDialog
+                onAdd={createGoal}
+                categories={categories}
+                onCreateCategory={createCategory}
+                open={addGoalOpen}
+                onOpenChange={setAddGoalOpen}
+              />
               {dueReminderToggle}
               <ThemeToggle variant="header" className="h-11 w-11 touch-manipulation md:h-9 md:w-9" />
               <Button variant="ghost" size="icon" onClick={handleToggleSound} title={soundOn ? 'Mute sounds' : 'Unmute sounds'}
@@ -492,6 +549,17 @@ const Index = () => {
               </Button>
             </div>
           </div>
+
+          {!loading && orderedGoals.length > 0 && (showcaseSpotlightGoals.length > 0 || showShowcaseHeroNudge) && (
+            <HeroShowcaseStrip
+              spotlightGoals={showcaseSpotlightGoals}
+              showcaseCount={showcaseCount}
+              onJumpToGoal={jumpToShowcaseGoal}
+              onSeeAll={seeAllShowcases}
+              showGentleNudge={showShowcaseHeroNudge}
+              onViewDone={() => setFilter("done")}
+            />
+          )}
 
           {!loading && orderedGoals.length > 0 && (
             <motion.div
@@ -556,7 +624,7 @@ const Index = () => {
                 title="Set your first goal"
                 description="Break it into steps. Track your progress. Celebrate every win."
               >
-                <AddGoalDialog onAdd={createGoal} triggerClassName="cta-glow" />
+                <AddGoalDialog onAdd={createGoal} categories={categories} onCreateCategory={createCategory} triggerClassName="cta-glow" />
               </EmptyState>
             ) : (
               <motion.div
@@ -564,23 +632,50 @@ const Index = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={ui.liteMotion ? { duration: 0 } : { duration: 0.45, ease: smoothOut }}
                 className="space-y-6"
+                ref={mainGoalListRef}
               >
                 {/* Search + filter */}
                 <div className="space-y-3">
-                  <div className="relative group">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                  <div className="relative group flex-1 min-w-0">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary/80" />
                     <Input
-                      placeholder="Search goals and subtasks…"
+                      placeholder="Search goals, subtasks, categories…"
                       className="pl-9 max-md:min-h-11 h-11 md:h-10 rounded-lg transition-all duration-300 ease-out focus-visible:ring-offset-background app-surface-input dark:focus-visible:shadow-md dark:focus-visible:shadow-primary/5"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                     />
                   </div>
+                  <Select
+                    value={categoryFilterId ?? '__all__'}
+                    onValueChange={(v) => setCategoryFilterId(v === '__all__' ? null : v)}
+                  >
+                    <SelectTrigger
+                      aria-label="Filter by category"
+                      className="w-full sm:w-[min(100%,220px)] shrink-0 max-md:min-h-11 min-h-11 md:min-h-10 h-11 md:h-10 rounded-lg transition-all duration-300 app-surface-input"
+                    >
+                      <FolderTree className="h-4 w-4 mr-2 shrink-0 text-muted-foreground" aria-hidden />
+                      <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">All categories</SelectItem>
+                      {categories.map((c) => {
+                        const n = orderedGoals.filter((g) => g.category?.id === c.id).length;
+                        return (
+                          <SelectItem key={c.id} value={c.id}>
+                            {`${c.name} (${n})`}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
                   <div className="flex gap-2 flex-wrap">
                     {([
                       { f: 'all', label: `All (${orderedGoals.length})` },
                       { f: 'active', label: `Active (${activeGoalsBase.length})` },
                       { f: 'done', label: `Done (${completedGoalsBase.length})` },
+                      { f: 'showcase', label: `On display (${showcaseCount})` },
                       { f: 'archived', label: `Archived${archivedGoals.length > 0 ? ` (${archivedGoals.length})` : ''}` },
                     ] as { f: Filter; label: string }[]).map(({ f, label }) => (
                       <button
@@ -599,7 +694,7 @@ const Index = () => {
                       </button>
                     ))}
                   </div>
-                  {filter !== 'archived' && (
+                  {filter !== 'archived' && filter !== 'showcase' && (
                     <div className="flex flex-col gap-2.5 md:flex-row md:flex-wrap md:items-end md:justify-between pt-3 mt-1 border-t border-border/50">
                       <div className="flex flex-col gap-2">
                         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.12em]">
@@ -656,7 +751,7 @@ const Index = () => {
                       onReorder={(reordered) => {
                         let next: Goal[] = [];
                         setOrderedGoals((prev) => {
-                          const completedIds = new Set(prev.filter((g) => calcProgress(g) >= 100 && !celebratingGoals.has(g.id)).map((g) => g.id));
+                          const completedIds = new Set(prev.filter((g) => isGoalComplete(g) && !celebratingGoals.has(g.id)).map((g) => g.id));
                           const completed = prev.filter((g) => completedIds.has(g.id));
                           next = [...reordered, ...completed];
                           localStorage.setItem('goal-order', JSON.stringify(next.map((g) => g.id)));
@@ -686,10 +781,10 @@ const Index = () => {
                   ) : (
                     <div className="space-y-4">
                       <AnimatePresence initial={false}>
-                        {activeGoals.map((goal, i) => (
-                          <motion.div
-                            key={goal.id}
-                            initial={ui.liteMotion ? false : { opacity: 0, y: 16 }}
+                      {completedGoals.map((goal, i) => (
+                        <motion.div
+                          key={goal.id}
+                          initial={ui.liteMotion ? false : { opacity: 0, y: 16 }}
                             animate={{
                               opacity: 1,
                               y: 0,
@@ -707,11 +802,13 @@ const Index = () => {
 
                 {/* Completed goals section */}
                 {showCompleted && completedGoals.length > 0 && (
-                  <div className="space-y-3">
+                  <div className="space-y-3" id={filter === "showcase" ? "showcase-gallery" : undefined}>
                     {showActive && activeGoals.length > 0 && (
                       <div className="flex items-center gap-3 pt-2">
                         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
-                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.2em]">Completed</span>
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.2em]">
+                          {filter === "showcase" ? "Wins on display" : "Completed"}
+                        </span>
                         <div className="h-px flex-1 bg-gradient-to-l from-transparent via-border to-transparent" />
                       </div>
                     )}
@@ -752,9 +849,27 @@ const Index = () => {
                         title="Archive is empty"
                         description="When you archive a goal, it lands here. Restore it anytime or delete it permanently."
                       />
-                    ) : archivedGoals.map((goal) => {
+                    ) : (() => {
+                      const archivedFiltered = archivedGoals.filter((g) => matchesSearch(g) && matchesCategory(g));
+                      if (archivedFiltered.length === 0) {
+                        return (
+                          <EmptyState
+                            compact
+                            icon={SearchX}
+                            title="No archived goals match"
+                            description="Try clearing the search box or setting the category filter to “All categories”."
+                          />
+                        );
+                      }
+                      return archivedFiltered.map((goal) => {
                       const pct = calcProgress(goal);
                       const done = goal.subtasks.filter((s) => s.is_completed).length;
+                      const subtaskSummary =
+                        goal.subtasks.length > 0
+                          ? `${done}/${goal.subtasks.length} subtasks`
+                          : goal.is_completed
+                            ? 'Standalone · complete'
+                            : 'No subtasks';
                       return (
                         <div key={goal.id} className="group rounded-2xl border border-border/55 bg-card/60 backdrop-blur-sm px-4 py-4 flex flex-col gap-3 sm:flex-row sm:items-start opacity-90 hover:opacity-100 transition-all duration-300 hover:border-border/80 hover:shadow-xl hover:shadow-black/25 dark:bg-card/55 dark:hover:shadow-black/40">
                           <div className="flex items-start gap-3 min-w-0 flex-1">
@@ -764,7 +879,11 @@ const Index = () => {
                                 {goal.emoji && <span className="shrink-0 text-base leading-none">{goal.emoji}</span>}
                                 <span className="truncate min-w-0">{goal.title}</span>
                               </p>
-                              {goal.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{goal.description}</p>}
+                              {goal.description && (
+                                <div className="text-xs text-muted-foreground truncate mt-0.5 min-w-0">
+                                  <LinkifiedText text={goal.description} as="span" />
+                                </div>
+                              )}
                               {goal.due_date && (
                                 <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
                                   <CalendarDays className="h-3 w-3 shrink-0 opacity-80" />
@@ -773,7 +892,7 @@ const Index = () => {
                               )}
                               <div className="flex items-center gap-1.5 mt-1.5">
                                 <CheckSquare className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground tabular-nums">{done}/{goal.subtasks.length} subtasks · {pct}%</span>
+                                <span className="text-xs text-muted-foreground tabular-nums">{subtaskSummary} · {pct}%</span>
                               </div>
                             </div>
                           </div>
@@ -801,7 +920,8 @@ const Index = () => {
                           </div>
                         </div>
                       );
-                    })}
+                      });
+                    })()}
                   </div>
                 )}
 
@@ -815,12 +935,26 @@ const Index = () => {
                         title={`No matches for "${search}"`}
                         description="Try a shorter search or clear the box to see all goals."
                       />
+                    ) : categoryFilterId ? (
+                      <EmptyState
+                        compact
+                        icon={FolderTree}
+                        title="Nothing in this category"
+                        description="Choose “All categories” in the filter, or pick a different category."
+                      />
                     ) : dueFilter !== 'all' ? (
                       <EmptyState
                         compact
                         icon={CalendarDays}
                         title="Nothing matches this deadline"
                         description="Switch deadline filter to “Any” or choose another option."
+                      />
+                    ) : filter === 'showcase' ? (
+                      <EmptyState
+                        compact
+                        icon={Sparkles}
+                        title="Nothing on display yet"
+                        description="Complete a goal, then tap Link your win on the card or add a link in Edit goal. YouTube, image URLs, and regular https links all work."
                       />
                     ) : filter === 'active' ? (
                       <EmptyState

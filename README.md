@@ -4,11 +4,11 @@ A personal goal-tracking app: break goals into weighted subtasks, see **live pro
 
 ## About
 
-**Goal Tracker** is a self-hosted personal productivity app: you define goals, split them into subtasks, optionally weight progress with effort points (1–5), set optional due dates with overdue and due-soon cues, attach plain-text notes, and export your data (JSON, CSV, PDF) from the browser. Auth and persistence use **PocketBase** (SQLite); the UI is **React 18**, **TypeScript**, **Vite**, **Tailwind CSS**, and **shadcn/ui**, with a dark-first theme, Framer Motion polish, optional sounds, milestone celebrations, and a **PWA**-friendly build. Reminders use the browser **Notification** API (tab/PWA active—no background push). See **Prerequisites** and **Quick start** below to run the app and PocketBase locally.
+**Goal Tracker** is a self-hosted personal productivity app: you define goals, split them into subtasks, optionally weight progress with effort points (1–5), set optional due dates with overdue and due-soon cues, attach plain-text notes, optionally highlight finished work with a **showcase** (uploaded screenshot and/or external link with a short caption), and export your data (JSON, CSV, PDF) from the browser. Auth and persistence use **PocketBase** (SQLite); the UI is **React 18**, **TypeScript**, **Vite**, **Tailwind CSS**, and **shadcn/ui**, with a dark-first theme, Framer Motion polish, optional sounds, milestone celebrations, and a **PWA**-friendly build. Reminders use the browser **Notification** API (tab/PWA active—no background push). See **Prerequisites** and **Quick start** below to run the app and PocketBase locally.
 
 **Suggested GitHub “About” (copy-paste):**
 
-- **Description:** Personal goal tracker with weighted subtasks, due dates, notes, and celebrations — React, Vite, Tailwind, PocketBase.
+- **Description:** Personal goal tracker with weighted subtasks, due dates, notes, optional completion showcase (screenshot / link), and celebrations — React, Vite, Tailwind, PocketBase.
 - **Topics:** `react` `typescript` `vite` `pocketbase` `tailwindcss` `shadcn-ui` `framer-motion` `goal-tracking` `productivity` `pwa` `self-hosted`
 
 ---
@@ -31,6 +31,7 @@ A personal goal-tracking app: break goals into weighted subtasks, see **live pro
 - **Optional due dates** — per-goal deadline, overdue / due-soon emphasis, filters & sort-by-due sidebar stats.
 - **Due reminders (browser)** — optional Notification API alerts when a goal is **due today** or **overdue** (incomplete). Works while the tab or installed PWA has focus; no server push or background delivery (see limitations below).
 - **Notes** — plain-text notes on goals and subtasks; included in search and exports (JSON / CSV / PDF).
+- **Showcase (completed goals)** — optional **screenshot upload** (PocketBase file) and/or external link + short caption in **Edit goal** or the quick showcase control once a goal is done; appears as a highlighted “win” block on the card, can surface in the optional hero **On display** strip, and in exports (JSON / CSV / PDF include caption, URL, and uploaded **filename** where present—the file itself is not embedded in export files).
 - **Subtasks** — add, toggle (optimistic), delete; optional effort (1–5) for weighted progress.
 - **Progress** — equal weight by default; effort-weighted when any subtask has effort set.
 - **Search & tabs** — search titles, descriptions, **notes**, and subtask titles; filters (All · Active · Done · Archived).
@@ -58,12 +59,12 @@ The app is **dark-first** with a shared visual language: design tokens in `src/i
 ### 1. Clone & install
 
 ```bash
-git clone https://github.com/ArthurPinhas/goal-tracker.git
-cd goal-tracker
+git clone <your-git-clone-url>
+cd <repository-folder>
 npm install
 ```
 
-The **remote you push to** is whatever you configured locally (`git remote -v`); this clone URL matches the default upstream for this project.
+Use your fork or upstream URL (`git clone …`). The **remote you push to** is whatever you configure locally (`git remote -v`).
 
 
 ### 2. Environment
@@ -86,7 +87,9 @@ Use your deployed PocketBase HTTPS URL for production builds only if that URL is
 
 Configure in the PocketBase Admin UI (`/_/`):
 
-- **`goals`** — `user` (relation → users), `name`, `description`, `archived` (bool), `sort_order` (number), plus optional **`due_date`** (type **date**), optional **`emoji`** (type **text**), and optional **`notes`** (type **text** — plain text only).
+- **`categories`** — `user` (relation → users), **`name`** (text). Used as optional folders for goals; create and pick them when adding or editing a goal.
+
+- **`goals`** — `user` (relation → users), `name`, `description`, `archived` (bool), `sort_order` (number), **`completed`** (bool — for goals with **no** subtasks, marks the goal done directly; reset when you add subtasks), optional **`category`** (relation → **categories**, single, max 1 — optional), plus optional **`due_date`** (type **date**), optional **`emoji`** (type **text**), optional **`notes`** (type **text** — plain text only), optional **`showcase_image`** (type **file**, single — screenshot for completed-goal showcase; restrict to images and align max size with client, ~5 MB), optional **`showcase_url`** (type **text** — `http`/`https` link shown when the goal is complete), and optional **`showcase_caption`** (type **text** — short line above the link).
 
 - **`subtasks`** — `goal` (relation → goals), `name`, `completed` (bool), `effort` (number, optional), optional **`notes`** (type **text**).
 
@@ -141,7 +144,7 @@ Internal product notes and roadmap live in **`CLAUDE.md`** (for contributors / A
 
 ### Due reminders (limitations)
 
-Browser notifications require **permission** and work best on **HTTPS** or **localhost**. When a reminder fires you also see a **message at the top of the page** in the tab you’re using (helps when the OS banner is brief, or you use Brave here but allowed Safari elsewhere). Alerts run for goals **due today** or **past due** that are **not finished** (progress under 100% if they have subtasks). Checks about **every minute** and when you refocus the tab. **At most one reminder per goal per day.**
+Browser notifications require **permission** and work best on **HTTPS** or **localhost**. When a reminder fires you also see a **message at the top of the page** in the tab you’re using (useful when the OS banner is easy to miss). Alerts run for goals **due today** or **past due** that are **not finished** (progress under 100% if they have subtasks). Checks about **every minute** and when you refocus the tab. **At most one reminder per goal per day.**
 
 If you turned reminders on **before your goals finished loading**, an older version could miss the first check until you came back to the tab—that bug is fixed, and failed system alerts no longer block retries the way they used to.
 

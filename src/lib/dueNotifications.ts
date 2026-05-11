@@ -1,5 +1,4 @@
 import type { Goal } from '@/types/goal';
-import { calcProgress } from '@/lib/goalUtils';
 import {
   getDueUrgency,
   isIncompleteForDueDate,
@@ -80,8 +79,6 @@ export function runDueNotificationCheck(
 
   for (const g of goals) {
     if (!g.due_date) continue;
-    const isComplete = calcProgress(g) >= 100 && g.subtasks.length > 0;
-    if (isComplete) continue;
     if (!isIncompleteForDueDate(g)) continue;
 
     const overdue = getDueUrgency(g.due_date, true) === 'overdue';

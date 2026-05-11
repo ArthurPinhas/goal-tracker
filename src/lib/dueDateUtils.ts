@@ -27,9 +27,9 @@ export function toLocalDayString(d: Date): string {
   return `${y}-${month}-${day}`;
 }
 
-/** Goals with no subtasks or progress &lt; 100% — due urgency applies. */
+/** Incomplete goals — overdue / due-soon styling and due reminders apply. */
 export function isIncompleteForDueDate(goal: Goal): boolean {
-  if (goal.subtasks.length === 0) return true;
+  if (goal.subtasks.length === 0) return !goal.is_completed;
   return calcProgress(goal) < 100;
 }
 

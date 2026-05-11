@@ -12,8 +12,13 @@ const { pb: mockPb, resetPocketBaseMock } = vi.hoisted(() => {
     due_date: string | null;
     emoji: string | null;
     notes: string | null;
+    showcase_url: string | null;
+    showcase_caption: string | null;
+    showcase_image: string | null;
     archived: boolean;
     sort_order: number;
+    completed: boolean;
+    category: string | null;
   };
   type SubRow = {
     id: string;
@@ -23,38 +28,49 @@ const { pb: mockPb, resetPocketBaseMock } = vi.hoisted(() => {
     effort: number | null;
     notes: string;
   };
+  type CatRow = { id: string; user: string; name: string };
 
   const S = {
     goals: [] as GoalRow[],
     subs: [] as SubRow[],
+    cats: [] as CatRow[],
     gid: 1,
     sid: 1,
+    cid: 1,
   };
 
   function reset() {
     S.goals = [];
     S.subs = [];
+    S.cats = [];
     S.gid = 1;
     S.sid = 1;
+    S.cid = 1;
   }
 
   function rowForGetFullList(g: GoalRow, expand?: string) {
-    if (expand !== 'subtasks_via_goal') return { ...g };
-    return {
-      ...g,
-      expand: {
-        subtasks_via_goal: S.subs
-          .filter((s) => s.goal === g.id)
-          .map((s) => ({
-            id: s.id,
-            goal: s.goal,
-            name: s.name,
-            completed: s.completed,
-            effort: s.effort,
-            notes: s.notes,
-          })),
-      },
-    };
+    if (!expand) return { ...g };
+    const parts = expand.split(',').map((p) => p.trim());
+    const out: Record<string, unknown> = { ...g };
+    const exp: Record<string, unknown> = {};
+    if (parts.includes('subtasks_via_goal')) {
+      exp.subtasks_via_goal = S.subs
+        .filter((s) => s.goal === g.id)
+        .map((s) => ({
+          id: s.id,
+          goal: s.goal,
+          name: s.name,
+          completed: s.completed,
+          effort: s.effort,
+          notes: s.notes,
+        }));
+    }
+    if (parts.includes('category') && g.category) {
+      const c = S.cats.find((x) => x.id === g.category);
+      if (c) exp.category = { id: c.id, name: c.name };
+    }
+    if (Object.keys(exp).length > 0) out.expand = exp;
+    return out;
   }
 
   const pb = {
@@ -71,6 +87,8 @@ const { pb: mockPb, resetPocketBaseMock } = vi.hoisted(() => {
             notes?: string | null;
             user: string;
             sort_order: number;
+            completed?: boolean;
+            category?: string | null;
           }) => {
             const id = `g${S.gid++}`;
             S.goals.push({
@@ -81,18 +99,35 @@ const { pb: mockPb, resetPocketBaseMock } = vi.hoisted(() => {
               due_date: data.due_date,
               emoji: data.emoji ?? null,
               notes: data.notes ?? null,
+              showcase_url: null,
+              showcase_caption: null,
+              showcase_image: null,
               user: data.user,
               sort_order: data.sort_order,
+              completed: data.completed ?? false,
+              category: data.category ?? null,
             });
             return { id };
           },
           update: async (id: string, patch: Partial<GoalRow>) => {
             const g = S.goals.find((x) => x.id === id);
             if (g) Object.assign(g, patch);
+            const row = S.goals.find((x) => x.id === id);
+            return row ? { ...row } : {};
           },
           delete: async (id: string) => {
             S.goals = S.goals.filter((x) => x.id !== id);
             S.subs = S.subs.filter((s) => s.goal !== id);
+          },
+        };
+      }
+      if (name === 'categories') {
+        return {
+          getFullList: async () => [...S.cats].sort((a, b) => a.name.localeCompare(b.name)),
+          create: async (data: { name: string; user: string }) => {
+            const id = `c${S.cid++}`;
+            S.cats.push({ id, user: data.user, name: data.name });
+            return { id };
           },
         };
       }
@@ -192,6 +227,35 @@ describe('useGoals (CRUD sanity)', () => {
     await waitFor(() => {
       expect(result.current.goals[0].title).toBe('New title');
       expect(result.current.goals[0].description).toBe('New desc');
+    });
+  });
+
+  it('persists showcase link and caption on edit', async () => {
+    const { result } = hook();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.createGoal('Done goal', '', null);
+    });
+    const id = result.current.goals[0].id;
+
+    await act(async () => {
+      await result.current.editGoal(
+        id,
+        'Done goal',
+        '',
+        null,
+        null,
+        '',
+        null,
+        'https://example.com/win',
+        'Live demo'
+      );
+    });
+
+    await waitFor(() => {
+      expect(result.current.goals[0].showcase_url).toBe('https://example.com/win');
+      expect(result.current.goals[0].showcase_caption).toBe('Live demo');
     });
   });
 
@@ -320,6 +384,54 @@ describe('useGoals (CRUD sanity)', () => {
     await waitFor(() => {
       expect(result.current.archivedGoals).toHaveLength(0);
       expect(result.current.goals.some((g) => g.id === id)).toBe(true);
+    });
+  });
+
+  it('toggles standalone goal complete (no subtasks)', async () => {
+    const { result } = hook();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.createGoal('Solo', '', null);
+    });
+    const id = result.current.goals[0].id;
+    expect(result.current.goals[0].is_completed).toBe(false);
+
+    await act(async () => {
+      await result.current.toggleGoalStandaloneComplete(id);
+    });
+    await waitFor(() => {
+      expect(result.current.goals[0].is_completed).toBe(true);
+    });
+
+    await act(async () => {
+      await result.current.toggleGoalStandaloneComplete(id);
+    });
+    await waitFor(() => {
+      expect(result.current.goals[0].is_completed).toBe(false);
+    });
+  });
+
+  it('clears goal completed flag when adding a subtask after standalone complete', async () => {
+    const { result } = hook();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.createGoal('Both', '', null);
+    });
+    const goalId = result.current.goals[0].id;
+
+    await act(async () => {
+      await result.current.toggleGoalStandaloneComplete(goalId);
+    });
+    await waitFor(() => expect(result.current.goals[0].is_completed).toBe(true));
+
+    await act(async () => {
+      await result.current.addSubtask(goalId, 'Step');
+    });
+    await waitFor(() => {
+      expect(result.current.goals[0].subtasks).toHaveLength(1);
+      expect(result.current.goals[0].is_completed).toBe(false);
     });
   });
 });

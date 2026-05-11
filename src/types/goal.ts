@@ -8,6 +8,12 @@ export interface Subtask {
   notes: string;
 }
 
+/** User-defined bucket for organizing goals (PocketBase `categories`). */
+export interface GoalCategory {
+  id: string;
+  name: string;
+}
+
 export interface Goal {
   id: string;
   user_id: string;
@@ -19,5 +25,24 @@ export interface Goal {
   emoji: string | null;
   /** Plain-text private notes (not the short description) */
   notes: string;
+  /**
+   * Optional external link celebrating the finished outcome (demo, video, article).
+   * Only meaningful for completed goals; edited in the goal dialog when done.
+   */
+  showcase_url: string | null;
+  /** Optional short line shown above the link (e.g. “Open mic recording”). */
+  showcase_caption: string | null;
+  /** Optional uploaded image filename (PocketBase `showcase_image` file field). */
+  showcase_image: string | null;
+  /** When there are no subtasks, marks the goal done without checklist items (PocketBase `completed`). */
+  is_completed: boolean;
+  /** Optional folder (PocketBase `category` → categories) */
+  category: GoalCategory | null;
   subtasks: Subtask[];
 }
+
+/** Optional file/remove flags passed with `editGoal` when updating showcase. */
+export type GoalShowcaseFileOptions = {
+  showcaseImageFile?: File | null;
+  removeShowcaseImage?: boolean;
+};

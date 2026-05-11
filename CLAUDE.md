@@ -17,7 +17,7 @@ The experience should feel **tactile and fun** — every action should have a vi
 | Styling | Tailwind CSS + Shadcn UI |
 | Themes | **next-themes** — **dark default**, optional light (class on `<html>`, persisted `goal-tracker-theme`) |
 | Backend + DB + Auth | PocketBase (self-contained binary, SQLite under the hood) |
-| Dev environment | Cursor IDE |
+| Dev environment | Local (editor-agnostic) |
 | Frontend hosting | Cloudflare Pages (future) |
 | Backend hosting | Synology NAS via Docker (future) |
 
@@ -42,6 +42,9 @@ Auth UI collects **username + password**; the client maps signup/login to Pocket
 | **due_date** | **date** | **optional** — calendar deadline; app uses canonical `YYYY-MM-DD` semantics |
 | **emoji** | text | optional — display emoji in title row (suggest/pick in dialogs) |
 | **notes** | text | optional — plain-text private notes (search + export) |
+| **showcase_url** | text | optional — `http`/`https` link; **Edit goal** when complete; highlighted on card |
+| **showcase_caption** | text | optional — short line above showcase link |
+| **showcase_image** | file | optional — single image; screenshot-upload showcase (client max ~5 MB); **Edit goal** / quick showcase when complete |
 | archived | bool | default false |
 | sort_order | number | drag-and-drop order; **new goals** created with **`sort_order: -Date.now()`** so ascending sort surfaces them above legacy `0…n−1`; client merge keeps “new IDs” first in `orderedGoals` |
 | created | auto | PocketBase generates |
@@ -117,6 +120,7 @@ Per product direction: **export remains client-side only**; **sidebar layout** w
 - Progress bar — weighted by effort if set, equal weight otherwise
 - Search across goal title, description, **goal notes**, subtask titles, and **subtask notes**
 - Filter tabs: All / Active / Done / Archived; **deadline refinement** + **due-date sort**
+- **Showcase (complete goals)** — optional **`showcase_url`**, **`showcase_caption`**, and/or **`showcase_image`** (single image file on **`goals`**); **Edit goal** + quick showcase dialog support upload, replace, and remove; **`GoalShowcaseBlock`** on **`GoalCard`**; hero **`HeroShowcaseStrip`** and **On display** filter on **`Index`**; public file URL via **`getGoalShowcaseImageUrl`** (`src/lib/goalShowcaseAsset.ts`), client validation in **`showcaseImageUpload.ts`**
 
 **Subtasks**
 
@@ -155,7 +159,7 @@ Per product direction: **export remains client-side only**; **sidebar layout** w
 
 **Export**
 
-- JSON, CSV, PDF — **`due_date`** and **notes** (goal + subtask) included where present
+- JSON, CSV, PDF — **`due_date`**, **notes** (goal + subtask), and showcase fields (**`showcase_url`**, **`showcase_caption`**, **`showcase_image`** filename) included where present (exports do not bundle binary file contents)
 - `ExportDialog` in sidebar
 
 **Infrastructure**
@@ -166,7 +170,7 @@ Per product direction: **export remains client-side only**; **sidebar layout** w
 - PocketBase client singleton `src/lib/pocketbase.ts`
 - `goalUtils.ts` — `calcProgress`, `getProgressColor`
 - `dueDateUtils.ts` — urgency, normalization, formatting
-- **`src/types/goal.ts`** — `Goal` / `Subtask` include `due_date`, `emoji`, **`notes`**
+- **`src/types/goal.ts`** — `Goal` / `Subtask` include `due_date`, `emoji`, **`notes`**, **`showcase_url`**, **`showcase_caption`**, **`showcase_image`**
 
 **Testing**
 
@@ -194,7 +198,12 @@ src/
     DueNotificationToggle — Bell: browser due reminders (option A)
     DueReminderInAppToast — Large in-tab mirror when system notification fires
     ExportDialog        — Export modal (JSON/CSV/PDF)
-    GoalCard            — Goal card + subtasks + due urgency chrome
+    LinkifiedText       — Plain-text URLs → links in notes/showcase copy
+    ShowcaseQuickDialog — Quick edit showcase URL / caption / screenshot when complete
+    GoalCard            — Goal card + subtasks + due urgency chrome + showcase block when complete
+    GoalCategoryPicker  — Optional goal folder (categories relation)
+    GoalShowcaseBlock   — Completed-goal showcase: uploaded image + link previews
+    HeroShowcaseStrip   — Hero row of goals “on display” (URL and/or uploaded image)
     GoalDueDatePicker   — Popover + calendar due date (+ clear)
     GoalEmojiTitleSection — Title + optional emoji suggest / shuffle / picker
     GoalProgress        — Progress bar
@@ -213,6 +222,8 @@ src/
     dueNotifications     — `runDueNotificationCheck`, localStorage prefs & dedupe keys
     dueDateUtils         — Due normalization + urgency helpers
     exportGoals          — JSON/CSV/PDF export
+    goalShowcaseAsset    — `getGoalShowcaseImageUrl`, `goalHasShowcaseMedia`
+    showcaseImageUpload  — Max size / MIME validation for showcase screenshots
     goalEmojiSuggest     — Match title → emoji + shuffle pools (imports `goalEmojiSuggestRules`)
     goalEmojiSuggestRules — Large keyword → emoji table (data only)
     goalUtils            — calcProgress, getProgressColor
@@ -351,7 +362,7 @@ npm run dev
 
 - **Frontend:** URL printed by Vite (this repo configures **port `8080`** in `vite.config.ts`).
 - **PocketBase admin:** http://127.0.0.1:8090/_/  
-- Before first goal with metadata: in PocketBase Admin add optional **`due_date`** (type **date**) and **`notes`** (type **text**) on **`goals`**, and optional **`notes`** (type **text**) on **`subtasks`**.
+- Before first goal with metadata: in PocketBase Admin add optional **`due_date`** (type **date**), **`notes`**, optional **`showcase_image`** (type **file**, single), **`showcase_url`**, and **`showcase_caption`** (type **text**) on **`goals`**, and optional **`notes`** (type **text**) on **`subtasks`**.
 
 ---
 

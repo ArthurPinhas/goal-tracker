@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2, Loader2, StickyNote } from "lucide-react";
 import { Subtask } from "@/types/goal";
+import { LinkifiedText } from "@/components/LinkifiedText";
 import { playSubtaskDone, playRemove } from "@/lib/sounds";
 import { cn } from "@/lib/utils";
 import { springContent } from "@/lib/motion";
@@ -170,9 +171,12 @@ const SubtaskItem = ({ subtask, isPending, onToggle, onDelete, onSetEffort, onUp
         <button
           type="button"
           className="text-left text-xs text-muted-foreground ml-7 line-clamp-3 rounded-lg px-2 py-1.5 hover:bg-secondary/50 dark:hover:bg-card/50 w-[calc(100%-1.75rem)] max-w-full min-w-0 break-words box-border border border-transparent hover:border-border/40 transition-colors duration-200"
-          onClick={() => setShowNotes(true)}
+          onClick={(e) => {
+            if ((e.target as HTMLElement).closest("a")) return;
+            setShowNotes(true);
+          }}
         >
-          {subtask.notes}
+          <LinkifiedText text={subtask.notes} as="span" className="whitespace-pre-wrap" />
         </button>
       )}
 

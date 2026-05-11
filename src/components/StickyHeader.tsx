@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import AddGoalDialog from "./AddGoalDialog";
 import ThemeToggle from "./ThemeToggle";
 
+import type { GoalCategory } from "@/types/goal";
+
 interface StickyHeaderProps {
   soundOn: boolean;
   onToggleSound: () => void;
@@ -14,8 +16,11 @@ interface StickyHeaderProps {
     description: string,
     dueDate: string | null,
     emoji: string | null,
-    notes: string
+    notes: string,
+    categoryId: string | null
   ) => void;
+  categories: GoalCategory[];
+  onCreateCategory: (name: string) => Promise<string | null>;
   addGoalOpen?: boolean;
   onAddGoalOpenChange?: (open: boolean) => void;
   dueNotificationsSlot?: ReactNode;
@@ -26,6 +31,8 @@ const StickyHeader = ({
   onToggleSound,
   onLogout,
   onAdd,
+  categories,
+  onCreateCategory,
   addGoalOpen,
   onAddGoalOpenChange,
   dueNotificationsSlot,
@@ -43,7 +50,14 @@ const StickyHeader = ({
         <span className="text-sm font-semibold tracking-tight">Goal Tracker</span>
       </div>
       <div className="flex items-center gap-1">
-        <AddGoalDialog onAdd={onAdd} open={addGoalOpen} onOpenChange={onAddGoalOpenChange} compactTriggerBelowMd />
+        <AddGoalDialog
+          onAdd={onAdd}
+          categories={categories}
+          onCreateCategory={onCreateCategory}
+          open={addGoalOpen}
+          onOpenChange={onAddGoalOpenChange}
+          compactTriggerBelowMd
+        />
         {dueNotificationsSlot}
         <ThemeToggle className="h-11 w-11 md:h-8 md:w-8 touch-manipulation" />
         <Button variant="ghost" size="icon" onClick={onToggleSound} title={soundOn ? 'Mute' : 'Unmute'}

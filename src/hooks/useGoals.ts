@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import pb from '@/lib/pocketbase';
-import { Goal, Subtask } from '@/types/goal';
+import { Goal, GoalCategory, Subtask, GoalShowcaseFileOptions } from '@/types/goal';
 import { normalizeDueDate } from '@/lib/dueDateUtils';
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
@@ -36,6 +36,33 @@ const mapExpandedSubtask = (s: PocketBaseSubtaskRecord): Subtask => ({
   notes: normalizeNotes(s.notes),
 });
 
+const mapExpandedCategory = (raw: unknown): GoalCategory | null => {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  if (typeof o.id === 'string' && typeof o.name === 'string') {
+    return { id: o.id, name: o.name };
+  }
+  return null;
+};
+
+const normalizeShowcaseUrlField = (raw: unknown): string | null => {
+  if (typeof raw !== 'string') return null;
+  const t = raw.trim();
+  return t || null;
+};
+
+const normalizeShowcaseCaption = (raw: unknown): string | null => {
+  if (typeof raw !== 'string') return null;
+  const t = raw.trim();
+  return t || null;
+};
+
+const normalizeShowcaseImage = (raw: unknown): string | null => {
+  if (typeof raw !== 'string') return null;
+  const t = raw.trim();
+  return t || null;
+};
+
 const mapGoalRecord = (r: {
   id: string;
   user: string;
@@ -44,7 +71,11 @@ const mapGoalRecord = (r: {
   due_date?: string | null;
   emoji?: string | null;
   notes?: string | null;
-  expand?: { subtasks_via_goal?: PocketBaseSubtaskRecord[] };
+  showcase_url?: string | null;
+  showcase_caption?: string | null;
+  showcase_image?: string | null;
+  completed?: boolean;
+  expand?: { subtasks_via_goal?: PocketBaseSubtaskRecord[]; category?: unknown };
 }): Goal => ({
   id: r.id,
   user_id: r.user,
@@ -53,15 +84,22 @@ const mapGoalRecord = (r: {
   due_date: normalizeDueDate(r.due_date),
   emoji: normalizeEmoji(r.emoji),
   notes: normalizeNotes(r.notes),
+  showcase_url: normalizeShowcaseUrlField(r.showcase_url),
+  showcase_caption: normalizeShowcaseCaption(r.showcase_caption),
+  showcase_image: normalizeShowcaseImage(r.showcase_image),
+  is_completed: Boolean(r.completed),
+  category: mapExpandedCategory(r.expand?.category),
   subtasks: (r.expand?.subtasks_via_goal ?? []).map((s) => mapExpandedSubtask(s)),
 });
 
 export function useGoals() {
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [categories, setCategories] = useState<GoalCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [archivedGoals, setArchivedGoals] = useState<Goal[]>([]);
   const [archivedLoading, setArchivedLoading] = useState(false);
   const [pendingSubtasks, setPendingSubtasks] = useState<Set<string>>(new Set());
+  const [pendingGoalComplete, setPendingGoalComplete] = useState<Set<string>>(new Set());
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -69,6 +107,10 @@ export function useGoals() {
     setPendingSubtasks((prev) => new Set([...prev, id]));
   const removePending = (id: string) =>
     setPendingSubtasks((prev) => { const next = new Set(prev); next.delete(id); return next; });
+  const addPendingGoalComplete = (id: string) =>
+    setPendingGoalComplete((prev) => new Set([...prev, id]));
+  const removePendingGoalComplete = (id: string) =>
+    setPendingGoalComplete((prev) => { const next = new Set(prev); next.delete(id); return next; });
 
   const markSaving = () => {
     if (savedTimer.current) clearTimeout(savedTimer.current);
@@ -80,28 +122,52 @@ export function useGoals() {
   };
   const markError = () => setSaveStatus('error');
 
+  const fetchCategories = useCallback(async () => {
+    const records = await pb.collection('categories').getFullList({ sort: 'name' });
+    setCategories(records.map((r) => ({ id: r.id, name: String(r.name ?? '') })));
+  }, []);
+
   const fetchGoals = async () => {
     const records = await pb.collection('goals').getFullList({
-      expand: 'subtasks_via_goal',
+      expand: 'subtasks_via_goal,category',
       sort: 'sort_order,created',
     });
     setGoals(records.filter((r) => !r.archived).map(mapGoalRecord));
   };
 
+  const createCategory = async (name: string): Promise<string | null> => {
+    const trimmed = name.trim();
+    if (!trimmed) return null;
+    try {
+      markSaving();
+      const rec = await pb.collection('categories').create({
+        name: trimmed,
+        user: pb.authStore.record?.id,
+      });
+      await fetchCategories();
+      markSaved();
+      return rec.id;
+    } catch (err) {
+      markError();
+      toast.error(isNetworkError(err) ? 'No connection. Category not saved.' : 'Failed to create category.');
+      return null;
+    }
+  };
+
   useEffect(() => {
     setLoading(true);
-    fetchGoals()
+    Promise.all([fetchCategories(), fetchGoals()])
       .catch((err) => {
         toast.error(isNetworkError(err) ? 'Cannot reach server. Is PocketBase running?' : 'Failed to load goals.');
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [fetchCategories]);
 
   const fetchArchivedGoals = useCallback(async () => {
     setArchivedLoading(true);
     try {
       const records = await pb.collection('goals').getFullList({
-        expand: 'subtasks_via_goal',
+        expand: 'subtasks_via_goal,category',
         sort: '-created',
       });
       setArchivedGoals(records.filter((r) => r.archived).map(mapGoalRecord));
@@ -117,7 +183,8 @@ export function useGoals() {
     description: string,
     due_date: string | null = null,
     emoji: string | null = null,
-    notes: string = ''
+    notes: string = '',
+    categoryId: string | null = null
   ) => {
     try {
       markSaving();
@@ -127,6 +194,8 @@ export function useGoals() {
         due_date: due_date || null,
         emoji: emoji || null,
         notes: notes || null,
+        completed: false,
+        category: categoryId || null,
         user: pb.authStore.record?.id,
         /** Sort ascending; negatives order before reorder indices (0…n−1), so new goals appear at the top. */
         sort_order: -Date.now(),
@@ -145,24 +214,77 @@ export function useGoals() {
     description: string,
     due_date: string | null,
     emoji: string | null = null,
-    notes: string = ''
+    notes: string = '',
+    categoryId: string | null = null,
+    showcase_url: string | null = null,
+    showcase_caption: string | null = null,
+    showcaseFile?: GoalShowcaseFileOptions
   ) => {
     try {
       markSaving();
-      await pb.collection('goals').update(goalId, {
+
+      type PbGoalResponse = {
+        name?: string;
+        description?: string;
+        due_date?: string | null;
+        emoji?: string | null;
+        notes?: string | null;
+        showcase_url?: string | null;
+        showcase_caption?: string | null;
+        showcase_image?: string | null;
+        completed?: boolean;
+      };
+
+      const body: Record<string, unknown> = {
         name,
         description,
         due_date: due_date || null,
         emoji: emoji || null,
         notes: notes || null,
-      });
-      setGoals((prev) =>
-        prev.map((g) =>
-          g.id === goalId
-            ? { ...g, title: name, description, due_date: due_date ?? null, emoji: emoji ?? null, notes }
-            : g
-        )
-      );
+        category: categoryId || null,
+        showcase_url: showcase_url || null,
+        showcase_caption: showcase_caption?.trim() || null,
+      };
+
+      const file = showcaseFile?.showcaseImageFile ?? null;
+      const removeImg = showcaseFile?.removeShowcaseImage ?? false;
+      if (file) {
+        body.showcase_image = file;
+      } else if (removeImg) {
+        body.showcase_image = null;
+      }
+
+      const rec = (await pb.collection('goals').update(goalId, body)) as PbGoalResponse;
+
+      if (file || removeImg) {
+        await fetchGoals();
+      } else {
+        setGoals((prev) =>
+          prev.map((g) =>
+            g.id === goalId
+              ? {
+                  ...g,
+                  title: String(rec.name ?? name),
+                  description: String(rec.description ?? description),
+                  due_date: normalizeDueDate(rec.due_date ?? due_date),
+                  emoji: normalizeEmoji(rec.emoji ?? emoji),
+                  notes: normalizeNotes(rec.notes ?? notes),
+                  showcase_url: normalizeShowcaseUrlField(rec.showcase_url ?? showcase_url),
+                  showcase_caption: normalizeShowcaseCaption(rec.showcase_caption ?? showcase_caption),
+                  showcase_image:
+                    rec.showcase_image !== undefined
+                      ? normalizeShowcaseImage(rec.showcase_image)
+                      : g.showcase_image,
+                  is_completed: Boolean(rec.completed ?? g.is_completed),
+                  category: categoryId
+                    ? categories.find((c) => c.id === categoryId) ??
+                      (g.category?.id === categoryId ? g.category : { id: categoryId, name: '' })
+                    : null,
+                }
+              : g
+          )
+        );
+      }
       markSaved();
     } catch (err) {
       markError();
@@ -232,6 +354,7 @@ export function useGoals() {
   const addSubtask = async (goalId: string, name: string, notes: string = '') => {
     try {
       markSaving();
+      await pb.collection('goals').update(goalId, { completed: false });
       await pb.collection('subtasks').create({
         name,
         goal: goalId,
@@ -273,11 +396,41 @@ export function useGoals() {
     }
   };
 
+  const toggleGoalStandaloneComplete = async (goalId: string) => {
+    const goal = goals.find((g) => g.id === goalId);
+    if (!goal || goal.subtasks.length > 0) return;
+    const newValue = !goal.is_completed;
+
+    setGoals((prev) => prev.map((g) => (g.id === goalId ? { ...g, is_completed: newValue } : g)));
+    addPendingGoalComplete(goalId);
+
+    try {
+      await pb.collection('goals').update(goalId, { completed: newValue });
+      markSaved();
+    } catch (err) {
+      setGoals((prev) => prev.map((g) => (g.id === goalId ? { ...g, is_completed: !newValue } : g)));
+      markError();
+      toast.error(isNetworkError(err) ? 'No connection. Change reverted.' : 'Failed to save. Try again.');
+    } finally {
+      removePendingGoalComplete(goalId);
+    }
+  };
+
   const deleteSubtask = async (subtaskId: string) => {
     try {
       markSaving();
+      const parent = goals.find((g) => g.subtasks.some((s) => s.id === subtaskId));
       await pb.collection('subtasks').delete(subtaskId);
-      setGoals((prev) => prev.map((g) => ({ ...g, subtasks: g.subtasks.filter((s) => s.id !== subtaskId) })));
+      if (parent && parent.subtasks.length === 1) {
+        await pb.collection('goals').update(parent.id, { completed: false });
+      }
+      setGoals((prev) =>
+        prev.map((g) => {
+          const nextSubs = g.subtasks.filter((s) => s.id !== subtaskId);
+          const cleared = nextSubs.length === 0 ? { ...g, subtasks: nextSubs, is_completed: false } : { ...g, subtasks: nextSubs };
+          return cleared;
+        })
+      );
       markSaved();
     } catch (err) {
       markError();
@@ -329,11 +482,28 @@ export function useGoals() {
   };
 
   return {
-    goals, loading, pendingSubtasks, saveStatus,
-    archivedGoals, archivedLoading,
-    createGoal, editGoal, deleteGoal, archiveGoal,
-    restoreGoal, deleteArchivedGoal, fetchArchivedGoals,
-    addSubtask, toggleSubtask, deleteSubtask, updateSubtaskEffort, updateSubtaskNotes,
+    goals,
+    categories,
+    loading,
+    pendingSubtasks,
+    pendingGoalComplete,
+    saveStatus,
+    archivedGoals,
+    archivedLoading,
+    createGoal,
+    createCategory,
+    editGoal,
+    deleteGoal,
+    archiveGoal,
+    restoreGoal,
+    deleteArchivedGoal,
+    fetchArchivedGoals,
+    addSubtask,
+    toggleSubtask,
+    toggleGoalStandaloneComplete,
+    deleteSubtask,
+    updateSubtaskEffort,
+    updateSubtaskNotes,
     reorderGoals,
   };
 }

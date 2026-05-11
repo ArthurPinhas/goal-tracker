@@ -10,7 +10,15 @@ vi.mock('@/lib/sounds', () => ({
 
 describe('AddGoalDialog UI', () => {
   it('renders the create form with title, emoji controls, description, and due date when open', async () => {
-    render(<AddGoalDialog onAdd={vi.fn()} open onOpenChange={vi.fn()} />);
+    render(
+      <AddGoalDialog
+        onAdd={vi.fn()}
+        categories={[]}
+        onCreateCategory={vi.fn().mockResolvedValue(null)}
+        open
+        onOpenChange={vi.fn()}
+      />
+    );
 
     const dialog = await screen.findByRole('dialog');
     expect(dialog).toBeVisible();

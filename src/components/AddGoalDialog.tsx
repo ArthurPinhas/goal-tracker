@@ -13,8 +13,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import GoalDueDatePicker from "@/components/GoalDueDatePicker";
 import GoalEmojiTitleSection from "@/components/GoalEmojiTitleSection";
+import { GoalCategoryPicker } from "@/components/GoalCategoryPicker";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { GoalCategory } from "@/types/goal";
 
 interface AddGoalDialogProps {
   onAdd: (
@@ -22,8 +24,11 @@ interface AddGoalDialogProps {
     description: string,
     dueDate: string | null,
     emoji: string | null,
-    notes: string
+    notes: string,
+    categoryId: string | null
   ) => void;
+  categories: GoalCategory[];
+  onCreateCategory: (name: string) => Promise<string | null>;
   triggerClassName?: string;
   /** In sticky / tight toolbars: show icon only below `md` to avoid overflow */
   compactTriggerBelowMd?: boolean;
@@ -31,7 +36,15 @@ interface AddGoalDialogProps {
   onOpenChange?: (open: boolean) => void;
 }
 
-const AddGoalDialog = ({ onAdd, triggerClassName, compactTriggerBelowMd, open: controlledOpen, onOpenChange: controlledOnOpenChange }: AddGoalDialogProps) => {
+const AddGoalDialog = ({
+  onAdd,
+  categories,
+  onCreateCategory,
+  triggerClassName,
+  compactTriggerBelowMd,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+}: AddGoalDialogProps) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = controlledOnOpenChange ?? setInternalOpen;
@@ -40,17 +53,19 @@ const AddGoalDialog = ({ onAdd, triggerClassName, compactTriggerBelowMd, open: c
   const [dueDate, setDueDate] = useState<string | null>(null);
   const [emoji, setEmoji] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
+  const [categoryId, setCategoryId] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
     playPop();
-    onAdd(title.trim(), description.trim(), dueDate, emoji, notes.trim());
+    onAdd(title.trim(), description.trim(), dueDate, emoji, notes.trim(), categoryId);
     setTitle("");
     setDescription("");
     setDueDate(null);
     setEmoji(null);
     setNotes("");
+    setCategoryId(null);
     setOpen(false);
   };
 
@@ -103,6 +118,13 @@ const AddGoalDialog = ({ onAdd, triggerClassName, compactTriggerBelowMd, open: c
             />
           </div>
           <GoalDueDatePicker id="goal-due" value={dueDate} onChange={setDueDate} />
+          <GoalCategoryPicker
+            categories={categories}
+            value={categoryId}
+            onChange={setCategoryId}
+            onCreateCategory={onCreateCategory}
+            fieldId="goal-category-new"
+          />
           <div className="space-y-2">
             <Label htmlFor="goal-notes" className="ui-section-label">
               Notes
