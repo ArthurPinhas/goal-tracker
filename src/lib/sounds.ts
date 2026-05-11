@@ -36,6 +36,61 @@ export function preloadUiSoundSamples(): void {
   preloadUiSamples(c);
 }
 
+/** Master FX flavour — wetter / longer for wins; dry / fast for utility clicks */
+type FxProfile = "celebrate" | "standard" | "tight";
+
+type FxPreset = {
+  dry: number;
+  wetSend: number;
+  wetHpHz: number;
+  delayS: number;
+  fb: number;
+  fbLpHz: number;
+  revWet: number;
+  irDur: number;
+  irDecay: number;
+  makeup: number;
+};
+
+const FX: Record<FxProfile, FxPreset> = {
+  celebrate: {
+    dry: 0.84,
+    wetSend: 0.38,
+    wetHpHz: 160,
+    delayS: 0.058,
+    fb: 0.2,
+    fbLpHz: 3400,
+    revWet: 0.48,
+    irDur: 1.28,
+    irDecay: 2.35,
+    makeup: 1.06,
+  },
+  standard: {
+    dry: 0.9,
+    wetSend: 0.26,
+    wetHpHz: 200,
+    delayS: 0.045,
+    fb: 0.16,
+    fbLpHz: 4000,
+    revWet: 0.32,
+    irDur: 0.88,
+    irDecay: 2.75,
+    makeup: 1.04,
+  },
+  tight: {
+    dry: 0.96,
+    wetSend: 0.14,
+    wetHpHz: 280,
+    delayS: 0.03,
+    fb: 0.1,
+    fbLpHz: 5200,
+    revWet: 0.2,
+    irDur: 0.55,
+    irDecay: 3.1,
+    makeup: 1.02,
+  },
+};
+
 /** Mild saturation before dynamics — reads fuller / less “cheap oscillator” */
 const makeSoftClipper = (c: AudioContext): WaveShaperNode => {
   const n = 1024;
@@ -50,28 +105,29 @@ const makeSoftClipper = (c: AudioContext): WaveShaperNode => {
   return w;
 };
 
-/** Glue + peak control — slower release preserves low-end weight */
-const makeMasterCompressor = (c: AudioContext): DynamicsCompressorNode => {
+const makeMasterCompressor = (c: AudioContext, profile: FxProfile): DynamicsCompressorNode => {
   const comp = c.createDynamicsCompressor();
-  comp.threshold.value = -15;
   comp.knee.value = 10;
   comp.ratio.value = 4;
-  comp.attack.value = 0.006;
-  comp.release.value = 0.26;
+  if (profile === "celebrate") {
+    comp.threshold.value = -17;
+    comp.attack.value = 0.008;
+    comp.release.value = 0.34;
+  } else if (profile === "tight") {
+    comp.threshold.value = -13;
+    comp.attack.value = 0.004;
+    comp.release.value = 0.17;
+  } else {
+    comp.threshold.value = -15;
+    comp.attack.value = 0.006;
+    comp.release.value = 0.26;
+  }
   comp.connect(c.destination);
   return comp;
 };
 
-/** Single entry point per sound event — clip → comp → speakers */
-const createMasterIn = (c: AudioContext): AudioNode => {
-  const clip = makeSoftClipper(c);
-  const comp = makeMasterCompressor(c);
-  clip.connect(comp);
-  return clip;
-};
-
-// Synthetic reverb via noise impulse — slightly longer tail for goal fanfare
-const makeReverb = (c: AudioContext, duration = 0.8, decay = 3): ConvolverNode => {
+/** Convolution room — separate IR per profile keeps tails matched to use-case */
+const makeReverb = (c: AudioContext, duration: number, decay: number): ConvolverNode => {
   const conv = c.createConvolver();
   const len = Math.floor(c.sampleRate * duration);
   const buf = c.createBuffer(2, len, c.sampleRate);
@@ -82,6 +138,68 @@ const makeReverb = (c: AudioContext, duration = 0.8, decay = 3): ConvolverNode =
   conv.buffer = buf;
   return conv;
 };
+
+/**
+ * Everything feeds `masterIn`:
+ * dry branch stays punchy; wet branch = HP → feedback delay → reverb → sum → clip → compressor.
+ */
+const createMasterFxIn = (c: AudioContext, profile: FxProfile): AudioNode => {
+  const p = FX[profile];
+  const masterIn = c.createGain();
+  masterIn.gain.value = 1;
+
+  const dryGain = c.createGain();
+  dryGain.gain.value = p.dry;
+
+  const wetSend = c.createGain();
+  wetSend.gain.value = p.wetSend;
+
+  const wetHp = c.createBiquadFilter();
+  wetHp.type = "highpass";
+  wetHp.frequency.value = p.wetHpHz;
+  wetHp.Q.value = 0.71;
+
+  const delay = c.createDelay(Math.max(0.2, p.delayS + 0.05));
+  delay.delayTime.value = p.delayS;
+
+  const fbLp = c.createBiquadFilter();
+  fbLp.type = "lowpass";
+  fbLp.frequency.value = p.fbLpHz;
+  fbLp.Q.value = 0.7;
+
+  const fbGain = c.createGain();
+  fbGain.gain.value = p.fb;
+
+  const conv = makeReverb(c, p.irDur, p.irDecay);
+  const revWet = c.createGain();
+  revWet.gain.value = p.revWet;
+
+  const summer = c.createGain();
+  summer.gain.value = p.makeup;
+
+  masterIn.connect(dryGain);
+  dryGain.connect(summer);
+
+  masterIn.connect(wetSend);
+  wetSend.connect(wetHp);
+  wetHp.connect(delay);
+  delay.connect(fbLp);
+  fbLp.connect(fbGain);
+  fbGain.connect(delay);
+  delay.connect(conv);
+  conv.connect(revWet);
+  revWet.connect(summer);
+
+  const clip = makeSoftClipper(c);
+  const comp = makeMasterCompressor(c, profile);
+  summer.connect(clip);
+  clip.connect(comp);
+
+  return masterIn;
+};
+
+/** Lush parallel verb for procedural goal fanfare chords (in addition to master FX glue). */
+const makeFanfareReverb = (c: AudioContext): ConvolverNode => makeReverb(c, 1.55, 2.15);
 
 type OscDef = {
   freq: number;
@@ -162,7 +280,7 @@ export const playSubtaskDone = () => {
   const c = getCtx();
   if (!c) return;
   preloadUiSamples(c);
-  const master = createMasterIn(c);
+  const master = createMasterFxIn(c, "standard");
   const t = c.currentTime;
 
   if (playUiSample(c, master, "subtask")) {
@@ -213,7 +331,7 @@ export const playGoalDone = () => {
   const c = getCtx();
   if (!c) return;
   preloadUiSamples(c);
-  const master = createMasterIn(c);
+  const master = createMasterFxIn(c, "celebrate");
   const t = c.currentTime;
 
   if (playUiSample(c, master, "goal")) {
@@ -231,8 +349,8 @@ export const playGoalDone = () => {
     return;
   }
 
-  const reverb = makeReverb(c, 1.55, 2.15);
-  reverb.connect(master);
+  const fanVerb = makeFanfareReverb(c);
+  fanVerb.connect(master);
 
   playNoiseBurst(c, master, t, 0.058, 0.2, 1650, 3.8);
   playNoiseBurst(c, master, t + 0.018, 0.045, 0.11, 380, 1.8);
@@ -264,7 +382,7 @@ export const playGoalDone = () => {
 
     playOscGroup(
       c,
-      reverb,
+      fanVerb,
       [
         { freq, gain: 0.27, type: "triangle" },
         { freq: freq * 2, gain: 0.095, type: "sine" },
@@ -290,7 +408,7 @@ export const playGoalDone = () => {
 
   playOscGroup(
     c,
-    reverb,
+    fanVerb,
     [
       { freq: 1318.5, gain: 0.13, type: "triangle", pan: -0.32 },
       { freq: 1760, gain: 0.085, type: "sine", pan: 0.32 },
@@ -308,7 +426,7 @@ export const playEmojiSpark = () => {
   const c = getCtx();
   if (!c) return;
   preloadUiSamples(c);
-  const master = createMasterIn(c);
+  const master = createMasterFxIn(c, "standard");
   const t = c.currentTime;
 
   if (playUiSample(c, master, "emoji")) return;
@@ -335,7 +453,7 @@ export const playPop = () => {
   const c = getCtx();
   if (!c) return;
   preloadUiSamples(c);
-  const master = createMasterIn(c);
+  const master = createMasterFxIn(c, "tight");
   const t = c.currentTime;
 
   if (playUiSample(c, master, "pop")) return;
@@ -362,7 +480,7 @@ export const playRemove = () => {
   const c = getCtx();
   if (!c) return;
   preloadUiSamples(c);
-  const master = createMasterIn(c);
+  const master = createMasterFxIn(c, "tight");
   const t = c.currentTime;
 
   if (playUiSample(c, master, "remove")) return;
