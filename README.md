@@ -19,6 +19,7 @@ A personal goal-tracking app: break goals into weighted subtasks, see **live pro
 | --- | --- |
 | Frontend | React 18 · Vite · TypeScript |
 | UI | Tailwind CSS · [shadcn/ui](https://ui.shadcn.com/) · [Framer Motion](https://www.framer.com/motion/) |
+| Long lists | [@tanstack/react-virtual](https://tanstack.com/virtual) — window-scroll virtualization when a tab shows **many** goals (manual drag-reorder still renders the full list) |
 | Themes | [next-themes](https://github.com/pacocoursey/next-themes) — **dark default**, optional light |
 | Backend | [PocketBase](https://pocketbase.io/) (auth · SQLite · realtime-ready) |
 
@@ -27,22 +28,24 @@ A personal goal-tracking app: break goals into weighted subtasks, see **live pro
 ## Features
 
 - **Auth** — register, login, logout; each user only sees their own data (PocketBase rules).
-- **Goals** — create, edit, delete, archive / restore, drag-and-drop order.
+- **Goals** — create, edit, delete, archive / restore, drag-and-drop order (manual sort only when deadline filter is **Any** and sort is **Manual**).
 - **Optional due dates** — per-goal deadline, overdue / due-soon emphasis, filters & sort-by-due sidebar stats.
 - **Due reminders (browser)** — optional Notification API alerts when a goal is **due today** or **overdue** (incomplete). Works while the tab or installed PWA has focus; no server push or background delivery (see limitations below).
 - **Notes** — plain-text notes on goals and subtasks; included in search and exports (JSON / CSV / PDF).
 - **Showcase (completed goals)** — optional **screenshot upload** (PocketBase file) and/or external link + short caption in **Edit goal** or the quick showcase control once a goal is done; appears as a highlighted “win” block on the card, can surface in the optional hero **On display** strip, and in exports (JSON / CSV / PDF include caption, URL, and uploaded **filename** where present—the file itself is not embedded in export files).
 - **Subtasks** — add, toggle (optimistic), delete; optional effort (1–5) for weighted progress.
 - **Progress** — equal weight by default; effort-weighted when any subtask has effort set.
-- **Search & tabs** — search titles, descriptions, **notes**, and subtask titles; filters (All · Active · Done · Archived).
-- **Celebrations** — Lottie milestone overlay, confetti, optional sounds (`localStorage`).
+- **Search & tabs** — search across goal and subtask **titles**, **descriptions**, **notes**, **categories**, and showcase URL/caption; filters (**All · Active · Done · On display · Archived**), deadline refinement (Any / has date / overdue / ≤7 days), and optional sort by due date. Typing uses React **`useDeferredValue`** so the search box stays responsive with large libraries.
+- **Bulk actions** — “Select goals” mode with **select all in view**, **bulk delete**, and **bulk archive** for completed selections (respects the current tab and filters). Drag-to-reorder is disabled while bulk mode is on.
+- **Performance** — window virtualization for **active** (non-reorder paths), **completed**, and **archived** lists when a slice has **≥ 10** rows; memoized goal/subtask rows; Framer **`layout`** animations ease off when **many** cards are visible or the UI is in the reduced-motion tier; **`content-visibility`** hints on list wrappers where supported.
+- **Celebrations** — full-screen milestone overlay (CSS / motion tiers via responsive hook—heavy GPU-friendly path on capable desktops), canvas confetti on subtask complete, optional sounds (`localStorage`).
 - **Export** — JSON, CSV, and PDF (client-side only).
 - **Theme** — **dark default**, optional light mode (persisted locally).
 - **PWA** — icons and service worker via Vite PWA plugin (dev may unregister SW for smoother local iteration; see `vite.config` / `main.tsx`).
 
 ### UI polish (recent)
 
-The app is **dark-first** with a shared visual language: design tokens in `src/index.css` (card vs background, muted text, dot grid), **`app-surface-input`** for elevated fields in dark mode, **`ui-section-label`** for form section labels, shared motion tuning in `src/lib/motion.ts` (`springContent`, `smoothOut`), and upgraded primitives (dialogs, alerts, tooltips, dropdowns, select, calendar, toasts). Index uses a **clipped hero** and a **narrow seam** into list content — not stacked full-bleed gradient washes over page chrome. Auth, 404, dialogs, sidebar, archive rows, and celebration overlay follow the same system.
+The app is **dark-first** with a shared visual language: design tokens in `src/index.css` (card vs background, muted text, dot grid), **`app-surface-input`** for elevated fields in dark mode, **`ui-section-label`** for form section labels, shared motion tuning in `src/lib/motion.ts` (`springContent`, `smoothOut`), and upgraded primitives (dialogs, alerts, tooltips, dropdowns, select, calendar, toasts). Index uses a **clipped hero** and a **narrow seam** into list content — not stacked full-bleed gradient washes over page chrome. Auth, 404, dialogs, sidebar, archive rows, bulk toolbar, virtualized long lists, and celebration overlay follow the same system.
 
 ---
 
@@ -124,7 +127,7 @@ npm run dev
 | `npm run build` | Production build (+ PWA artifacts) |
 | `npm run preview` | Preview the production build |
 | `npm run test` | Vitest (unit tests) |
-| `npm run lint` | ESLint (**note**: full-repo lint may include non-app paths; lint `src` for UI-only checks) |
+| `npm run lint` | ESLint (`dist`, PocketBase **`pb_data`**, and downloaded **`pocketbase_*`** folders are ignored) |
 
 ---
 
@@ -132,9 +135,9 @@ npm run dev
 
 ```
 src/
-  components/     # GoalCard, dialogs, sidebar, theme toggle, …
+  components/     # GoalCard, VirtualWindowGoalList, dialogs, sidebar, theme toggle, …
   hooks/          # useAuth, useGoals, useDueNotifications
-  lib/            # pocketbase client, goalUtils, dueDateUtils, due notifications, export, sounds
+  lib/            # pocketbase client, goalUtils, dueDateUtils, linkSegments, reconcileFetchedGoals, showDueReminderInAppToast, due notifications, export, sounds
   pages/          # Index, Login, Register, NotFound
   providers/      # ThemeProvider (next-themes)
   types/          # Goal, Subtask

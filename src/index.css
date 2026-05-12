@@ -163,6 +163,12 @@
       hsl(var(--border) / 0.38) 8px
     );
   }
+
+  /* Hint off-screen goal rows skip layout/paint until needed (non-virtual lists). */
+  .perf-skip-offscreen {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 260px;
+  }
 }
 
 @keyframes shimmer {

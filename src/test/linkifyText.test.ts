@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseLinkSegments } from '@/components/LinkifiedText';
+import { parseLinkSegments } from '@/lib/linkSegments';
 
 describe('parseLinkSegments', () => {
   it('returns plain text as one segment', () => {

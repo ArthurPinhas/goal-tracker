@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import pb from '@/lib/pocketbase';
 import { playGoalDone } from '@/lib/sounds';
 import { isGoalComplete } from '@/lib/goalUtils';
+import { reconcileFetchedGoals } from '@/lib/reconcileFetchedGoals';
 import { Goal, GoalCategory, Subtask, GoalShowcaseFileOptions } from '@/types/goal';
 import { normalizeDueDate } from '@/lib/dueDateUtils';
 
@@ -114,6 +115,15 @@ export function useGoals() {
   const [pendingGoalComplete, setPendingGoalComplete] = useState<Set<string>>(new Set());
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fetchGoalsGen = useRef(0);
+  /** User-driven completions only — Index drains this for overlay/toasts (never infer from fetch / ref diffs). */
+  const celebrationIntentGoalIdsRef = useRef<string[]>([]);
+
+  const flushCelebrationIntentGoalIds = useCallback(() => {
+    const ids = [...new Set(celebrationIntentGoalIdsRef.current)];
+    celebrationIntentGoalIdsRef.current = [];
+    return ids;
+  }, []);
 
   const addPending = (id: string) =>
     setPendingSubtasks((prev) => new Set([...prev, id]));
@@ -154,11 +164,18 @@ export function useGoals() {
   }, []);
 
   const fetchGoals = async () => {
+    const gen = ++fetchGoalsGen.current;
     const records = await pb.collection('goals').getFullList({
       expand: 'subtasks_via_goal,category',
       sort: 'sort_order,created',
     });
-    setGoals(records.filter((r) => !r.archived).map(mapGoalRecord));
+    if (gen !== fetchGoalsGen.current) return;
+    setGoals((prev) =>
+      reconcileFetchedGoals(
+        prev,
+        records.filter((r) => !r.archived).map(mapGoalRecord)
+      )
+    );
   };
 
   const createCategory = async (name: string): Promise<string | null> => {
@@ -377,6 +394,63 @@ export function useGoals() {
     }
   };
 
+  const bulkDeleteGoals = async (goalIds: string[]) => {
+    const ids = [...new Set(goalIds)].filter(Boolean);
+    if (ids.length === 0) return;
+    try {
+      markSaving();
+      const idSet = new Set(ids);
+      const snapshot = goals.filter((g) => idSet.has(g.id));
+      await Promise.all(snapshot.flatMap((g) => g.subtasks.map((s) => pb.collection('subtasks').delete(s.id))));
+      await Promise.all(ids.map((id) => pb.collection('goals').delete(id)));
+      setGoals((prev) => prev.filter((g) => !idSet.has(g.id)));
+      markSaved();
+      toast.success(ids.length === 1 ? 'Goal deleted.' : `${ids.length} goals deleted.`);
+    } catch (err) {
+      markError();
+      toast.error(isNetworkError(err) ? 'No connection.' : 'Some goals could not be deleted. Refresh and try again.');
+      await fetchGoals().catch(() => {});
+    }
+  };
+
+  const bulkArchiveGoals = async (goalIds: string[]) => {
+    const ids = [...new Set(goalIds)].filter(Boolean);
+    if (ids.length === 0) return;
+    try {
+      markSaving();
+      await Promise.all(ids.map((id) => pb.collection('goals').update(id, { archived: true })));
+      const idSet = new Set(ids);
+      const moved = goals.filter((g) => idSet.has(g.id));
+      setGoals((prev) => prev.filter((g) => !idSet.has(g.id)));
+      setArchivedGoals((prev) => [...moved, ...prev]);
+      markSaved();
+      toast.success(ids.length === 1 ? 'Goal archived.' : `${ids.length} goals archived.`);
+    } catch (err) {
+      markError();
+      toast.error(isNetworkError(err) ? 'No connection.' : 'Some goals could not be archived. Refresh and try again.');
+      await fetchGoals().catch(() => {});
+    }
+  };
+
+  const bulkDeleteArchivedGoals = async (goalIds: string[]) => {
+    const ids = [...new Set(goalIds)].filter(Boolean);
+    if (ids.length === 0) return;
+    try {
+      markSaving();
+      const idSet = new Set(ids);
+      const snapshot = archivedGoals.filter((g) => idSet.has(g.id));
+      await Promise.all(snapshot.flatMap((g) => g.subtasks.map((s) => pb.collection('subtasks').delete(s.id))));
+      await Promise.all(ids.map((id) => pb.collection('goals').delete(id)));
+      setArchivedGoals((prev) => prev.filter((g) => !idSet.has(g.id)));
+      markSaved();
+      toast.success(ids.length === 1 ? 'Archived goal deleted.' : `${ids.length} archived goals deleted.`);
+    } catch (err) {
+      markError();
+      toast.error(isNetworkError(err) ? 'No connection.' : 'Some goals could not be deleted. Refresh and try again.');
+      await fetchArchivedGoals().catch(() => {});
+    }
+  };
+
   const addSubtask = async (goalId: string, name: string, notes: string = '') => {
     try {
       markSaving();
@@ -414,6 +488,7 @@ export function useGoals() {
 
     if (newValue && nowComplete && !wasComplete && goal.subtasks.length > 0) {
       playGoalDone();
+      celebrationIntentGoalIdsRef.current.push(goalId);
     }
 
     addPending(subtaskId);
@@ -440,6 +515,7 @@ export function useGoals() {
     setGoals((prev) => prev.map((g) => (g.id === goalId ? { ...g, is_completed: newValue } : g)));
     if (newValue && !goal.is_completed) {
       playGoalDone();
+      celebrationIntentGoalIdsRef.current.push(goalId);
     }
     addPendingGoalComplete(goalId);
 
@@ -536,6 +612,9 @@ export function useGoals() {
     archiveGoal,
     restoreGoal,
     deleteArchivedGoal,
+    bulkDeleteGoals,
+    bulkArchiveGoals,
+    bulkDeleteArchivedGoals,
     fetchArchivedGoals,
     addSubtask,
     toggleSubtask,
@@ -544,5 +623,6 @@ export function useGoals() {
     updateSubtaskEffort,
     updateSubtaskNotes,
     reorderGoals,
+    flushCelebrationIntentGoalIds,
   };
 }

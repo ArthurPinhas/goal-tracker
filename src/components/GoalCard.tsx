@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useRef, useState, useCallback, memo, type PointerEvent } from "react";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence, useAnimation, useReducedMotion } from "framer-motion";
 import type { Goal, GoalCategory, GoalShowcaseFileOptions } from "@/types/goal";
@@ -21,7 +21,7 @@ import { getEnergyAccent } from "@/lib/energyAccent";
 import { premiumSpring, smoothOut, tactileHover, tactileTap } from "@/lib/motion";
 import type { CelebrationQuality } from "@/hooks/useResponsiveUI";
 import { formatDueChip, getDueUrgency, isIncompleteForDueDate } from "@/lib/dueDateUtils";
-import { GOAL_COMPLETE_TOASTS, HALFWAY_TOASTS, pickRandom } from "@/lib/motivationalCopy";
+import { HALFWAY_TOASTS, pickRandom } from "@/lib/motivationalCopy";
 
 interface GoalCardProps {
   goal: Goal;
@@ -52,13 +52,17 @@ interface GoalCardProps {
   /** No-subtask goals: toggle PocketBase `completed` on the goal */
   onToggleGoalStandaloneComplete: (goalId: string) => void;
   pendingGoalComplete: Set<string>;
-  onArchive?: () => void;
+  /** Bulk selection (Index toolbar) */
+  bulkSelectionMode?: boolean;
+  bulkSelected?: boolean;
+  onBulkToggle?: (goalId: string, selected: boolean) => void;
+  onArchive?: (goalId: string) => void;
   showDragHandle?: boolean;
   /** When set (touch / narrow layouts), drag-to-reorder only starts from the grip — avoids scroll fighting. */
   reorderHandlePointerDown?: (event: PointerEvent<HTMLSpanElement>) => void;
 }
 
-const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebrating = false, onToggleSubtask, onAddSubtask, onDelete, onDeleteSubtask, onEdit, categories, onCreateCategory, onSetEffort, onUpdateSubtaskNotes, onToggleGoalStandaloneComplete, pendingGoalComplete, onArchive, showDragHandle = true, reorderHandlePointerDown }: GoalCardProps) => {
+const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebrating = false, onToggleSubtask, onAddSubtask, onDelete, onDeleteSubtask, onEdit, categories, onCreateCategory, onSetEffort, onUpdateSubtaskNotes, onToggleGoalStandaloneComplete, pendingGoalComplete, bulkSelectionMode = false, bulkSelected = false, onBulkToggle, onArchive, showDragHandle = true, reorderHandlePointerDown }: GoalCardProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const [showGoalNotes, setShowGoalNotes] = useState(false);
   const [quickShowcaseOpen, setQuickShowcaseOpen] = useState(false);
@@ -81,52 +85,23 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
   const prevPercentage = useRef<number | null>(null);
   /** Tracks real completion transitions — avoids spurious toasts when % flickers */
   const prevCompleteRef = useRef<boolean | null>(null);
+  const prevSubtaskLenRef = useRef<number | null>(null);
 
   useEffect(() => {
     const complete = isGoalComplete(goal);
+    const n = goal.subtasks.length;
+
     if (prevCompleteRef.current === null) {
       prevCompleteRef.current = complete;
       prevPercentage.current = percentage;
+      prevSubtaskLenRef.current = n;
       return;
     }
 
-    const wasComplete = prevCompleteRef.current;
-    prevCompleteRef.current = complete;
     const prevPct = prevPercentage.current ?? 0;
+    prevCompleteRef.current = complete;
 
-    const crossedToDone =
-      !wasComplete &&
-      complete &&
-      (goal.subtasks.length > 0 || goal.is_completed);
-
-    if (crossedToDone) {
-      const runCompleteFx = () => {
-        toast.success(pickRandom(GOAL_COMPLETE_TOASTS), {
-          id: `goal-complete-${goal.id}`,
-          icon: "🏆",
-          duration: heavyCelebration ? 5000 : 3200,
-        });
-        if (!reduceMotion) {
-          const bump = heavyCelebration ? 1.048 : 1.026;
-          void controls
-            .start({
-              scale: bump,
-              transition: { type: "spring", stiffness: heavyCelebration ? 560 : 620, damping: heavyCelebration ? 22 : 26 },
-            })
-            .then(() =>
-              controls.start({
-                scale: 1,
-                transition: { type: "spring", stiffness: 420, damping: 28, mass: 0.85 },
-              }),
-            );
-        }
-      };
-      if (heavyCelebration) {
-        runCompleteFx();
-      } else {
-        requestAnimationFrame(() => requestAnimationFrame(runCompleteFx));
-      }
-    } else if (
+    if (
       prevPct < 50 &&
       percentage >= 50 &&
       percentage < 100 &&
@@ -140,19 +115,17 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
     }
 
     prevPercentage.current = percentage;
-  }, [
-    percentage,
-    goal.id,
-    goal.subtasks.length,
-    goal.is_completed,
-    controls,
-    heavyCelebration,
-    reduceMotion,
-  ]);
+    prevSubtaskLenRef.current = n;
+  }, [percentage, goal]);
 
   useEffect(() => {
     setGoalNoteDraft(goal.notes);
   }, [goal.notes]);
+
+  const handleToggleSubtask = useCallback(
+    (subtaskId: string) => onToggleSubtask(goal.id, subtaskId),
+    [goal.id, onToggleSubtask]
+  );
 
   const flushGoalNotes = () => {
     const t = goalNoteDraft.trim();
@@ -269,9 +242,24 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
 
         {/* Header — grid so title + actions don’t collide on narrow widths */}
         <div
-          className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-2 px-4 py-3.5 items-start md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center"
+          className={cn(
+            "grid gap-x-2 gap-y-2 px-4 py-3.5 items-start",
+            bulkSelectionMode
+              ? "grid-cols-[auto_auto_minmax(0,1fr)] md:grid-cols-[auto_auto_minmax(0,1fr)_auto] md:items-center"
+              : "grid-cols-[auto_minmax(0,1fr)] md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center",
+          )}
           style={{ position: 'relative', zIndex: 3 }}
         >
+          {bulkSelectionMode && onBulkToggle && (
+            <div className="col-start-1 row-start-1 flex h-11 shrink-0 items-center">
+              <Checkbox
+                checked={bulkSelected}
+                onCheckedChange={(v) => onBulkToggle(goal.id, v === true)}
+                aria-label={`Select ${goal.title}`}
+                className="border-muted-foreground/50 data-[state=checked]:bg-primary"
+              />
+            </div>
+          )}
           {showDragHandle ? (
             reorderHandlePointerDown ? (
               <motion.button
@@ -280,7 +268,8 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
                 whileTap={reduceMotion ? undefined : tactileTap}
                 transition={premiumSpring}
                 className={cn(
-                  "col-start-1 row-start-1 -ml-1.5 flex h-11 min-w-11 shrink-0 items-center justify-center touch-manipulation rounded-xl",
+                  bulkSelectionMode ? "col-start-2 row-start-1" : "col-start-1 row-start-1",
+                  "-ml-1.5 flex h-11 min-w-11 shrink-0 items-center justify-center touch-manipulation rounded-xl",
                   "cursor-grab active:cursor-grabbing touch-none select-none",
                   "text-muted-foreground hover:bg-secondary/55 hover:text-foreground",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -296,14 +285,23 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
               </motion.button>
             ) : (
               <div
-                className="col-start-1 row-start-1 -ml-1.5 flex h-11 min-w-11 shrink-0 items-center justify-center text-muted-foreground/35 pointer-events-none"
+                className={cn(
+                  bulkSelectionMode ? "col-start-2 row-start-1" : "col-start-1 row-start-1",
+                  "-ml-1.5 flex h-11 min-w-11 shrink-0 items-center justify-center text-muted-foreground/35 pointer-events-none",
+                )}
                 aria-hidden
               >
                 <GripVertical className="h-5 w-5" />
               </div>
             )
           ) : (
-            <div className="col-start-1 row-start-1 w-11 shrink-0" aria-hidden />
+            <div
+              className={cn(
+                bulkSelectionMode ? "col-start-2 row-start-1" : "col-start-1 row-start-1",
+                "w-11 shrink-0",
+              )}
+              aria-hidden
+            />
           )}
 
           <motion.button
@@ -311,7 +309,10 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
             whileHover={reduceMotion ? undefined : tactileHover}
             whileTap={reduceMotion ? undefined : tactileTap}
             transition={premiumSpring}
-            className="col-start-2 row-start-1 flex min-w-0 items-start gap-2 text-left md:col-span-1 rounded-xl transition-transform duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.97]"
+            className={cn(
+              bulkSelectionMode ? "col-start-3 row-start-1" : "col-start-2 row-start-1",
+              "flex min-w-0 items-start gap-2 text-left md:col-span-1 rounded-xl transition-transform duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.97]",
+            )}
             onClick={() => setCollapsed((v) => !v)}
           >
             <AnimatePresence>
@@ -388,14 +389,21 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
             </div>
           </motion.button>
 
-          <div className="col-span-2 flex items-center justify-end gap-0.5 max-md:min-h-11 md:col-span-1 md:col-start-3 md:row-start-1 md:gap-1">
+          <div
+            className={cn(
+              "flex items-center justify-end gap-0.5 max-md:min-h-11 md:gap-1",
+              bulkSelectionMode
+                ? "col-span-3 col-start-1 row-start-2 md:col-span-1 md:col-start-4 md:row-start-1"
+                : "col-span-2 col-start-1 md:col-span-1 md:col-start-3 md:row-start-1",
+            )}
+          >
             <EditGoalDialog goal={goal} categories={categories} onCreateCategory={onCreateCategory} onEdit={onEdit} />
             {isComplete && !isCelebrating && onArchive && (
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-10 w-10 touch-manipulation md:h-7 md:w-7 text-muted-foreground hover:text-gold hover:bg-gold/12"
-                onClick={onArchive}
+                onClick={() => onArchive(goal.id)}
                 title="Archive goal"
               >
                 <Archive className="h-3.5 w-3.5" />
@@ -585,7 +593,7 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
                             subtask={subtask}
                             isPending={pendingSubtasks.has(subtask.id)}
                             particleAccent={energy.particle}
-                            onToggle={(subtaskId) => onToggleSubtask(goal.id, subtaskId)}
+                            onToggle={handleToggleSubtask}
                             onDelete={onDeleteSubtask}
                             onSetEffort={onSetEffort}
                             onUpdateNotes={onUpdateSubtaskNotes}
@@ -604,7 +612,7 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
                             subtask={subtask}
                             isPending={pendingSubtasks.has(subtask.id)}
                             particleAccent={energy.particle}
-                            onToggle={(subtaskId) => onToggleSubtask(goal.id, subtaskId)}
+                            onToggle={handleToggleSubtask}
                             onDelete={onDeleteSubtask}
                             onSetEffort={onSetEffort}
                             onUpdateNotes={onUpdateSubtaskNotes}
@@ -620,6 +628,8 @@ const GoalCard = ({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebr
         </AnimatePresence>
       </motion.div>
   );
-};
+});
+
+GoalCard.displayName = "GoalCard";
 
 export default GoalCard;

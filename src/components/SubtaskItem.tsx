@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, memo } from "react";
 import { motion, useReducedMotion, useAnimation } from "framer-motion";
 import { useResponsiveUI } from "@/hooks/useResponsiveUI";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -31,7 +31,7 @@ const EFFORT_LABELS: Record<number, string> = {
   5: "Major",
 };
 
-const SubtaskItem = ({
+const SubtaskItem = memo(function SubtaskItem({
   subtask,
   isPending,
   particleAccent = "#22d3ee",
@@ -39,7 +39,7 @@ const SubtaskItem = ({
   onDelete,
   onSetEffort,
   onUpdateNotes,
-}: SubtaskItemProps) => {
+}: SubtaskItemProps) {
   const { liteMotion } = useResponsiveUI();
   const reduceMotion = useReducedMotion();
   const bumpRow = useAnimation();
@@ -227,6 +227,8 @@ const SubtaskItem = ({
       )}
     </motion.div>
   );
-};
+});
+
+SubtaskItem.displayName = "SubtaskItem";
 
 export default SubtaskItem;

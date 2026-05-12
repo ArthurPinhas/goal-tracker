@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback, type ComponentProps } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, useDeferredValue, type ComponentProps } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, Reorder, useDragControls } from "framer-motion";
 import toast from "react-hot-toast";
@@ -11,6 +11,7 @@ import { calcProgress, isGoalComplete } from "@/lib/goalUtils";
 import { goalHasShowcaseMedia } from "@/lib/goalShowcaseAsset";
 import pb from "@/lib/pocketbase";
 import GoalCard from "@/components/GoalCard";
+import { VirtualWindowGoalList } from "@/components/VirtualWindowGoalList";
 import AddGoalDialog from "@/components/AddGoalDialog";
 import SkeletonGoalCard from "@/components/SkeletonGoalCard";
 import CelebrationOverlay from "@/components/CelebrationOverlay";
@@ -19,16 +20,17 @@ import GoalSidebar from "@/components/GoalSidebar";
 import { LinkifiedText } from "@/components/LinkifiedText";
 import ThemeToggle from "@/components/ThemeToggle";
 import { DueNotificationToggle } from "@/components/DueNotificationToggle";
-import { showDueReminderInAppToast } from "@/components/DueReminderInAppToast";
+import { showDueReminderInAppToast } from "@/lib/showDueReminderInAppToast";
 import { PageSideParticles } from "@/components/PageSideParticles";
 import { UserHeroAvatar } from "@/components/UserHeroAvatar";
 import { HeroShowcaseStrip } from "@/components/HeroShowcaseStrip";
 import { EmptyState } from "@/components/EmptyState";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Target, LogOut, Search, Volume2, VolumeX, Check, Loader2, AlertCircle, Archive, RotateCcw, CheckSquare, Trash2, CalendarDays, SearchX, Sparkles, Trophy, FolderTree } from "lucide-react";
+import { Target, LogOut, Search, Volume2, VolumeX, Check, Loader2, AlertCircle, Archive, RotateCcw, CheckSquare, Trash2, CalendarDays, SearchX, Sparkles, Trophy, FolderTree, ListChecks } from "lucide-react";
 import { isSoundEnabled, toggleSound } from "@/lib/sounds";
 import { formatDueChip, getDueUrgency, isIncompleteForDueDate } from "@/lib/dueDateUtils";
 import { appleEase, appleSpring, appleSpringGentle, smoothOut } from "@/lib/motion";
@@ -39,7 +41,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { pickRandom, HERO_HEADER_QUOTES } from "@/lib/motivationalCopy";
+import { pickRandom, HERO_HEADER_QUOTES, GOAL_COMPLETE_TOASTS } from "@/lib/motivationalCopy";
+
+/** Window virtualizer: rows self-measure; estimate only seeds layout. */
+const VIRTUAL_GOALS_THRESHOLD = 10;
+const VIRTUAL_ROW_GOAL_ESTIMATE_PX = 280;
+const VIRTUAL_ROW_ARCHIVED_ESTIMATE_PX = 168;
 
 const HEADER_ORBS = [
   { w: 118, h: 82, left: '6%',  top: '-30%', color: '#34d399', opacity: 0.13, duration: 9,  delay: 0 },
@@ -104,14 +111,20 @@ function ActiveReorderGoalItem({
   onArchive,
   dragFromHandleOnly,
   liteMotion,
+  bulkMode,
+  bulkSelected,
+  onBulkToggle,
 }: {
   goal: Goal;
   index: number;
   celebratingGoals: Set<string>;
   shared: SharedGoalCardProps;
-  onArchive: () => void;
+  onArchive: (goalId: string) => void;
   dragFromHandleOnly: boolean;
   liteMotion: boolean;
+  bulkMode: boolean;
+  bulkSelected: Set<string>;
+  onBulkToggle: (goalId: string, selected: boolean) => void;
 }) {
   const dragControls = useDragControls();
   return (
@@ -133,6 +146,9 @@ function ActiveReorderGoalItem({
       <GoalCard
         goal={goal}
         showDragHandle
+        bulkSelectionMode={bulkMode}
+        bulkSelected={bulkSelected.has(goal.id)}
+        onBulkToggle={onBulkToggle}
         isCelebrating={celebratingGoals.has(goal.id)}
         onArchive={onArchive}
         reorderHandlePointerDown={dragFromHandleOnly ? (e) => dragControls.start(e) : undefined}
@@ -147,7 +163,7 @@ const Index = () => {
   const navigate = useNavigate();
   const ui = useResponsiveUI();
   const liteAmbience = ui.isNarrowViewport || ui.isCoarsePointer;
-  const { goals, categories, loading, pendingSubtasks, pendingGoalComplete, saveStatus, archivedGoals, archivedLoading, createGoal, createCategory, editGoal, deleteGoal, archiveGoal, restoreGoal, deleteArchivedGoal, fetchArchivedGoals, addSubtask, toggleSubtask, toggleGoalStandaloneComplete, deleteSubtask, updateSubtaskEffort, updateSubtaskNotes, reorderGoals } = useGoals();
+  const { goals, categories, loading, pendingSubtasks, pendingGoalComplete, saveStatus, archivedGoals, archivedLoading, createGoal, createCategory, editGoal, deleteGoal, archiveGoal, restoreGoal, deleteArchivedGoal, fetchArchivedGoals, addSubtask, toggleSubtask, toggleGoalStandaloneComplete, deleteSubtask, updateSubtaskEffort, updateSubtaskNotes, reorderGoals, flushCelebrationIntentGoalIds, bulkDeleteGoals, bulkArchiveGoals, bulkDeleteArchivedGoals } = useGoals();
   const heroLine = useMemo(() => pickRandom(HERO_HEADER_QUOTES), []);
   const [orderedGoals, setOrderedGoals] = useState<Goal[]>([]);
   const [search, setSearch] = useState('');
@@ -160,11 +176,15 @@ const Index = () => {
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const [addGoalOpen, setAddGoalOpen] = useState(false);
-  const prevProgresses = useRef<Record<string, number>>({});
-  const prevGoalComplete = useRef<Record<string, boolean>>({});
   const headerRef = useRef<HTMLDivElement>(null);
   const mainGoalListRef = useRef<HTMLDivElement>(null);
+  const activeVirtualAnchorRef = useRef<HTMLDivElement>(null);
+  const completedVirtualAnchorRef = useRef<HTMLDivElement>(null);
+  const archivedVirtualAnchorRef = useRef<HTMLDivElement>(null);
   const reorderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(() => new Set());
+  const [bulkWorking, setBulkWorking] = useState(false);
   const dueNotify = useDueNotifications(goals, {
     onDelivered: ({ title, body }) => {
       showDueReminderInAppToast(title, body);
@@ -183,47 +203,16 @@ const Index = () => {
     return () => observer.disconnect();
   }, [loading, orderedGoals.length]);
 
-  useEffect(() => {
-    const ids = new Set(orderedGoals.map((g) => g.id));
-    for (const id of Object.keys(prevProgresses.current)) {
-      if (!ids.has(id)) {
-        delete prevProgresses.current[id];
-        delete prevGoalComplete.current[id];
-      }
-    }
+  /** Same ordering as `orderedGoals`, but each row re-bound to `goals` so cards never render stale PocketBase rows while `goals` has already updated. */
+  const displayGoals = useMemo(() => {
+    if (goals.length === 0) return [];
+    const m = new Map(goals.map((g) => [g.id, g]));
+    if (orderedGoals.length === 0) return goals;
+    return orderedGoals.map((g) => m.get(g.id) ?? g);
+  }, [goals, orderedGoals]);
 
-    orderedGoals.forEach((goal) => {
-      const pct = calcProgress(goal);
-      const complete = isGoalComplete(goal);
-      const prevPct = prevProgresses.current[goal.id];
-      const prevDone = prevGoalComplete.current[goal.id];
-
-      if (prevPct !== undefined && prevDone !== undefined) {
-        if (
-          !prevDone &&
-          complete &&
-          (goal.subtasks.length > 0 || goal.is_completed)
-        ) {
-          setCelebratingGoals((s) => new Set([...s, goal.id]));
-          if (ui.celebrationQuality === "full") {
-            setShowCelebration(true);
-          }
-          setTimeout(() => {
-            setCelebratingGoals((s) => {
-              const n = new Set(s);
-              n.delete(goal.id);
-              return n;
-            });
-          }, ui.celebrationGoalMs);
-        }
-      }
-
-      prevProgresses.current[goal.id] = pct;
-      prevGoalComplete.current[goal.id] = complete;
-    });
-  }, [orderedGoals, ui.celebrationGoalMs, ui.celebrationQuality]);
-
-  useEffect(() => {
+  /** Layout sync so the first painted frame never shows `orderedGoals` rows that disagree with `goals` (was useEffect + one stale paint). */
+  useLayoutEffect(() => {
     setOrderedGoals((prev) => {
       if (prev.length === 0 && goals.length > 0) {
         const saved: string[] = (() => { try { return JSON.parse(localStorage.getItem('goal-order') || '[]'); } catch { return []; } })();
@@ -243,9 +232,40 @@ const Index = () => {
         .filter((g) => goals.some((ng) => ng.id === g.id))
         .map((g) => goals.find((ng) => ng.id === g.id)!);
       /** New IDs from PocketBase (`sort_order: -Date.now()`) go at the top; keep prior manual order below */
-      return [...newGoals, ...filtered];
+      const merged = [...newGoals, ...filtered];
+      const seen = new Set<string>();
+      return merged.filter((g) => {
+        if (seen.has(g.id)) return false;
+        seen.add(g.id);
+        return true;
+      });
     });
   }, [goals]);
+
+  /** Overlay + 🏆 toast only when the user finishes a goal (toggle paths enqueue ids). Inferring from `goals` diffs caused mass false positives after refetches. */
+  useLayoutEffect(() => {
+    const ids = flushCelebrationIntentGoalIds();
+    if (ids.length === 0) return;
+    const heavy = ui.celebrationQuality === "full";
+    for (const id of ids) {
+      const g = goals.find((x) => x.id === id);
+      if (!g || !isGoalComplete(g)) continue;
+      setCelebratingGoals((s) => new Set([...s, id]));
+      if (heavy) setShowCelebration(true);
+      toast.success(pickRandom(GOAL_COMPLETE_TOASTS), {
+        id: `goal-complete-${id}`,
+        icon: "🏆",
+        duration: heavy ? 5000 : 3200,
+      });
+      setTimeout(() => {
+        setCelebratingGoals((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }, ui.celebrationGoalMs);
+    }
+  }, [goals, flushCelebrationIntentGoalIds, ui.celebrationGoalMs, ui.celebrationQuality]);
 
   // Fetch archived goals lazily when tab first opened
   const archivedFetched = useRef(false);
@@ -271,42 +291,62 @@ const Index = () => {
   const handleLogout = () => { logout(); navigate("/login"); };
   const handleToggleSound = () => setSoundOn(toggleSound());
 
-  const searchLower = search.toLowerCase().trim();
-  const matchesCategory = (g: Goal) => !categoryFilterId || g.category?.id === categoryFilterId;
-  const matchesSearch = (g: Goal) => {
-    if (!searchLower) return true;
-    return (
-      g.title.toLowerCase().includes(searchLower) ||
-      g.description?.toLowerCase().includes(searchLower) ||
-      (g.notes && g.notes.toLowerCase().includes(searchLower)) ||
-      (g.category && g.category.name.toLowerCase().includes(searchLower)) ||
-      (g.showcase_url && g.showcase_url.toLowerCase().includes(searchLower)) ||
-      (g.showcase_caption && g.showcase_caption.toLowerCase().includes(searchLower)) ||
-      g.subtasks.some(
-        (s) =>
-          s.title.toLowerCase().includes(searchLower) ||
-          (s.notes && s.notes.toLowerCase().includes(searchLower))
-      )
-    );
-  };
+  useEffect(() => {
+    setBulkSelected(new Set());
+  }, [filter, categoryFilterId, dueFilter, search]);
 
-  const activeGoalsBase = orderedGoals.filter((g) => (!isGoalComplete(g) || celebratingGoals.has(g.id)) && matchesSearch(g) && matchesCategory(g));
-  const completedGoalsBase = orderedGoals.filter((g) => isGoalComplete(g) && !celebratingGoals.has(g.id) && matchesSearch(g) && matchesCategory(g));
+  const handleBulkToggle = useCallback((goalId: string, selected: boolean) => {
+    setBulkSelected((prev) => {
+      const next = new Set(prev);
+      if (selected) next.add(goalId);
+      else next.delete(goalId);
+      return next;
+    });
+  }, []);
+
+  const deferredSearch = useDeferredValue(search);
+  const searchLower = deferredSearch.toLowerCase().trim();
+  const matchesCategory = useCallback(
+    (g: Goal) => !categoryFilterId || g.category?.id === categoryFilterId,
+    [categoryFilterId],
+  );
+  const matchesSearch = useCallback(
+    (g: Goal) => {
+      if (!searchLower) return true;
+      return (
+        g.title.toLowerCase().includes(searchLower) ||
+        g.description?.toLowerCase().includes(searchLower) ||
+        (g.notes && g.notes.toLowerCase().includes(searchLower)) ||
+        (g.category && g.category.name.toLowerCase().includes(searchLower)) ||
+        (g.showcase_url && g.showcase_url.toLowerCase().includes(searchLower)) ||
+        (g.showcase_caption && g.showcase_caption.toLowerCase().includes(searchLower)) ||
+        g.subtasks.some(
+          (s) =>
+            s.title.toLowerCase().includes(searchLower) ||
+            (s.notes && s.notes.toLowerCase().includes(searchLower)),
+        )
+      );
+    },
+    [searchLower],
+  );
+
+  const activeGoalsBase = displayGoals.filter((g) => (!isGoalComplete(g) || celebratingGoals.has(g.id)) && matchesSearch(g) && matchesCategory(g));
+  const completedGoalsBase = displayGoals.filter((g) => isGoalComplete(g) && !celebratingGoals.has(g.id) && matchesSearch(g) && matchesCategory(g));
 
   const showcaseCount = useMemo(
-    () => orderedGoals.filter((g) => isGoalComplete(g) && goalHasShowcaseMedia(g)).length,
-    [orderedGoals]
+    () => displayGoals.filter((g) => isGoalComplete(g) && goalHasShowcaseMedia(g)).length,
+    [displayGoals]
   );
   const showcaseSpotlightGoals = useMemo(
-    () => orderedGoals.filter((g) => isGoalComplete(g) && goalHasShowcaseMedia(g)).slice(0, 8),
-    [orderedGoals]
+    () => displayGoals.filter((g) => isGoalComplete(g) && goalHasShowcaseMedia(g)).slice(0, 8),
+    [displayGoals]
   );
   const showShowcaseHeroNudge = useMemo(
     () =>
-      orderedGoals.length > 0 &&
+      displayGoals.length > 0 &&
       showcaseCount === 0 &&
-      orderedGoals.some((g) => isGoalComplete(g)),
-    [orderedGoals, showcaseCount]
+      displayGoals.some((g) => isGoalComplete(g)),
+    [displayGoals, showcaseCount]
   );
 
   const jumpToShowcaseGoal = useCallback((goalId: string) => {
@@ -331,20 +371,82 @@ const Index = () => {
   const activeGoals = goalSortMode === 'due_asc' ? sortGoalsByDueAsc(activeGoalsFiltered) : activeGoalsFiltered;
   const completedGoals = completedGoalsFiltered;
 
-  const canDragReorder = dueFilter === 'all' && goalSortMode === 'manual';
-
-  const overdueCount = orderedGoals.filter(
-    (g) => getDueUrgency(g.due_date, isIncompleteForDueDate(g)) === 'overdue'
-  ).length;
-  const dueSoonCount = orderedGoals.filter(
-    (g) => getDueUrgency(g.due_date, isIncompleteForDueDate(g)) === 'soon'
-  ).length;
-
   const showActive = filter !== 'done' && filter !== 'archived' && filter !== 'showcase';
   const showCompleted = filter !== 'active' && filter !== 'archived';
 
-  const totalSubtasksDone = orderedGoals.reduce((sum, g) => sum + g.subtasks.filter((s) => s.is_completed).length, 0);
-  const totalSubtasks = orderedGoals.reduce((sum, g) => sum + g.subtasks.length, 0);
+  const selectableGoalsFlat = useMemo(() => {
+    if (filter === 'archived') {
+      return archivedGoals.filter((g) => matchesCategory(g) && matchesSearch(g));
+    }
+    const parts: Goal[] = [];
+    if (showActive && activeGoals.length > 0) parts.push(...activeGoals);
+    if (showCompleted && completedGoals.length > 0) parts.push(...completedGoals);
+    const seen = new Set<string>();
+    return parts.filter((g) => {
+      if (seen.has(g.id)) return false;
+      seen.add(g.id);
+      return true;
+    });
+  }, [filter, archivedGoals, activeGoals, completedGoals, showActive, showCompleted, matchesCategory, matchesSearch]);
+
+  const bulkSelectedIds = useMemo(() => [...bulkSelected], [bulkSelected]);
+
+  const archiveEligibleIds = useMemo(
+    () =>
+      bulkSelectedIds.filter((id) => {
+        const g = goals.find((x) => x.id === id);
+        return g != null && isGoalComplete(g);
+      }),
+    [bulkSelectedIds, goals],
+  );
+
+  const runBulkDelete = useCallback(async () => {
+    if (bulkSelectedIds.length === 0) return;
+    setBulkWorking(true);
+    try {
+      if (filter === 'archived') await bulkDeleteArchivedGoals(bulkSelectedIds);
+      else await bulkDeleteGoals(bulkSelectedIds);
+      setBulkSelected(new Set());
+      setBulkMode(false);
+    } finally {
+      setBulkWorking(false);
+    }
+  }, [bulkSelectedIds, filter, bulkDeleteArchivedGoals, bulkDeleteGoals]);
+
+  const runBulkArchive = useCallback(async () => {
+    if (archiveEligibleIds.length === 0) return;
+    setBulkWorking(true);
+    try {
+      await bulkArchiveGoals(archiveEligibleIds);
+      setBulkSelected(new Set());
+      setBulkMode(false);
+    } finally {
+      setBulkWorking(false);
+    }
+  }, [archiveEligibleIds, bulkArchiveGoals]);
+
+  const canDragReorder = dueFilter === 'all' && goalSortMode === 'manual' && !bulkMode;
+
+  const suppressCardLayout =
+    ui.liteMotion || activeGoals.length + completedGoals.length > 24;
+
+  const virtualizeActiveStatic =
+    !canDragReorder && activeGoals.length >= VIRTUAL_GOALS_THRESHOLD;
+  const virtualizeCompleted = completedGoals.length >= VIRTUAL_GOALS_THRESHOLD;
+  const virtualizeArchived =
+    filter === "archived" && selectableGoalsFlat.length >= VIRTUAL_GOALS_THRESHOLD;
+
+  const listAnimDelay = (i: number) => Math.min(i * 0.05, 0.35);
+
+  const overdueCount = displayGoals.filter(
+    (g) => getDueUrgency(g.due_date, isIncompleteForDueDate(g)) === 'overdue'
+  ).length;
+  const dueSoonCount = displayGoals.filter(
+    (g) => getDueUrgency(g.due_date, isIncompleteForDueDate(g)) === 'soon'
+  ).length;
+
+  const totalSubtasksDone = displayGoals.reduce((sum, g) => sum + g.subtasks.filter((s) => s.is_completed).length, 0);
+  const totalSubtasks = displayGoals.reduce((sum, g) => sum + g.subtasks.length, 0);
   const username = (user as { name?: string })?.name ?? 'there';
   const userAvatarUrl = useMemo(() => {
     const r = user as { id?: string; avatar?: string } | null | undefined;
@@ -356,21 +458,38 @@ const Index = () => {
     }
   }, [user]);
 
-  const sharedCardProps = {
-    pendingSubtasks,
-    pendingGoalComplete,
-    celebrationQuality: ui.celebrationQuality,
-    onToggleSubtask: toggleSubtask,
-    onAddSubtask: addSubtask,
-    onDelete: deleteGoal,
-    onDeleteSubtask: deleteSubtask,
-    onEdit: editGoal,
-    onSetEffort: updateSubtaskEffort,
-    onUpdateSubtaskNotes: updateSubtaskNotes,
-    onToggleGoalStandaloneComplete: toggleGoalStandaloneComplete,
-    categories,
-    onCreateCategory: createCategory,
-  };
+  const sharedCardProps = useMemo(
+    () => ({
+      pendingSubtasks,
+      pendingGoalComplete,
+      celebrationQuality: ui.celebrationQuality,
+      onToggleSubtask: toggleSubtask,
+      onAddSubtask: addSubtask,
+      onDelete: deleteGoal,
+      onDeleteSubtask: deleteSubtask,
+      onEdit: editGoal,
+      onSetEffort: updateSubtaskEffort,
+      onUpdateSubtaskNotes: updateSubtaskNotes,
+      onToggleGoalStandaloneComplete: toggleGoalStandaloneComplete,
+      categories,
+      onCreateCategory: createCategory,
+    }),
+    [
+      pendingSubtasks,
+      pendingGoalComplete,
+      ui.celebrationQuality,
+      toggleSubtask,
+      addSubtask,
+      deleteGoal,
+      deleteSubtask,
+      editGoal,
+      updateSubtaskEffort,
+      updateSubtaskNotes,
+      toggleGoalStandaloneComplete,
+      categories,
+      createCategory,
+    ],
+  );
 
   const dueReminderToggle = (
     <DueNotificationToggle
@@ -594,7 +713,7 @@ const Index = () => {
             </div>
           </div>
 
-          {!loading && orderedGoals.length > 0 && (showcaseSpotlightGoals.length > 0 || showShowcaseHeroNudge) && (
+          {!loading && displayGoals.length > 0 && (showcaseSpotlightGoals.length > 0 || showShowcaseHeroNudge) && (
             <HeroShowcaseStrip
               spotlightGoals={showcaseSpotlightGoals}
               showcaseCount={showcaseCount}
@@ -605,7 +724,7 @@ const Index = () => {
             />
           )}
 
-          {!loading && orderedGoals.length > 0 && (
+          {!loading && displayGoals.length > 0 && (
             <motion.div
               initial="hidden"
               animate="visible"
@@ -620,7 +739,7 @@ const Index = () => {
               className="flex flex-wrap items-end gap-x-10 gap-y-4 mt-6 pt-5 border-t border-white/[0.12]"
             >
               {[
-                { label: 'Goals', value: orderedGoals.length },
+                { label: 'Goals', value: displayGoals.length },
                 { label: 'Completed', value: completedGoalsBase.length },
                 { label: 'Subtasks done', value: totalSubtasksDone },
               ].map(({ label, value }) => (
@@ -662,7 +781,7 @@ const Index = () => {
                 <SkeletonGoalCard />
                 <SkeletonGoalCard />
               </div>
-            ) : orderedGoals.length === 0 ? (
+            ) : displayGoals.length === 0 ? (
               <EmptyState
                 icon={Target}
                 title="Set your first goal"
@@ -704,7 +823,7 @@ const Index = () => {
                     <SelectContent>
                       <SelectItem value="__all__">All categories</SelectItem>
                       {categories.map((c) => {
-                        const n = orderedGoals.filter((g) => g.category?.id === c.id).length;
+                        const n = displayGoals.filter((g) => g.category?.id === c.id).length;
                         return (
                           <SelectItem key={c.id} value={c.id}>
                             {`${c.name} (${n})`}
@@ -716,7 +835,7 @@ const Index = () => {
                 </div>
                   <div className="flex gap-2 flex-wrap">
                     {([
-                      { f: 'all', label: `All (${orderedGoals.length})` },
+                      { f: 'all', label: `All (${displayGoals.length})` },
                       { f: 'active', label: `Active (${activeGoalsBase.length})` },
                       { f: 'done', label: `Done (${completedGoalsBase.length})` },
                       { f: 'showcase', label: `On display (${showcaseCount})` },
@@ -738,8 +857,120 @@ const Index = () => {
                       >
                         {label}
                       </motion.button>
-                    ))}
+                      ))}
                   </div>
+                  {!loading && (displayGoals.length > 0 || (filter === "archived" && archivedGoals.length > 0)) && (
+                    <div className="flex flex-wrap items-center gap-2 pt-3 mt-1 border-t border-border/50">
+                      <Button
+                        type="button"
+                        variant={bulkMode ? "secondary" : "outline"}
+                        size="sm"
+                        className="h-9 rounded-lg touch-manipulation text-xs font-semibold shrink-0"
+                        onClick={() => setBulkMode((m) => !m)}
+                      >
+                        {bulkMode ? (
+                          "Done selecting"
+                        ) : (
+                          <>
+                            <ListChecks className="h-3.5 w-3.5 mr-1.5 shrink-0 opacity-90" aria-hidden />
+                            Select goals
+                          </>
+                        )}
+                      </Button>
+                      {bulkMode && (
+                        <>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-9 rounded-lg touch-manipulation text-xs font-semibold"
+                            disabled={selectableGoalsFlat.length === 0 || bulkWorking}
+                            onClick={() => setBulkSelected(new Set(selectableGoalsFlat.map((g) => g.id)))}
+                          >
+                            Select all in view
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-9 rounded-lg touch-manipulation text-xs font-semibold"
+                            disabled={bulkWorking}
+                            onClick={() => setBulkSelected(new Set())}
+                          >
+                            Clear
+                          </Button>
+                          <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
+                            {bulkSelectedIds.length} selected
+                          </span>
+                          {filter !== "archived" && archiveEligibleIds.length > 0 && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-9 rounded-lg touch-manipulation text-xs font-semibold shrink-0"
+                                  disabled={bulkWorking}
+                                >
+                                  Archive ({archiveEligibleIds.length})
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>
+                                    Archive {archiveEligibleIds.length} completed goal
+                                    {archiveEligibleIds.length === 1 ? "" : "s"}?
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    {archiveEligibleIds.length === bulkSelectedIds.length
+                                      ? "Selected goals will move to your archive. You can restore them anytime."
+                                      : `${archiveEligibleIds.length} of ${bulkSelectedIds.length} selected goals are complete and will be archived. Incomplete selections are skipped.`}
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel disabled={bulkWorking}>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => void runBulkArchive()} disabled={bulkWorking}>
+                                    Archive
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                className="h-9 rounded-lg touch-manipulation text-xs font-semibold shrink-0"
+                                disabled={bulkSelectedIds.length === 0 || bulkWorking}
+                              >
+                                Delete ({bulkSelectedIds.length})
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Delete {bulkSelectedIds.length} goal{bulkSelectedIds.length === 1 ? "" : "s"} permanently?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  {filter === "archived"
+                                    ? "This removes archived goals and their subtasks from the database. This cannot be undone."
+                                    : "This removes the selected goals and all of their subtasks. This cannot be undone."}
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel disabled={bulkWorking}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction variant="destructive" onClick={() => void runBulkDelete()} disabled={bulkWorking}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </>
+                      )}
+                    </div>
+                  )}
                   {filter !== 'archived' && filter !== 'showcase' && (
                     <div className="flex flex-col gap-2.5 md:flex-row md:flex-wrap md:items-end md:justify-between pt-3 mt-1 border-t border-border/50">
                       <div className="flex flex-col gap-2">
@@ -819,32 +1050,80 @@ const Index = () => {
                             index={i}
                             celebratingGoals={celebratingGoals}
                             shared={sharedCardProps}
-                            onArchive={() => archiveGoal(goal.id)}
+                            onArchive={archiveGoal}
                             dragFromHandleOnly={!ui.reorderDragWholeCard}
                             liteMotion={ui.liteMotion}
+                            bulkMode={bulkMode}
+                            bulkSelected={bulkSelected}
+                            onBulkToggle={handleBulkToggle}
                           />
                         ))}
                       </AnimatePresence>
                     </Reorder.Group>
                   ) : (
-                    <div className="space-y-4">
-                      <AnimatePresence initial={false}>
-                      {activeGoals.map((goal, i) => (
-                        <motion.div
-                          layout
-                          key={goal.id}
-                          initial={ui.liteMotion ? false : { opacity: 0, y: 16 }}
-                            animate={{
-                              opacity: 1,
-                              y: 0,
-                              transition: ui.liteMotion ? { duration: 0 } : { delay: i * 0.05, ...appleSpringGentle },
-                            }}
-                            exit={{ opacity: 0, y: 10, scale: 0.97, transition: { duration: 0.28, ease: smoothOut } }}
-                          >
-                            <GoalCard goal={goal} showDragHandle={false} isCelebrating={celebratingGoals.has(goal.id)} onArchive={() => archiveGoal(goal.id)} {...sharedCardProps} />
-                          </motion.div>
-                        ))}
-                      </AnimatePresence>
+                    <div ref={activeVirtualAnchorRef}>
+                      {virtualizeActiveStatic ? (
+                        <VirtualWindowGoalList
+                          items={activeGoals}
+                          scrollAnchorRef={activeVirtualAnchorRef}
+                          rowEstimatePx={VIRTUAL_ROW_GOAL_ESTIMATE_PX}
+                          gap={16}
+                          renderItem={(goal, i) => (
+                            <motion.div
+                              layout={!suppressCardLayout}
+                              className="perf-skip-offscreen"
+                              initial={ui.liteMotion ? false : { opacity: 0, y: 16 }}
+                              animate={{
+                                opacity: 1,
+                                y: 0,
+                                transition: ui.liteMotion ? { duration: 0 } : { delay: listAnimDelay(i), ...appleSpringGentle },
+                              }}
+                              exit={{ opacity: 0, y: 10, scale: 0.97, transition: { duration: 0.28, ease: smoothOut } }}
+                            >
+                              <GoalCard
+                                goal={goal}
+                                showDragHandle={false}
+                                bulkSelectionMode={bulkMode}
+                                bulkSelected={bulkSelected.has(goal.id)}
+                                onBulkToggle={handleBulkToggle}
+                                isCelebrating={celebratingGoals.has(goal.id)}
+                                onArchive={archiveGoal}
+                                {...sharedCardProps}
+                              />
+                            </motion.div>
+                          )}
+                        />
+                      ) : (
+                        <div className="space-y-4">
+                          <AnimatePresence initial={false}>
+                            {activeGoals.map((goal, i) => (
+                              <motion.div
+                                layout={!suppressCardLayout}
+                                key={goal.id}
+                                className="perf-skip-offscreen"
+                                initial={ui.liteMotion ? false : { opacity: 0, y: 16 }}
+                                animate={{
+                                  opacity: 1,
+                                  y: 0,
+                                  transition: ui.liteMotion ? { duration: 0 } : { delay: listAnimDelay(i), ...appleSpringGentle },
+                                }}
+                                exit={{ opacity: 0, y: 10, scale: 0.97, transition: { duration: 0.28, ease: smoothOut } }}
+                              >
+                                <GoalCard
+                                  goal={goal}
+                                  showDragHandle={false}
+                                  bulkSelectionMode={bulkMode}
+                                  bulkSelected={bulkSelected.has(goal.id)}
+                                  onBulkToggle={handleBulkToggle}
+                                  isCelebrating={celebratingGoals.has(goal.id)}
+                                  onArchive={archiveGoal}
+                                  {...sharedCardProps}
+                                />
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        </div>
+                      )}
                     </div>
                   )
                 )}
@@ -861,25 +1140,72 @@ const Index = () => {
                         <div className="h-px flex-1 bg-gradient-to-l from-transparent via-border to-transparent" />
                       </div>
                     )}
-                    <AnimatePresence initial={false}>
-                      {completedGoals.map((goal, i) => (
-                        <motion.div
-                          layout
-                          key={goal.id}
-                          initial={ui.liteMotion ? false : { opacity: 0, y: 16 }}
-                          animate={{
-                            opacity: 1,
-                            y: 0,
-                            transition: ui.liteMotion
-                              ? { duration: 0 }
-                              : { delay: 0.28 + i * 0.05, ...appleSpringGentle },
-                          }}
-                          exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.25, ease: smoothOut } }}
-                        >
-                          <GoalCard goal={goal} showDragHandle={false} isCelebrating={celebratingGoals.has(goal.id)} onArchive={() => archiveGoal(goal.id)} {...sharedCardProps} />
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
+                    <div ref={completedVirtualAnchorRef}>
+                      {virtualizeCompleted ? (
+                        <VirtualWindowGoalList
+                          items={completedGoals}
+                          scrollAnchorRef={completedVirtualAnchorRef}
+                          rowEstimatePx={VIRTUAL_ROW_GOAL_ESTIMATE_PX}
+                          gap={16}
+                          renderItem={(goal, i) => (
+                            <motion.div
+                              layout={!suppressCardLayout}
+                              className="perf-skip-offscreen"
+                              initial={ui.liteMotion ? false : { opacity: 0, y: 16 }}
+                              animate={{
+                                opacity: 1,
+                                y: 0,
+                                transition: ui.liteMotion
+                                  ? { duration: 0 }
+                                  : { delay: 0.28 + listAnimDelay(i), ...appleSpringGentle },
+                              }}
+                              exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.25, ease: smoothOut } }}
+                            >
+                              <GoalCard
+                                goal={goal}
+                                showDragHandle={false}
+                                bulkSelectionMode={bulkMode}
+                                bulkSelected={bulkSelected.has(goal.id)}
+                                onBulkToggle={handleBulkToggle}
+                                isCelebrating={celebratingGoals.has(goal.id)}
+                                onArchive={archiveGoal}
+                                {...sharedCardProps}
+                              />
+                            </motion.div>
+                          )}
+                        />
+                      ) : (
+                        <AnimatePresence initial={false}>
+                          {completedGoals.map((goal, i) => (
+                            <motion.div
+                              layout={!suppressCardLayout}
+                              key={goal.id}
+                              className="perf-skip-offscreen"
+                              initial={ui.liteMotion ? false : { opacity: 0, y: 16 }}
+                              animate={{
+                                opacity: 1,
+                                y: 0,
+                                transition: ui.liteMotion
+                                  ? { duration: 0 }
+                                  : { delay: 0.28 + listAnimDelay(i), ...appleSpringGentle },
+                              }}
+                              exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.25, ease: smoothOut } }}
+                            >
+                              <GoalCard
+                                goal={goal}
+                                showDragHandle={false}
+                                bulkSelectionMode={bulkMode}
+                                bulkSelected={bulkSelected.has(goal.id)}
+                                onBulkToggle={handleBulkToggle}
+                                isCelebrating={celebratingGoals.has(goal.id)}
+                                onArchive={archiveGoal}
+                                {...sharedCardProps}
+                              />
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -899,19 +1225,98 @@ const Index = () => {
                         title="Archive is empty"
                         description="When you archive a goal, it lands here. Restore it anytime or delete it permanently."
                       />
-                    ) : (() => {
-                      const archivedFiltered = archivedGoals.filter((g) => matchesSearch(g) && matchesCategory(g));
-                      if (archivedFiltered.length === 0) {
-                        return (
-                          <EmptyState
-                            compact
-                            icon={SearchX}
-                            title="No archived goals match"
-                            description="Try clearing the search box or setting the category filter to “All categories”."
+                    ) : selectableGoalsFlat.length === 0 ? (
+                      <EmptyState
+                        compact
+                        icon={SearchX}
+                        title="No archived goals match"
+                        description="Try clearing the search box or setting the category filter to “All categories”."
+                      />
+                    ) : (
+                      <div ref={archivedVirtualAnchorRef}>
+                        {virtualizeArchived ? (
+                          <VirtualWindowGoalList
+                            items={selectableGoalsFlat}
+                            scrollAnchorRef={archivedVirtualAnchorRef}
+                            rowEstimatePx={VIRTUAL_ROW_ARCHIVED_ESTIMATE_PX}
+                            gap={12}
+                            renderItem={(goal) => {
+                              const pct = calcProgress(goal);
+                              const done = goal.subtasks.filter((s) => s.is_completed).length;
+                              const subtaskSummary =
+                                goal.subtasks.length > 0
+                                  ? `${done}/${goal.subtasks.length} subtasks`
+                                  : goal.is_completed
+                                    ? 'Standalone · complete'
+                                    : 'No subtasks';
+                              return (
+                                <div className="group rounded-2xl border border-border/55 bg-card/60 backdrop-blur-sm px-4 py-4 flex gap-3 sm:gap-4 flex-col sm:flex-row sm:items-start opacity-90 hover:opacity-100 transition-all duration-300 hover:border-border/80 hover:shadow-xl hover:shadow-black/25 dark:bg-card/55 dark:hover:shadow-black/40">
+                                  {bulkMode && (
+                                    <div className="flex shrink-0 items-start pt-1">
+                                      <Checkbox
+                                        checked={bulkSelected.has(goal.id)}
+                                        onCheckedChange={(v) => handleBulkToggle(goal.id, v === true)}
+                                        aria-label={`Select archived goal ${goal.title}`}
+                                        className="border-muted-foreground/50 data-[state=checked]:bg-primary"
+                                      />
+                                    </div>
+                                  )}
+                                  <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-start min-w-0">
+                                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                                      <Archive className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-medium text-sm flex items-center gap-1.5 min-w-0">
+                                          {goal.emoji && <span className="shrink-0 text-base leading-none">{goal.emoji}</span>}
+                                          <span className="truncate min-w-0">{goal.title}</span>
+                                        </p>
+                                        {goal.description && (
+                                          <div className="text-xs text-muted-foreground truncate mt-0.5 min-w-0">
+                                            <LinkifiedText text={goal.description} as="span" />
+                                          </div>
+                                        )}
+                                        {goal.due_date && (
+                                          <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                                            <CalendarDays className="h-3 w-3 shrink-0 opacity-80" />
+                                            <span>Due {formatDueChip(goal.due_date)}</span>
+                                          </div>
+                                        )}
+                                        <div className="flex items-center gap-1.5 mt-1.5">
+                                          <CheckSquare className="h-3 w-3 text-muted-foreground" />
+                                          <span className="text-xs text-muted-foreground tabular-nums">{subtaskSummary} · {pct}%</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center justify-end gap-1 shrink-0 sm:pt-0.5 max-md:min-h-10">
+                                      <Button variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-mint hover:bg-mint/12 touch-manipulation" onClick={() => restoreGoal(goal.id)} title="Restore to active">
+                                        <RotateCcw className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-destructive touch-manipulation">
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                            <AlertDialogTitle>Delete "{goal.title}"?</AlertDialogTitle>
+                                            <AlertDialogDescription>Permanently deletes from archive. Cannot be undone.</AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction variant="destructive" onClick={() => deleteArchivedGoal(goal.id)}>
+                                              Delete
+                                            </AlertDialogAction>
+                                          </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            }}
                           />
-                        );
-                      }
-                      return archivedFiltered.map((goal) => {
+                        ) : (
+                          selectableGoalsFlat.map((goal) => {
                       const pct = calcProgress(goal);
                       const done = goal.subtasks.filter((s) => s.is_completed).length;
                       const subtaskSummary =
@@ -921,7 +1326,18 @@ const Index = () => {
                             ? 'Standalone · complete'
                             : 'No subtasks';
                       return (
-                        <div key={goal.id} className="group rounded-2xl border border-border/55 bg-card/60 backdrop-blur-sm px-4 py-4 flex flex-col gap-3 sm:flex-row sm:items-start opacity-90 hover:opacity-100 transition-all duration-300 hover:border-border/80 hover:shadow-xl hover:shadow-black/25 dark:bg-card/55 dark:hover:shadow-black/40">
+                        <div key={goal.id} className="group rounded-2xl border border-border/55 bg-card/60 backdrop-blur-sm px-4 py-4 flex gap-3 sm:gap-4 flex-col sm:flex-row sm:items-start opacity-90 hover:opacity-100 transition-all duration-300 hover:border-border/80 hover:shadow-xl hover:shadow-black/25 dark:bg-card/55 dark:hover:shadow-black/40">
+                          {bulkMode && (
+                            <div className="flex shrink-0 items-start pt-1">
+                              <Checkbox
+                                checked={bulkSelected.has(goal.id)}
+                                onCheckedChange={(v) => handleBulkToggle(goal.id, v === true)}
+                                aria-label={`Select archived goal ${goal.title}`}
+                                className="border-muted-foreground/50 data-[state=checked]:bg-primary"
+                              />
+                            </div>
+                          )}
+                          <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-start min-w-0">
                           <div className="flex items-start gap-3 min-w-0 flex-1">
                             <Archive className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                             <div className="flex-1 min-w-0">
@@ -970,10 +1386,13 @@ const Index = () => {
                               </AlertDialogContent>
                             </AlertDialog>
                           </div>
+                          </div>
                         </div>
                       );
-                      });
-                    })()}
+                          })
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1033,7 +1452,7 @@ const Index = () => {
           {/* Sticky sidebar — lg screens only */}
           <div className="sticky top-20">
             <GoalSidebar
-              goals={orderedGoals}
+              goals={displayGoals}
               completedCount={completedGoalsBase.length}
               totalSubtasksDone={totalSubtasksDone}
               totalSubtasks={totalSubtasks}

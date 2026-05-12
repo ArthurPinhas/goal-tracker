@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
 
 export default {
   darkMode: ["class"],
@@ -13,6 +14,10 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        heading: ["Inter Tight", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -48,6 +53,9 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         success: "hsl(var(--success))",
+        mint: "hsl(var(--mint))",
+        coral: "hsl(var(--coral))",
+        gold: "hsl(var(--gold))",
         "progress-track": "hsl(var(--progress-track))",
         "progress-fill": "hsl(var(--progress-fill))",
         sidebar: {
@@ -65,6 +73,16 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      boxShadow: {
+        /** Top-edge highlight + subtle inner floor — neo-skeu “lifted” plane */
+        "inner-light":
+          "inset 0 1px 0 0 rgba(255, 255, 255, 0.13), inset 0 -1px 0 0 rgba(0, 0, 0, 0.22)",
+        /** Grounded drop shadow — depth without muddy glow */
+        "outer-depth": "0 16px 42px -14px rgba(0, 0, 0, 0.58), 0 8px 20px -10px rgba(0, 0, 0, 0.42)",
+        /** Cards: combine inner light + outer depth (single utility — stacking two shadow classes overrides) */
+        "neo-card":
+          "inset 0 1px 0 0 rgba(255, 255, 255, 0.12), inset 0 -1px 0 0 rgba(0, 0, 0, 0.2), 0 16px 42px -14px rgba(0, 0, 0, 0.58), 0 8px 20px -10px rgba(0, 0, 0, 0.42)",
       },
       keyframes: {
         "accordion-down": {
@@ -90,5 +108,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindcssAnimate],
 } satisfies Config;
