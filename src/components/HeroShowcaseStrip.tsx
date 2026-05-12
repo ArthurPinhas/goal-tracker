@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import type { Goal } from "@/types/goal";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { appleEase } from "@/lib/motion";
 import { getGoalShowcaseImageUrl } from "@/lib/goalShowcaseAsset";
 import {
   isLikelyDirectImageUrl,
@@ -11,6 +11,7 @@ import {
   youtubeShowcaseThumbnailSrc,
 } from "@/lib/showcaseUrl";
 import { ChevronDown, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
 
 const HERO_WINS_LS = "goal-tracker-hero-wins-expanded";
 
@@ -120,33 +121,35 @@ export function HeroShowcaseStrip({
   return (
     <div className="mt-4 pt-3 border-t border-white/[0.10]">
       {spotlightGoals.length > 0 ? (
-        <Collapsible open={heroWinsOpen} onOpenChange={persistOpen} className="space-y-2">
+        <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className={cn(
-                  "flex flex-1 min-w-0 items-center gap-2 rounded-xl px-2 py-2 text-left",
-                  "text-white/70 hover:text-white/90 hover:bg-white/[0.06] transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
-                )}
-              >
-                <Sparkles className="h-4 w-4 text-amber-300/90 shrink-0" aria-hidden />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] min-w-0 truncate">
-                  Wins on display
-                  <span className="text-white/45 font-medium normal-case tracking-normal ml-1.5">
-                    · {showcaseCount} {showcaseCount === 1 ? "win" : "wins"}
-                  </span>
+            <button
+              type="button"
+              id="hero-wins-trigger"
+              aria-expanded={heroWinsOpen}
+              aria-controls="hero-wins-panel"
+              onClick={() => persistOpen(!heroWinsOpen)}
+              className={cn(
+                "flex flex-1 min-w-0 items-center gap-2 rounded-xl px-2 py-2 text-left",
+                "text-white/70 hover:text-white/90 hover:bg-white/[0.06] transition-colors duration-200",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+              )}
+            >
+              <Sparkles className="h-4 w-4 text-amber-300/90 shrink-0" aria-hidden />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] min-w-0 truncate">
+                Wins on display
+                <span className="text-white/45 font-medium normal-case tracking-normal ml-1.5">
+                  · {showcaseCount} {showcaseCount === 1 ? "win" : "wins"}
                 </span>
-                <ChevronDown
-                  className={cn(
-                    "h-4 w-4 shrink-0 text-white/50 transition-transform duration-200 ml-auto",
-                    heroWinsOpen && "rotate-180"
-                  )}
-                  aria-hidden
-                />
-              </button>
-            </CollapsibleTrigger>
+              </span>
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 shrink-0 text-white/50 ml-auto transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                  heroWinsOpen && "rotate-180"
+                )}
+                aria-hidden
+              />
+            </button>
             <Button
               type="button"
               variant="ghost"
@@ -157,17 +160,59 @@ export function HeroShowcaseStrip({
               See all
             </Button>
           </div>
-          <CollapsibleContent className="space-y-2 overflow-hidden">
-            <div className="flex gap-2 overflow-x-auto pb-1 -mx-0.5 px-0.5 scroll-pl-1 [scrollbar-width:thin] pt-0.5">
-              {spotlightGoals.map((g) => (
-                <HeroShowcaseTile key={g.id} goal={g} onJump={() => onJumpToGoal(g.id)} />
-              ))}
+
+          <div
+            id="hero-wins-panel"
+            role="region"
+            aria-labelledby="hero-wins-trigger"
+            className={cn(
+              "grid min-h-0 transition-[grid-template-rows] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+              heroWinsOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+            )}
+          >
+            <div className="min-h-0 overflow-hidden">
+              <motion.div
+                initial={false}
+                animate={
+                  heroWinsOpen
+                    ? { opacity: 1, y: 0, transition: { duration: 0.38, ease: appleEase } }
+                    : { opacity: 0, y: -6, transition: { duration: 0.28, ease: appleEase } }
+                }
+                className="space-y-2 pt-0.5"
+              >
+                <motion.div
+                  initial={false}
+                  animate={heroWinsOpen ? "open" : "closed"}
+                  variants={{
+                    open: {
+                      transition: { staggerChildren: 0.045, delayChildren: 0.05 },
+                    },
+                    closed: {
+                      transition: { staggerChildren: 0.03, staggerDirection: -1 },
+                    },
+                  }}
+                  className="flex gap-2 overflow-x-auto pb-1 -mx-0.5 px-0.5 scroll-pl-1 [scrollbar-width:thin]"
+                >
+                  {spotlightGoals.map((g) => (
+                    <motion.div
+                      key={g.id}
+                      variants={{
+                        open: { opacity: 1, y: 0, transition: { duration: 0.36, ease: appleEase } },
+                        closed: { opacity: 0, y: 8, transition: { duration: 0.22 } },
+                      }}
+                      className="shrink-0"
+                    >
+                      <HeroShowcaseTile goal={g} onJump={() => onJumpToGoal(g.id)} />
+                    </motion.div>
+                  ))}
+                </motion.div>
+                <p className="text-[10px] text-white/38 leading-relaxed px-0.5">
+                  Tiles jump to the goal card. Open the real link from the card.
+                </p>
+              </motion.div>
             </div>
-            <p className="text-[10px] text-white/38 leading-relaxed px-0.5">
-              Tiles jump to the goal card. Open the real link from the card.
-            </p>
-          </CollapsibleContent>
-        </Collapsible>
+          </div>
+        </div>
       ) : (
         <div className="rounded-2xl border border-white/12 bg-white/[0.06] px-4 py-3.5 backdrop-blur-sm">
           <p className="text-sm text-white/65 leading-relaxed max-w-xl">

@@ -31,7 +31,7 @@ function ShowcaseChrome({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-amber-500/35 bg-gradient-to-br from-amber-500/12 via-card to-violet-500/10",
+        "w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-amber-500/35 bg-gradient-to-br from-amber-500/12 via-card to-violet-500/10",
         "dark:from-amber-500/10 dark:via-card/80 dark:to-violet-500/8",
         "p-4 shadow-sm shadow-amber-500/5",
         className
@@ -82,7 +82,7 @@ function ShowcaseHeader({
 
 /** Keeps previews from spanning the full card width / height on large layouts. */
 const previewWrapClass =
-  "mt-3 w-full max-w-md mx-auto overflow-hidden rounded-xl ring-1 ring-border/40";
+  "mt-3 w-full min-w-0 max-w-md mx-auto overflow-hidden rounded-xl ring-1 ring-border/40";
 
 function UploadedShowcaseImage({ src }: { src: string }) {
   const [broken, setBroken] = useState(false);
@@ -147,7 +147,7 @@ function YoutubePreview({ url, videoId }: { url: string; videoId: string }) {
 
 function VimeoPreview({ videoId, url }: { videoId: string; url: string }) {
   return (
-    <div className="mt-3 w-full max-w-md mx-auto space-y-2">
+    <div className="mt-3 w-full min-w-0 max-w-md mx-auto space-y-2">
       <div className="overflow-hidden rounded-xl ring-1 ring-border/40 bg-black/20 h-40 sm:h-44 max-h-[12.5rem]">
         <iframe
           src={`https://player.vimeo.com/video/${videoId}`}

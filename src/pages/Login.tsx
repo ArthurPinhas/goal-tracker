@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Target } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
-import { AuthAmbientBackground } from '@/components/AuthAmbientBackground';
 import { springContent } from '@/lib/motion';
 
 const Login = () => {
@@ -34,7 +33,6 @@ const Login = () => {
 
   return (
     <div className="min-h-[100dvh] min-h-screen overflow-x-clip bg-background flex flex-col relative">
-      <AuthAmbientBackground />
       {/* Gradient header */}
       <div className="gradient-header px-4 pt-[max(3rem,calc(env(safe-area-inset-top,0px)+2.5rem))] pb-16 md:pt-12 text-center relative z-10">
         <div className="absolute right-[max(0.75rem,calc(env(safe-area-inset-right,0px)+0.5rem))] top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.5rem))] md:right-6 md:top-4">

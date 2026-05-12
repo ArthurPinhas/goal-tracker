@@ -78,7 +78,18 @@ const { pb: mockPb, resetPocketBaseMock } = vi.hoisted(() => {
     collection(name: string) {
       if (name === 'goals') {
         return {
-          getFullList: async (opts: { expand?: string }) => S.goals.map((g) => rowForGetFullList(g, opts.expand)),
+          getFullList: async (opts?: { expand?: string; filter?: string }) => {
+            let rows = S.goals;
+            const f = opts?.filter;
+            if (f) {
+              const m = /category\s*=\s*"([^"]+)"/.exec(f);
+              if (m) {
+                const catId = m[1];
+                rows = S.goals.filter((g) => g.category === catId);
+              }
+            }
+            return rows.map((g) => rowForGetFullList(g, opts?.expand));
+          },
           create: async (data: {
             name: string;
             description: string;
@@ -128,6 +139,14 @@ const { pb: mockPb, resetPocketBaseMock } = vi.hoisted(() => {
             const id = `c${S.cid++}`;
             S.cats.push({ id, user: data.user, name: data.name });
             return { id };
+          },
+          update: async (id: string, patch: Partial<{ name: string }>) => {
+            const c = S.cats.find((x) => x.id === id);
+            if (c) Object.assign(c, patch);
+            return {};
+          },
+          delete: async (id: string) => {
+            S.cats = S.cats.filter((x) => x.id !== id);
           },
         };
       }

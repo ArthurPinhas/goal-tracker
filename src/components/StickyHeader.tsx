@@ -24,6 +24,8 @@ interface StickyHeaderProps {
   onCreateCategory: (name: string) => Promise<string | null>;
   addGoalOpen?: boolean;
   onAddGoalOpenChange?: (open: boolean) => void;
+  /** Pre-select folder in New Goal when opened from filtered list */
+  initialCategoryId?: string | null;
   dueNotificationsSlot?: ReactNode;
 }
 
@@ -36,6 +38,7 @@ const StickyHeader = ({
   onCreateCategory,
   addGoalOpen,
   onAddGoalOpenChange,
+  initialCategoryId,
   dueNotificationsSlot,
 }: StickyHeaderProps) => (
   <motion.div
@@ -45,7 +48,7 @@ const StickyHeader = ({
     transition={appleSpring}
     className="fixed top-0 left-0 right-0 z-40 border-b border-border/50 bg-background/80 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl dark:bg-background/72 dark:border-border/40 dark:shadow-lg dark:shadow-black/30"
   >
-    <div className="max-w-5xl mx-auto px-[max(1rem,calc(env(safe-area-inset-left,0px)+1rem))] pr-[max(1rem,calc(env(safe-area-inset-right,0px)+1rem))] h-14 flex items-center justify-between gap-2 md:gap-4">
+    <div className="max-w-[min(100%,88rem)] mx-auto px-[max(1rem,calc(env(safe-area-inset-left,0px)+1rem))] pr-[max(1rem,calc(env(safe-area-inset-right,0px)+1rem))] h-14 flex items-center justify-between gap-2 md:gap-4">
       <div className="flex items-center gap-2">
         <Target className="h-4 w-4 text-primary" />
         <span className="text-sm font-semibold tracking-tight font-heading">Goal Tracker</span>
@@ -57,6 +60,7 @@ const StickyHeader = ({
           onCreateCategory={onCreateCategory}
           open={addGoalOpen}
           onOpenChange={onAddGoalOpenChange}
+          initialCategoryId={initialCategoryId}
           compactTriggerBelowMd
         />
         {dueNotificationsSlot}

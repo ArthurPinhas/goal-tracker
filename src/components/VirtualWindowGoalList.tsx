@@ -64,6 +64,7 @@ export function VirtualWindowGoalList<T extends { id: string }>({
         height: `${virtualizer.getTotalSize()}px`,
         width: "100%",
         position: "relative",
+        overflow: "visible",
       }}
     >
       {virtualItems.map((virtualRow) => (
@@ -77,6 +78,7 @@ export function VirtualWindowGoalList<T extends { id: string }>({
             left: 0,
             width: "100%",
             transform: `translateY(${virtualRow.start}px)`,
+            overflow: "visible",
           }}
         >
           {renderItem(items[virtualRow.index], virtualRow.index)}

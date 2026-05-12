@@ -29,6 +29,8 @@ interface EditGoalDialogProps {
   goal: Goal;
   categories: GoalCategory[];
   onCreateCategory: (name: string) => Promise<string | null>;
+  /** When set, creating a new category from this dialog also saves it on this goal immediately. */
+  onPatchGoalCategory?: (goalId: string, categoryId: string) => Promise<void>;
   onEdit: (
     goalId: string,
     name: string,
@@ -43,7 +45,7 @@ interface EditGoalDialogProps {
   ) => void;
 }
 
-const EditGoalDialog = ({ goal, categories, onCreateCategory, onEdit }: EditGoalDialogProps) => {
+const EditGoalDialog = ({ goal, categories, onCreateCategory, onPatchGoalCategory, onEdit }: EditGoalDialogProps) => {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(goal.title);
   const [description, setDescription] = useState(goal.description);
@@ -134,6 +136,14 @@ const EditGoalDialog = ({ goal, categories, onCreateCategory, onEdit }: EditGoal
       : null;
   const imagePreviewUrl = imageObjectUrl || existingImageUrl;
 
+  const handleCreateCategory = async (name: string) => {
+    const id = await onCreateCategory(name);
+    if (id && onPatchGoalCategory) {
+      await onPatchGoalCategory(goal.id, id);
+    }
+    return id;
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
       <DialogTrigger asChild>
@@ -180,7 +190,7 @@ const EditGoalDialog = ({ goal, categories, onCreateCategory, onEdit }: EditGoal
             categories={categories}
             value={categoryId}
             onChange={setCategoryId}
-            onCreateCategory={onCreateCategory}
+            onCreateCategory={handleCreateCategory}
             fieldId="goal-category-edit"
           />
           {isGoalComplete(goal) && (

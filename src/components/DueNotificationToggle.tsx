@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { BellRippleGlyph } from "@/components/micro/MicroGlyphs";
 import { getBrowserNotificationSupport } from "@/lib/dueNotifications";
 
 interface DueNotificationToggleProps {
@@ -29,6 +30,15 @@ export function DueNotificationToggle({
 }: DueNotificationToggleProps) {
   const [busy, setBusy] = useState(false);
   const [permission, setPermission] = useState(() => getBrowserNotificationSupport());
+  const [rippleKey, setRippleKey] = useState(0);
+  const prevEnabledRef = useRef(enabled);
+
+  useEffect(() => {
+    if (!prevEnabledRef.current && enabled) {
+      setRippleKey((n) => n + 1);
+    }
+    prevEnabledRef.current = enabled;
+  }, [enabled]);
 
   useEffect(() => {
     const sync = () => setPermission(getBrowserNotificationSupport());
@@ -80,14 +90,21 @@ export function DueNotificationToggle({
             onClick={handleClick}
             title={title}
             className={cn(
-              "h-11 w-11 touch-manipulation md:h-9 md:w-9 shrink-0 rounded-lg transition-colors duration-200 active:scale-[0.97]",
+              "h-11 w-11 touch-manipulation md:h-9 md:w-9 shrink-0 rounded-lg transition-colors duration-200 active:scale-[0.97] relative overflow-visible",
               ghost,
               className,
             )}
             aria-pressed={enabled}
             aria-label={title}
           >
-            {enabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+            <span className="relative inline-flex h-4 w-4 items-center justify-center">
+              <BellRippleGlyph pulseKey={rippleKey} />
+              {enabled ? (
+                <Bell className="relative z-[2] h-4 w-4" />
+              ) : (
+                <BellOff className="relative z-[2] h-4 w-4" />
+              )}
+            </span>
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-[260px] text-xs leading-snug dark:border-border/55 dark:bg-popover dark:shadow-xl dark:shadow-black/40 sm:rounded-lg">

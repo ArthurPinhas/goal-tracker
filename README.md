@@ -28,7 +28,7 @@ A personal goal-tracking app: break goals into weighted subtasks, see **live pro
 ## Features
 
 - **Auth** — register, login, logout; each user only sees their own data (PocketBase rules).
-- **Goals** — create, edit, delete, archive / restore, drag-and-drop order (manual sort only when deadline filter is **Any** and sort is **Manual**).
+- **Goals** — create, edit, delete, optional **folder** (**`categories`** + per-goal **`category`**; **ManageCategoriesDialog** for rename/delete when using folders), archive / restore, drag-and-drop order (manual sort only when deadline filter is **Any** and sort is **Manual**).
 - **Optional due dates** — per-goal deadline, overdue / due-soon emphasis, filters & sort-by-due sidebar stats.
 - **Due reminders (browser)** — optional Notification API alerts when a goal is **due today** or **overdue** (incomplete). Works while the tab or installed PWA has focus; no server push or background delivery (see limitations below).
 - **Notes** — plain-text notes on goals and subtasks; included in search and exports (JSON / CSV / PDF).
@@ -45,7 +45,7 @@ A personal goal-tracking app: break goals into weighted subtasks, see **live pro
 
 ### UI polish (recent)
 
-The app is **dark-first** with a shared visual language: design tokens in `src/index.css` (card vs background, muted text, dot grid), **`app-surface-input`** for elevated fields in dark mode, **`ui-section-label`** for form section labels, shared motion tuning in `src/lib/motion.ts` (`springContent`, `smoothOut`), and upgraded primitives (dialogs, alerts, tooltips, dropdowns, select, calendar, toasts). Index uses a **clipped hero** and a **narrow seam** into list content — not stacked full-bleed gradient washes over page chrome. Auth, 404, dialogs, sidebar, archive rows, bulk toolbar, virtualized long lists, and celebration overlay follow the same system.
+The app is **dark-first** with a shared visual language: design tokens in `src/index.css` (card vs background, muted text, dot grid), **`app-surface-input`** for elevated fields in dark mode, **`ui-section-label`** for form section labels, shared motion tuning in `src/lib/motion.ts`, and upgraded primitives (dialogs, alerts, tooltips, dropdowns, select, calendar, toasts). **`PageSideAmbience`** on **Index**, **`micro/MicroGlyphs`** for small line-art motion (filters, subtask-complete sprout, etc.), and subtle **hero/sidebar hover** accents when motion is allowed. Auth uses **`gradient-header`** on login/register — not a separate ambient component. Index uses a **clipped hero** and a **narrow seam** into list content — not stacked full-bleed gradient washes over page chrome.
 
 ---
 
@@ -135,8 +135,8 @@ npm run dev
 
 ```
 src/
-  components/     # GoalCard, VirtualWindowGoalList, dialogs, sidebar, theme toggle, …
-  hooks/          # useAuth, useGoals, useDueNotifications
+  components/     # GoalCard, dialogs, VirtualWindowGoalList, micro/MicroGlyphs, PageSideAmbience, sidebar, …
+  hooks/          # useAuth, useGoals, useDueNotifications, useResponsiveUI, …
   lib/            # pocketbase client, goalUtils, dueDateUtils, linkSegments, reconcileFetchedGoals, showDueReminderInAppToast, due notifications, export, sounds
   pages/          # Index, Login, Register, NotFound
   providers/      # ThemeProvider (next-themes)
@@ -193,7 +193,7 @@ Exposing **only** the static frontend while the API sits on a separate **HTTPS**
 
 Prioritized **impact** ideas (not committed work)—see **`CLAUDE.md`** for the same list aligned with V2:
 
-1. **Categories / tags / folders** — biggest organizational win as goal count grows.  
+1. **Categories / tags / folders** — optional **single folder per goal** shipped; richer tags / hierarchy still a V2+ topic.  
 2. **Recurring goals / habits** — retention and daily use.  
 3. **Read-only share links** — show progress to others; fits PocketBase rules + token pattern.  
 4. **Goal templates** — fast reuse; good effort-to-impact ratio.  

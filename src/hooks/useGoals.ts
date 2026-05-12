@@ -197,6 +197,68 @@ export function useGoals() {
     }
   };
 
+  /** Update only the goal’s category relation — used right after creating a category from edit goal so assignment persists without a full Save. */
+  const patchGoalCategory = async (goalId: string, categoryId: string | null) => {
+    try {
+      markSaving();
+      await pb.collection('goals').update(goalId, { category: categoryId || null });
+      await fetchGoals();
+      markSaved();
+    } catch (err) {
+      markError();
+      toast.error(
+        isNetworkError(err) ? 'No connection. Category not applied.' : 'Failed to update category on goal.',
+      );
+    }
+  };
+
+  const renameCategory = async (categoryId: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    try {
+      markSaving();
+      await pb.collection('categories').update(categoryId, { name: trimmed });
+      await fetchCategories();
+      setGoals((prev) =>
+        prev.map((g) =>
+          g.category?.id === categoryId ? { ...g, category: { id: categoryId, name: trimmed } } : g,
+        ),
+      );
+      setArchivedGoals((prev) =>
+        prev.map((g) =>
+          g.category?.id === categoryId ? { ...g, category: { id: categoryId, name: trimmed } } : g,
+        ),
+      );
+      markSaved();
+    } catch (err) {
+      markError();
+      toast.error(isNetworkError(err) ? 'No connection. Name not saved.' : 'Failed to rename category.');
+    }
+  };
+
+  const deleteCategory = async (categoryId: string) => {
+    try {
+      markSaving();
+      const tied = await pb.collection('goals').getFullList({
+        filter: `category = "${categoryId}"`,
+      });
+      await Promise.all(tied.map((r) => pb.collection('goals').update(r.id, { category: null })));
+      await pb.collection('categories').delete(categoryId);
+      await fetchCategories();
+      setGoals((prev) =>
+        prev.map((g) => (g.category?.id === categoryId ? { ...g, category: null } : g)),
+      );
+      setArchivedGoals((prev) =>
+        prev.map((g) => (g.category?.id === categoryId ? { ...g, category: null } : g)),
+      );
+      markSaved();
+      toast.success('Category removed.');
+    } catch (err) {
+      markError();
+      toast.error(isNetworkError(err) ? 'No connection. Category not removed.' : 'Failed to delete category.');
+    }
+  };
+
   useEffect(() => {
     setLoading(true);
     Promise.all([fetchCategories(), fetchGoals()])
@@ -607,6 +669,9 @@ export function useGoals() {
     archivedLoading,
     createGoal,
     createCategory,
+    patchGoalCategory,
+    renameCategory,
+    deleteCategory,
     editGoal,
     deleteGoal,
     archiveGoal,

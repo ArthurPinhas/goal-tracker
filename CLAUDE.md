@@ -32,6 +32,16 @@ Handled entirely by PocketBase built-in auth. No custom user collection needed.
 
 Auth UI collects **username + password**; the client maps signup/login to PocketBase users using a synthetic email: `{username}@goaltracker.local` (see `useAuth`). Pick usernames accordingly.
 
+### Categories (PocketBase collection)
+
+| Field | Type | Notes |
+|---|---|---|
+| id | auto | PocketBase generates |
+| user | relation | links to auth user |
+| name | text | required |
+
+Goals may optionally set **`category`** (single relation → **categories**).
+
 ### Goals (PocketBase collection)
 
 | Field | Type | Notes |
@@ -46,6 +56,7 @@ Auth UI collects **username + password**; the client maps signup/login to Pocket
 | **showcase_url** | text | optional — `http`/`https` link; **Edit goal** when complete; highlighted on card |
 | **showcase_caption** | text | optional — short line above showcase link |
 | **showcase_image** | file | optional — single image; screenshot-upload showcase (client max ~5 MB); **Edit goal** / quick showcase when complete |
+| **category** | relation | optional — single **categories** row (folder / project label) |
 | archived | bool | default false |
 | sort_order | number | drag-and-drop order; **new goals** created with **`sort_order: -Date.now()`** so ascending sort surfaces them above legacy `0…n−1`; client merge keeps “new IDs” first in `orderedGoals` |
 | created | auto | PocketBase generates |
@@ -100,7 +111,7 @@ V1 is **fully shipped and functional**. PocketBase is connected, all CRUD works,
 | A | UI polish (spacing, empty states, filters, design system, primitives, motion) | **Shipped** (ongoing small tweaks) |
 | B | Due-date **browser** notifications (option A — tab/PWA active) | Shipped |
 | C | Plain-text **notes** on goals + subtasks | Shipped |
-| D | Sidebar stats / analytics expansion | **Skipped** (sidebar unchanged for now) |
+| D | Sidebar stats / analytics expansion | **Skipped** (no full analytics dashboard); light **hover** polish on sidebar stats + mantra card only |
 | E | Ops & trust “must-haves” (production security, backups, safe exposure, recovery story) | **Not started** — checklist in *Phase E — production readiness* below |
 
 Per product direction: **export remains client-side only**; **sidebar layout** was not expanded in Phase D.
@@ -114,12 +125,13 @@ Per product direction: **export remains client-side only**; **sidebar layout** w
 
 **Goals**
 
-- Create, edit, delete (including **optional due date** in create/edit — `GoalDueDatePicker`; optional **notes** textarea)
+- Create, edit, delete (including **optional due date** in create/edit — `GoalDueDatePicker`; optional **notes** textarea; optional **`category`** via `GoalCategoryPicker`)
+- **Categories** — PocketBase **`categories`** collection; **`ManageCategoriesDialog`** for rename/delete; filter by category on **Index**
 - Archive / restore / permanently delete archived goals
 - Drag-and-drop reorder (**Framer Motion `Reorder`**), persisted to **`sort_order`**
 - **New goals appear at top** after fetch (PB sort + **`Index` orderedGoals merge**)
 - Progress bar — weighted by effort if set, equal weight otherwise
-- Search across goal title, description, **goal notes**, subtask titles, and **subtask notes**
+- Search across goal title, description, **goal notes**, subtask titles, **subtask notes**, and **category** names
 - Filter tabs: **All / Active / Done / On display / Archived**; **deadline refinement** + **due-date sort**
 - **Bulk select** — delete / archive many goals from the **current tab view**; drag reorder is off while bulk mode is on
 - **Large libraries** — **`VirtualWindowGoalList`** (TanStack Virtual) + **`useDeferredValue`** on search + memoized rows; **`reconcileFetchedGoals`** merges fetch results with **`orderedGoals`** safely
@@ -128,6 +140,7 @@ Per product direction: **export remains client-side only**; **sidebar layout** w
 **Subtasks**
 
 - Add, toggle complete/incomplete, delete
+- **`SubtaskSproutGlyph`** (`micro/MicroGlyphs.tsx`) — brief line-art sprout **to the right of the title** on complete; auto **fades out** after a couple of seconds (`smoothOut`)
 - Optional effort points (1–5) — power-user toggle per subtask
 - Optional **plain-text notes** per subtask (inline expand on card)
 - Optimistic UI for toggle (instant feedback, revert on error)
@@ -148,15 +161,16 @@ Per product direction: **export remains client-side only**; **sidebar layout** w
 **UI / UX**
 
 - **Light / dark theme** — **`ThemeToggle`** (`next-themes`, default **dark**, key `goal-tracker-theme`; inline script in `index.html` limits flash); tokens in **`src/index.css`** (`:root` light / `.dark` dark). **`app-surface-input`** (dark elevated fields), **`ui-section-label`** (uppercase micro-labels), softer dot grid in dark.
-- **Motion** — shared **`springContent`** and **`smoothOut`** in **`src/lib/motion.ts`** for consistent springs / easing (Index, cards, dialogs, auth, celebration, archive).
+- **Micro-line UI accents** — **`src/components/micro/MicroGlyphs.tsx`**: subtask sprout, **`FilterLeafFanGlyph`** (three-leaf fan on active filter + **click pulse**), export / archive / bell / link ribbons, etc.; tuned with **`useReducedMotion`** where relevant.
+- **Motion** — shared tuning in **`src/lib/motion.ts`** (`springContent`, **`appleSpring`**, **`appleSpringGentle`**, **`smoothOut`**, **`tactileHover`** / **`tactileTap`**) for springs and easing (Index, cards, dialogs, auth, celebration, archive).
 - `Sonner` and **react-hot-toast** use resolved theme / card-style chrome (`src/components/ui/sonner.tsx`, `App.tsx`).
 - Sticky header (`StickyHeader`) — theme + **due reminders** + add goal + sound + logout
-- Sidebar (`GoalSidebar`) — progress ring + stats including **Overdue** and **Due ≤7 days** (desktop)
+- Sidebar (`GoalSidebar`) — overall **momentum ring** + **At a glance** stats (**Active**, **Achieved**, **Subtasks**, **Overdue**, **Due ≤7d**) with subtle **per-row `whileHover`** (desktop); optional **Daily mantra** card
 - Skeleton loading cards (`SkeletonGoalCard`), **IndexRouteFallback** (lazy route shell)
 - Save status indicator (Saving… / Saved / Error) bottom-right
 - Cmd/Ctrl+N opens new goal dialog
-- Ambient animated orbs in header and page background; **`PageSideParticles`** on main goals page
-- Index **hero** is a clipped gradient block; transition to the list is a **narrow seam** — avoid reintroducing stacked full-bleed gradient washes over gutters/particles.
+- Ambient treatment: **Index** uses **`PageSideAmbience`** for side gutter ambience; **Login** / **Register** use the shared **`gradient-header`** treatment (no separate auth-only particle layer).
+- Index **hero** is a clipped gradient block; subtle **`whileHover`** on **username** + hero stat trio (**Goals**, **Completed**, **Subtasks done**) when motion is allowed; transition to the list is a **narrow seam** — avoid reintroducing stacked full-bleed gradient washes over gutters/particles.
 - Motivational quote in header — rotates on refresh
 - Dialogs / alerts / tooltips / dropdowns / select / calendar / radix toasts aligned to the same **rounded-xl / dark depth** language where applicable
 
@@ -177,7 +191,7 @@ Per product direction: **export remains client-side only**; **sidebar layout** w
 
 **Testing**
 
-- **Vitest** + Testing Library (`npm run test`) — **`dueDateUtils`**, **`goalEmojiSuggest`**, **`goalUtils`**, **`reconcileFetchedGoals`**, **`linkSegments`** / **`linkifyText`**, **`useGoals`**, **`AddGoalDialog`**, **`ThemeToggle`**, **`src/test/setup.ts`** in-memory **localStorage** mock
+- **Vitest** + Testing Library (`npm run test`) — **`dueDateUtils`**, **`goalEmojiSuggest`**, **`goalUtils`**, **`reconcileFetchedGoals`**, **`linkSegments`** / **`linkifyText`**, **`useGoals`**, **`useResponsiveUI`**, **`AddGoalDialog`**, **`ThemeToggle`**, **`src/test/setup.ts`** in-memory **localStorage** mock
 
 **Docs**
 
@@ -193,9 +207,11 @@ src/
     ui/                 — Shadcn UI primitives
     AddGoalDialog       — Create goal modal (+ due picker + emoji title)
     AddSubtaskDialog    — Add subtask modal
-    PageSideParticles   — Side gutter particles on Index
-    AuthAmbientBackground — Soft orbs on login/register
-    CelebrationOverlay — Lottie full-screen celebration
+    PageSideAmbience    — Side gutter ambience on Index
+    micro/              — MicroGlyphs + related line-art motion (filters, subtask sprout, etc.)
+    ManageCategoriesDialog — Rename/delete categories; surfaced from Index when categories exist
+    NewGoalHoverBloom   — Optional bloom on “new goal” affordances
+    CelebrationOverlay — Full-screen celebration (CSS-first; legacy Lottie asset optional)
     EmptyState          — Shared empty / no-results illustration
     EditGoalDialog      — Edit goal modal (+ due picker + emoji title)
     DueNotificationToggle — Bell: browser due reminders (option A)
@@ -210,7 +226,7 @@ src/
     HeroShowcaseStrip   — Hero row of goals “on display” (URL and/or uploaded image)
     GoalDueDatePicker   — Popover + calendar due date (+ clear)
     GoalEmojiTitleSection — Title + optional emoji suggest / shuffle / picker
-    GoalProgress        — Progress bar
+    GoalProgress        — Progress bar (fills to 100%; **no** separate end-cap check glyph)
     GoalSidebar         — Desktop stats sidebar
     IndexRouteFallback  — Loading shell for lazy `Index` route
     SkeletonGoalCard    — Loading placeholder
@@ -220,8 +236,9 @@ src/
   hooks/
     useAuth             — Auth state (PocketBase)
     useGoalEmojiSuggest — Debounced emoji suggestion for title
-    useGoals            — All goal + subtask CRUD
+    useGoals            — All goal + subtask CRUD + categories
     useDueNotifications — Interval + visibility hooks for due `Notification` checks
+    useResponsiveUI     — Breakpoints, lite motion tier, celebration quality
   lib/
     dueNotifications     — `runDueNotificationCheck`, localStorage prefs & dedupe keys
     dueDateUtils         — Due normalization + urgency helpers
@@ -234,7 +251,7 @@ src/
     goalEmojiSuggest     — Match title → emoji + shuffle pools (imports `goalEmojiSuggestRules`)
     goalEmojiSuggestRules — Large keyword → emoji table (data only)
     goalUtils            — calcProgress, getProgressColor
-    motion               — springContent, smoothOut (shared Framer tuning)
+    motion               — springContent, appleSpring, appleSpringGentle, smoothOut, tactile tuning
     pocketbase           — PocketBase client singleton
     sounds               — Sound effect helpers
     utils                — Tailwind cn() helper
@@ -296,7 +313,7 @@ For a **literal step-by-step** aimed at beginners self-hosting on **Synology** (
 
 Not committed roadmap — for planning only (aligned with **V2**):
 
-1. **Categories / tags / folders** — largest organizational win at scale.  
+1. **Categories / tags / folders** — **optional folders shipped** (`categories` + goal `category`); richer tagging / nesting still V2+.  
 2. **Recurring goals / habits** — retention / daily use.  
 3. **Read-only share links** — high value vs effort if rules + token are done carefully.  
 4. **Goal templates** — strong effort-to-impact ratio.  
@@ -316,7 +333,7 @@ Planned beyond current V1+ — **discuss before building**.
 
 | Feature | Notes |
 |---|---|
-| Goal categories / folders | Group goals into projects above the goal level |
+| Goal categories / folders | **Shipped (V1+):** optional `categories` + per-goal **`category`** — multi-level nesting / tags beyond one folder = future |
 | Email export / scheduled email digest | Send goals summary (SMTP or Resend) |
 | Goal templates | Save / reuse structures |
 | Sub-subtasks (task nesting) | 3-level hierarchy: Category → Goal → Subtask → Task |
@@ -331,7 +348,7 @@ Planned beyond current V1+ — **discuss before building**.
 
 ## Key Design Decisions (Don't Change Without Discussing)
 
-1. **Flat structure for V1** — Goals → Subtasks only. No parent category layer in V1. That's V2+.
+1. **Goal hierarchy** — Goals → Subtasks (unchanged). **Optional single `category` per goal** (folder label) is supported; no category tree, sub-categories, or tags beyond that without a product pass.
 2. **Effort points are optional** — Default experience has zero friction; effort is power-user toggle.
 3. **Celebration UI is core** — Don't skip or simplify the rewarding feedback.
 4. **PocketBase handles everything backend** — No separate app server for V1 scope.

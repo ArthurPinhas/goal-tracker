@@ -53,13 +53,13 @@
     --gold: 43 92% 52%;
   }
 
-  /* Premium dark — deep indigo/slate foundation, mint primary, coral + gold accents */
+  /* Premium dark — studio base, mint primary; cards sit above as machined surfaces */
   .dark {
     color-scheme: dark;
-    --background: 239 38% 9%;
+    --background: 239 44% 7%;
     --foreground: 210 22% 93%;
 
-    --card: 239 32% 13%;
+    --card: 239 34% 12%;
     --card-foreground: 210 22% 93%;
 
     --popover: 239 30% 14%;
@@ -80,8 +80,8 @@
     --destructive: 0 62% 52%;
     --destructive-foreground: 210 20% 95%;
 
-    --border: 239 22% 22%;
-    --input: 239 22% 21%;
+    --border: 239 24% 20%;
+    --input: 239 24% 19%;
     --ring: 158 64% 48%;
 
     --sidebar-background: 239 36% 8%;
@@ -93,7 +93,7 @@
     --sidebar-border: 239 22% 18%;
     --sidebar-ring: 158 64% 48%;
 
-    --progress-track: 239 22% 17%;
+    --progress-track: 239 28% 11%;
     --progress-fill: 158 64% 48%;
     --success: 158 64% 48%;
 
@@ -120,6 +120,41 @@
     background-size: 28px 28px;
   }
 
+  /* Dark: layered mesh + vignette + grain — depth without busy dot grid */
+  .dark body {
+    background-color: hsl(239 44% 7%);
+    background-image: none;
+  }
+
+  .dark body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 125% 75% at 50% -35%, rgba(52, 211, 153, 0.22), transparent 58%),
+      radial-gradient(ellipse 58% 48% at 94% 38%, rgba(167, 139, 250, 0.16), transparent 56%),
+      radial-gradient(ellipse 52% 44% at 4% 58%, rgba(34, 211, 238, 0.15), transparent 54%),
+      radial-gradient(ellipse 90% 55% at 50% 105%, rgba(244, 114, 182, 0.12), transparent 52%);
+    animation: te-mesh-drift 88s ease-in-out infinite;
+  }
+
+  .dark body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 1;
+    background:
+      radial-gradient(ellipse at center, transparent 22%, hsl(239 44% 5.5%) 100%),
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: auto, 220px 220px;
+    mix-blend-mode: overlay;
+    opacity: 0.07;
+  }
+
   h1,
   h2,
   h3,
@@ -127,10 +162,6 @@
   h5,
   h6 {
     @apply font-heading tracking-tight;
-  }
-
-  .dark body {
-    background-image: radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
   }
 
   @media (max-width: 767px) and (pointer: coarse) {
@@ -151,6 +182,15 @@
   /* Dialogs / forms — matches Index filter row labels */
   .ui-section-label {
     @apply text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground;
+  }
+
+  .dark .ui-section-label {
+    @apply font-te tracking-[0.14em] text-muted-foreground/90;
+  }
+
+  /* Main goals route: keeps cards/sidebar above body mesh layers */
+  .app-page-layer {
+    @apply relative z-10;
   }
 
   /* Segmented track groove — subtle TE-style mechanical texture */
@@ -240,6 +280,26 @@
 @keyframes gradient-shift {
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
+}
+
+/** Slow ambient shift for dark body mesh — “studio lights” */
+@keyframes te-mesh-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(1.5%, -1%, 0) scale(1.03);
+  }
+  66% {
+    transform: translate3d(-1.2%, 0.8%, 0) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dark body::before {
+    animation: none;
+  }
 }
 
 @keyframes float {
@@ -417,6 +477,16 @@
   opacity: 0.072;
 }
 
+/** Goal cards — extra neon bloom + rim so the stack reads less “flat void” */
+.dark .te-goal-card-surface {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.13),
+    inset 0 -2px 0 0 rgba(0, 0, 0, 0.42),
+    0 24px 62px -20px rgba(0, 0, 0, 0.82),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 0 56px -14px hsl(var(--primary) / 0.32);
+}
+
 /* Index hero — soft pulsing aura behind greeting */
 .header-hero-aura {
   position: absolute;
@@ -474,6 +544,97 @@
 
 .dark .goal-card-hero-gold {
   opacity: 0.38;
+}
+
+/* Page ambience — large radial washes from left/right (integrated; not edge strips) */
+.page-ambience {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.page-ambience::before,
+.page-ambience::after {
+  content: "";
+  position: absolute;
+  inset: -15%;
+  pointer-events: none;
+}
+
+.page-ambience::before {
+  background: radial-gradient(
+    ellipse min(78vw, 46rem) 120% at 8% 48%,
+    hsl(var(--primary) / 0.09),
+    transparent 62%
+  );
+  animation: page-ambience-breathe-a 26s ease-in-out infinite;
+}
+
+.dark .page-ambience::before {
+  background: radial-gradient(
+    ellipse min(78vw, 46rem) 120% at 8% 48%,
+    hsl(var(--primary) / 0.14),
+    transparent 62%
+  );
+}
+
+.page-ambience::after {
+  background: radial-gradient(
+    ellipse min(72vw, 42rem) 115% at 92% 52%,
+    hsl(265 58% 56% / 0.072),
+    transparent 60%
+  );
+  animation: page-ambience-breathe-b 44s ease-in-out infinite;
+  animation-delay: -11s;
+}
+
+.dark .page-ambience::after {
+  background: radial-gradient(
+    ellipse min(72vw, 42rem) 115% at 92% 52%,
+    hsl(265 62% 62% / 0.1),
+    transparent 60%
+  );
+}
+
+@keyframes page-ambience-breathe-a {
+  0%,
+  100% {
+    opacity: 0.52;
+    transform: translate3d(-1%, 1%, 0) scale(1);
+  }
+  50% {
+    opacity: 0.88;
+    transform: translate3d(1.5%, -0.5%, 0) scale(1.03);
+  }
+}
+
+@keyframes page-ambience-breathe-b {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: translate3d(2%, -1%, 0) scale(1.02);
+  }
+  48% {
+    opacity: 0.78;
+    transform: translate3d(-1.2%, 0.8%, 0) scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-ambience::before,
+  .page-ambience::after {
+    animation: none;
+    opacity: 0.62;
+    transform: none;
+  }
+  .dark .page-ambience::before {
+    opacity: 0.68;
+  }
+  .dark .page-ambience::after {
+    opacity: 0.52;
+  }
 }
 
 /* Shared animated fill (Index hero uses this inside a clipped layer) */

@@ -8,6 +8,7 @@ import { Trash2, Loader2, StickyNote } from "lucide-react";
 import { Subtask } from "@/types/goal";
 import { LinkifiedText } from "@/components/LinkifiedText";
 import { SubtaskCheckboxSpark } from "@/components/SubtaskCheckboxSpark";
+import { SubtaskSproutGlyph } from "@/components/micro/MicroGlyphs";
 import { playSubtaskDone, playRemove } from "@/lib/sounds";
 import { cn } from "@/lib/utils";
 import { mechanicalSnap, premiumSpring, smoothOut, tactileHover, tactileTap } from "@/lib/motion";
@@ -49,6 +50,7 @@ const SubtaskItem = memo(function SubtaskItem({
   const [showNotes, setShowNotes] = useState(false);
   const [noteDraft, setNoteDraft] = useState(subtask.notes);
   const [sparkBurst, setSparkBurst] = useState(0);
+  const [sproutKey, setSproutKey] = useState(0);
 
   useEffect(() => {
     setNoteDraft(subtask.notes);
@@ -67,6 +69,7 @@ const SubtaskItem = memo(function SubtaskItem({
         x: [0, 2, -1, 0],
         transition: { duration: 0.32, times: [0, 0.25, 0.55, 1], ease: smoothOut },
       });
+      setSproutKey((k) => k + 1);
     }
   }, [subtask.id, subtask.is_completed, liteMotion, reduceMotion, bumpRow]);
 
@@ -115,16 +118,19 @@ const SubtaskItem = memo(function SubtaskItem({
               />
             </span>
           )}
-          <motion.span
-            id={`subtask-label-${subtask.id}`}
-            animate={{
-              opacity: subtask.is_completed ? 0.5 : 1,
-            }}
-            transition={premiumSpring}
-            className={`text-sm min-w-0 truncate ${subtask.is_completed ? "line-through text-muted-foreground" : "text-card-foreground"}`}
-          >
-            {subtask.title}
-          </motion.span>
+          <span className="flex min-w-0 flex-1 items-center gap-1.5">
+            <motion.span
+              id={`subtask-label-${subtask.id}`}
+              animate={{
+                opacity: subtask.is_completed ? 0.5 : 1,
+              }}
+              transition={premiumSpring}
+              className={`text-sm min-w-0 flex-1 truncate ${subtask.is_completed ? "line-through text-muted-foreground" : "text-card-foreground"}`}
+            >
+              {subtask.title}
+            </motion.span>
+            <SubtaskSproutGlyph playKey={sproutKey} />
+          </span>
         </label>
 
         <div className="flex items-center gap-1 shrink-0 max-md:ml-auto max-md:min-h-10">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { playPop } from "@/lib/sounds";
 import {
   Dialog,
@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import GoalDueDatePicker from "@/components/GoalDueDatePicker";
 import GoalEmojiTitleSection from "@/components/GoalEmojiTitleSection";
 import { GoalCategoryPicker } from "@/components/GoalCategoryPicker";
-import { Plus } from "lucide-react";
+import { NewGoalHoverBloom } from "@/components/NewGoalHoverBloom";
 import { cn } from "@/lib/utils";
 import type { GoalCategory } from "@/types/goal";
 
@@ -34,6 +34,8 @@ interface AddGoalDialogProps {
   compactTriggerBelowMd?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Pre-select this folder when the dialog opens (e.g. match the category filter). */
+  initialCategoryId?: string | null;
 }
 
 const AddGoalDialog = ({
@@ -44,16 +46,26 @@ const AddGoalDialog = ({
   compactTriggerBelowMd,
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
+  initialCategoryId = null,
 }: AddGoalDialogProps) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = controlledOnOpenChange ?? setInternalOpen;
+  const prevOpen = useRef(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState<string | null>(null);
   const [emoji, setEmoji] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [triggerBloom, setTriggerBloom] = useState(false);
+
+  useEffect(() => {
+    if (open && !prevOpen.current) {
+      setCategoryId(initialCategoryId ?? null);
+    }
+    prevOpen.current = open;
+  }, [open, initialCategoryId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,13 +87,17 @@ const AddGoalDialog = ({
         <Button
           type="button"
           title="New goal"
+          onMouseEnter={() => setTriggerBloom(true)}
+          onMouseLeave={() => setTriggerBloom(false)}
+          onFocus={() => setTriggerBloom(true)}
+          onBlur={() => setTriggerBloom(false)}
           className={cn(
-            "gap-2 min-h-11 touch-manipulation px-4 md:min-h-10 shadow-md shadow-primary/25 transition-all duration-300 hover:shadow-lg hover:shadow-primary/30 dark:shadow-primary/20",
+            "gap-2 min-h-11 touch-manipulation px-4 md:min-h-10 shadow-md shadow-primary/25 transition-all duration-300 hover:shadow-lg hover:shadow-primary/30 dark:shadow-primary/20 overflow-hidden rounded-md",
             compactTriggerBelowMd && "max-md:px-3 max-md:min-w-11",
             triggerClassName
           )}
         >
-          <Plus className="h-4 w-4" />
+          <NewGoalHoverBloom active={triggerBloom} compact={!!compactTriggerBelowMd} className="text-current opacity-95" />
           <span className={cn(compactTriggerBelowMd && "max-md:sr-only")}>New Goal</span>
         </Button>
       </DialogTrigger>

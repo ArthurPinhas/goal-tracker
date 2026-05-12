@@ -22,6 +22,7 @@ import { premiumSpring, smoothOut, tactileHover, tactileTap } from "@/lib/motion
 import type { CelebrationQuality } from "@/hooks/useResponsiveUI";
 import { formatDueChip, getDueUrgency, isIncompleteForDueDate } from "@/lib/dueDateUtils";
 import { HALFWAY_TOASTS, pickRandom } from "@/lib/motivationalCopy";
+import { LinkWinRibbonGlyph, ArchiveTrayGlyph } from "@/components/micro/MicroGlyphs";
 
 interface GoalCardProps {
   goal: Goal;
@@ -47,6 +48,8 @@ interface GoalCardProps {
   ) => void;
   categories: GoalCategory[];
   onCreateCategory: (name: string) => Promise<string | null>;
+  /** Persist new category onto this goal immediately when created in Edit (optional but set from Index). */
+  onPatchGoalCategory?: (goalId: string, categoryId: string) => Promise<void>;
   onSetEffort: (subtaskId: string, effort: number | null) => void;
   onUpdateSubtaskNotes: (subtaskId: string, notes: string) => void;
   /** No-subtask goals: toggle PocketBase `completed` on the goal */
@@ -62,10 +65,12 @@ interface GoalCardProps {
   reorderHandlePointerDown?: (event: PointerEvent<HTMLSpanElement>) => void;
 }
 
-const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebrating = false, onToggleSubtask, onAddSubtask, onDelete, onDeleteSubtask, onEdit, categories, onCreateCategory, onSetEffort, onUpdateSubtaskNotes, onToggleGoalStandaloneComplete, pendingGoalComplete, bulkSelectionMode = false, bulkSelected = false, onBulkToggle, onArchive, showDragHandle = true, reorderHandlePointerDown }: GoalCardProps) => {
+const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebrating = false, onToggleSubtask, onAddSubtask, onDelete, onDeleteSubtask, onEdit, categories, onCreateCategory, onPatchGoalCategory, onSetEffort, onUpdateSubtaskNotes, onToggleGoalStandaloneComplete, pendingGoalComplete, bulkSelectionMode = false, bulkSelected = false, onBulkToggle, onArchive, showDragHandle = true, reorderHandlePointerDown }: GoalCardProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const [showGoalNotes, setShowGoalNotes] = useState(false);
   const [quickShowcaseOpen, setQuickShowcaseOpen] = useState(false);
+  const [linkWinHover, setLinkWinHover] = useState(false);
+  const [archiveHover, setArchiveHover] = useState(false);
   const [goalNoteDraft, setGoalNoteDraft] = useState(goal.notes);
   const percentage = calcProgress(goal);
   const isComplete = isGoalComplete(goal);
@@ -149,28 +154,30 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
     if (isCelebrating) setCollapsed(false);
   }, [isCelebrating]);
 
-  return (
+  /** Outer shell clips expanded showcase / inner hover scale so content stays inside the mint frame. */
+  const useCompleteShell = isComplete && !isCelebrating;
+  const shellCorner = useCompleteShell ? "rounded-xl" : "rounded-2xl";
+
+  const innerCard = (
     <motion.div
-      id={`goal-card-${goal.id}`}
+      id={useCompleteShell ? undefined : `goal-card-${goal.id}`}
       animate={controls}
-      whileHover={
-        !isCelebrating && !reduceMotion ? tactileHover : undefined
-      }
+      whileHover={!isCelebrating && !reduceMotion ? tactileHover : undefined}
       transition={premiumSpring}
       className={cn(
-        "relative isolate z-[1] overflow-visible rounded-2xl border transition-[transform,box-shadow] duration-300 ease-out",
-        "surface-grain backdrop-blur-sm border-border/45 bg-card shadow-neo-card",
-        "dark:border-white/[0.09]",
-        isComplete && !isCelebrating && "scale-[1.01] origin-center will-change-transform motion-reduce:scale-100",
+        "relative isolate z-[1] overflow-visible border transition-[transform,box-shadow] duration-300 ease-out",
+        shellCorner,
+        "surface-grain backdrop-blur-sm border-border/50 bg-card shadow-neo-card te-goal-card-surface",
+        "dark:border-white/[0.11]",
         isCelebrating && heavyCelebration && "celebration-card ring-2 ring-mint/75 ring-offset-2 ring-offset-background dark:ring-offset-background",
         isCelebrating && !heavyCelebration && "celebration-card-minimal ring-2 ring-gold/70 ring-offset-2 ring-offset-background dark:ring-offset-background",
-        !isCelebrating && isComplete && "ring-2 ring-mint/80 goal-card-hero-shell",
+        !isCelebrating && isComplete && !useCompleteShell && "ring-2 ring-mint/80 goal-card-hero-shell",
         !isCelebrating && !isComplete && dueUrgency === "overdue" && "ring-2 ring-red-500/45",
         !isCelebrating && !isComplete && dueUrgency === "soon" && "ring-2 ring-gold/45",
         !isCelebrating && isInProgress && "goal-pulse-ring",
       )}
       style={{
-        borderLeft: `2px solid ${isCelebrating ? "rgba(52, 211, 153, 0.65)" : `rgba(${energy.ringRgb}, 0.3)`}`,
+        borderLeft: `3px solid ${isCelebrating ? "rgba(52, 211, 153, 0.85)" : `rgba(${energy.ringRgb}, 0.55)`}`,
         background:
           isCelebrating && heavyCelebration
             ? "linear-gradient(135deg, hsl(239,32%,12%) 0%, hsl(258,28%,15%) 38%, hsl(158,22%,14%) 52%, hsl(239,32%,12%) 100%)"
@@ -181,7 +188,7 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
         {!isCelebrating && (
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-[-1px] z-0 rounded-2xl"
+            className={cn("pointer-events-none absolute inset-[-1px] z-0", shellCorner)}
             style={{
               boxShadow: isComplete
                 ? `
@@ -205,7 +212,7 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
           <>
             <div className="goal-card-hero-gold" aria-hidden />
             <div
-              className="pointer-events-none absolute inset-0 z-[2] rounded-2xl opacity-25 mix-blend-screen"
+              className={cn("pointer-events-none absolute inset-0 z-[2] opacity-25 mix-blend-screen", shellCorner)}
               style={{
                 background: `radial-gradient(circle at 50% 0%, rgba(${energy.ringRgb},0.16), transparent 55%)`,
               }}
@@ -218,7 +225,10 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
           {isCelebrating && heavyCelebration && (
             <motion.div
               key="goal-holo-flash"
-              className="pointer-events-none absolute inset-0 z-[6] rounded-2xl bg-gradient-to-b from-mint/35 via-gold/18 to-transparent dark:from-mint/30 dark:via-gold/14"
+              className={cn(
+                "pointer-events-none absolute inset-0 z-[6] bg-gradient-to-b from-mint/35 via-gold/18 to-transparent dark:from-mint/30 dark:via-gold/14",
+                shellCorner,
+              )}
               initial={{ opacity: 0 }}
               animate={{ opacity: [0, 0.5, 0] }}
               transition={{ duration: 0.88, times: [0, 0.14, 1], ease: "easeOut" }}
@@ -227,7 +237,10 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
           {isCelebrating && !heavyCelebration && (
             <motion.div
               key="goal-holo-flash-lite"
-              className="pointer-events-none absolute inset-0 z-[6] rounded-2xl bg-gradient-to-b from-mint/40 via-transparent to-gold/15"
+              className={cn(
+                "pointer-events-none absolute inset-0 z-[6] bg-gradient-to-b from-mint/40 via-transparent to-gold/15",
+                shellCorner,
+              )}
               initial={{ opacity: 0 }}
               animate={{ opacity: [0, 0.58, 0] }}
               transition={{ duration: 0.62, times: [0, 0.18, 1] }}
@@ -235,7 +248,7 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
           )}
         </AnimatePresence>
         {isCelebrating && !reduceMotion && (
-          <div className="pointer-events-none absolute inset-0 z-[7] overflow-hidden rounded-2xl" aria-hidden>
+          <div className={cn("pointer-events-none absolute inset-0 z-[7] overflow-hidden", shellCorner)} aria-hidden>
             <div className="goal-hologram-foil-band" />
           </div>
         )}
@@ -397,16 +410,25 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
                 : "col-span-2 col-start-1 md:col-span-1 md:col-start-3 md:row-start-1",
             )}
           >
-            <EditGoalDialog goal={goal} categories={categories} onCreateCategory={onCreateCategory} onEdit={onEdit} />
+            <EditGoalDialog goal={goal} categories={categories} onCreateCategory={onCreateCategory} onPatchGoalCategory={onPatchGoalCategory} onEdit={onEdit} />
             {isComplete && !isCelebrating && onArchive && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-10 w-10 touch-manipulation md:h-7 md:w-7 text-muted-foreground hover:text-gold hover:bg-gold/12"
+                className="relative h-10 w-10 touch-manipulation md:h-7 md:w-7 text-muted-foreground hover:text-gold hover:bg-gold/12 overflow-visible"
                 onClick={() => onArchive(goal.id)}
                 title="Archive goal"
+                onMouseEnter={() => setArchiveHover(true)}
+                onMouseLeave={() => setArchiveHover(false)}
+                onFocus={() => setArchiveHover(true)}
+                onBlur={() => setArchiveHover(false)}
               >
-                <Archive className="h-3.5 w-3.5" />
+                <span className="relative inline-flex h-full w-full items-center justify-center">
+                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-90">
+                    <ArchiveTrayGlyph active={archiveHover} />
+                  </span>
+                  <Archive className="relative z-[1] h-3.5 w-3.5" />
+                </span>
               </Button>
             )}
             <AlertDialog>
@@ -471,9 +493,14 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="rounded-xl border-gold/45 text-gold hover:bg-gold/10 dark:text-gold dark:hover:bg-gold/10"
+                      className="rounded-xl border-gold/45 text-gold hover:bg-gold/10 dark:text-gold dark:hover:bg-gold/10 gap-2 overflow-hidden"
                       onClick={() => setQuickShowcaseOpen(true)}
+                      onMouseEnter={() => setLinkWinHover(true)}
+                      onMouseLeave={() => setLinkWinHover(false)}
+                      onFocus={() => setLinkWinHover(true)}
+                      onBlur={() => setLinkWinHover(false)}
                     >
+                      <LinkWinRibbonGlyph active={linkWinHover} />
                       Link your win
                     </Button>
                   </div>
@@ -627,6 +654,20 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
           )}
         </AnimatePresence>
       </motion.div>
+  );
+
+  return useCompleteShell ? (
+    <div
+      id={`goal-card-${goal.id}`}
+      className={cn(
+        "relative isolate z-[1] min-w-0 max-w-full rounded-2xl p-1 overflow-hidden",
+        "ring-2 ring-mint/80 goal-card-hero-shell",
+      )}
+    >
+      {innerCard}
+    </div>
+  ) : (
+    innerCard
   );
 });
 

@@ -17,6 +17,8 @@ export default {
       fontFamily: {
         sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
         heading: ["Inter Tight", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        /** Small caps / telemetry — Teenage Engineering–style panel labels */
+        te: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -80,9 +82,15 @@ export default {
           "inset 0 1px 0 0 rgba(255, 255, 255, 0.13), inset 0 -1px 0 0 rgba(0, 0, 0, 0.22)",
         /** Grounded drop shadow — depth without muddy glow */
         "outer-depth": "0 16px 42px -14px rgba(0, 0, 0, 0.58), 0 8px 20px -10px rgba(0, 0, 0, 0.42)",
-        /** Cards: combine inner light + outer depth (single utility — stacking two shadow classes overrides) */
+        /** Cards: machined rim + tactile drop (dark-first; still works in light) */
         "neo-card":
-          "inset 0 1px 0 0 rgba(255, 255, 255, 0.12), inset 0 -1px 0 0 rgba(0, 0, 0, 0.2), 0 16px 42px -14px rgba(0, 0, 0, 0.58), 0 8px 20px -10px rgba(0, 0, 0, 0.42)",
+          "inset 0 1px 0 0 rgba(255, 255, 255, 0.14), inset 0 -2px 0 0 rgba(0, 0, 0, 0.32), 0 20px 52px -16px rgba(0, 0, 0, 0.62), 0 10px 26px -12px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.05)",
+        /** Recessed track / well */
+        "te-inset-well":
+          "inset 0 2px 8px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+        /** Sidebar / chassis frame */
+        "te-chassis":
+          "inset 0 1px 0 0 rgba(255, 255, 255, 0.09), 0 24px 60px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.06)",
       },
       keyframes: {
         "accordion-down": {

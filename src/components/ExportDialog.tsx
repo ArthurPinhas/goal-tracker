@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Goal } from "@/types/goal";
 import { exportJSON, exportCSV, exportPDF } from "@/lib/exportGoals";
 import toast from "react-hot-toast";
+import { ExportSheetGlyph } from "@/components/micro/MicroGlyphs";
 
 interface ExportDialogProps {
   goals: Goal[];
@@ -21,6 +22,7 @@ const FORMATS: { id: Format; label: string; desc: string; Icon: React.ComponentT
 const ExportDialog = ({ goals }: ExportDialogProps) => {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Format>('pdf');
+  const [triggerHover, setTriggerHover] = useState(false);
 
   const handleExport = () => {
     if (goals.length === 0) {
@@ -41,8 +43,16 @@ const ExportDialog = ({ goals }: ExportDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="w-full gap-2 text-xs">
-          <Download className="h-3.5 w-3.5" />
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full gap-2 text-xs overflow-hidden rounded-lg"
+          onMouseEnter={() => setTriggerHover(true)}
+          onMouseLeave={() => setTriggerHover(false)}
+          onFocus={() => setTriggerHover(true)}
+          onBlur={() => setTriggerHover(false)}
+        >
+          <ExportSheetGlyph active={triggerHover} />
           Export goals
         </Button>
       </DialogTrigger>
