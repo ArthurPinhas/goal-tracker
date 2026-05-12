@@ -15,6 +15,7 @@ The experience should feel **tactile and fun** — every action should have a vi
 | Frontend | React 18 + Vite |
 | Language | TypeScript |
 | Styling | Tailwind CSS + Shadcn UI |
+| Long lists | **@tanstack/react-virtual** — window-scroll virtualization when a tab shows many rows (**manual drag-reorder** on active goals still renders the full list) |
 | Themes | **next-themes** — **dark default**, optional light (class on `<html>`, persisted `goal-tracker-theme`) |
 | Backend + DB + Auth | PocketBase (self-contained binary, SQLite under the hood) |
 | Dev environment | Local (editor-agnostic) |
@@ -78,7 +79,7 @@ Filters in **Index**: deadline pills **Any / Has date / Overdue / ≤7 days**; s
 
 - **User control:** bell toggle in the main and sticky headers (`DueNotificationToggle`); preference stored in **`localStorage`** (`goal-tracker-due-notifications-enabled`).
 - **When it fires:** incomplete goals whose due date is **today** or **before today** (overdue). Deduped **once per goal per local calendar day** (`localStorage` map `goal-tracker-due-notify-sent-v1`).
-- **Cadence:** `useDueNotifications` uses **`DUE_NOTIFICATION_INTERVAL_MS`** (1 minute) plus **`visibilitychange`** and **`window` `focus`**. The effect depends on **`goals`** from `useGoals` (not filtered UI lists). **`runDueNotificationCheck`** only calls **`markGoalsNotifiedForDay`** after **`new Notification(...)` succeeds**. Notifications use **`requireInteraction: true`** where supported (OS behavior still varies). **`Index`** passes **`onDelivered`** to show the same reminder in-app via **react-hot-toast** (`id: goal-due-reminder`, ~45s) so reminders are visible inside the active browser tab.
+- **Cadence:** `useDueNotifications` uses **`DUE_NOTIFICATION_INTERVAL_MS`** (1 minute) plus **`visibilitychange`** and **`window` `focus`**. The effect depends on **`goals`** from `useGoals` (not filtered UI lists). **`runDueNotificationCheck`** only calls **`markGoalsNotifiedForDay`** after **`new Notification(...)` succeeds**. Notifications use **`requireInteraction: true`** where supported (OS behavior still varies). **`Index`** passes **`onDelivered`** to **`showDueReminderInAppToast`** (`src/lib/showDueReminderInAppToast.tsx`), which mounts **`DueReminderInAppToastPanel`** via **react-hot-toast** (`id: goal-due-reminder`, ~45s) so reminders are visible inside the active browser tab.
 - **Limitations:** requires **permission**; only meaningful while the app tab (or installed PWA) is **open** — **no** background push, email, or SMS.
 
 ### Notes (goals & subtasks)
@@ -119,7 +120,9 @@ Per product direction: **export remains client-side only**; **sidebar layout** w
 - **New goals appear at top** after fetch (PB sort + **`Index` orderedGoals merge**)
 - Progress bar — weighted by effort if set, equal weight otherwise
 - Search across goal title, description, **goal notes**, subtask titles, and **subtask notes**
-- Filter tabs: All / Active / Done / Archived; **deadline refinement** + **due-date sort**
+- Filter tabs: **All / Active / Done / On display / Archived**; **deadline refinement** + **due-date sort**
+- **Bulk select** — delete / archive many goals from the **current tab view**; drag reorder is off while bulk mode is on
+- **Large libraries** — **`VirtualWindowGoalList`** (TanStack Virtual) + **`useDeferredValue`** on search + memoized rows; **`reconcileFetchedGoals`** merges fetch results with **`orderedGoals`** safely
 - **Showcase (complete goals)** — optional **`showcase_url`**, **`showcase_caption`**, and/or **`showcase_image`** (single image file on **`goals`**); **Edit goal** + quick showcase dialog support upload, replace, and remove; **`GoalShowcaseBlock`** on **`GoalCard`**; hero **`HeroShowcaseStrip`** and **On display** filter on **`Index`**; public file URL via **`getGoalShowcaseImageUrl`** (`src/lib/goalShowcaseAsset.ts`), client validation in **`showcaseImageUpload.ts`**
 
 **Subtasks**
@@ -131,7 +134,7 @@ Per product direction: **export remains client-side only**; **sidebar layout** w
 
 **Celebration UI**
 
-- Lottie animation overlay on goal completion (`CelebrationOverlay` — fade + spring scale; `aria-hidden` on wrapper)
+- Full-screen overlay on goal completion (`CelebrationOverlay` — CSS orbit / sparkles + Framer motion; **`celebrationQuality`** tiers; **`aria-hidden`** on wrapper; **no Lottie playback** in the live overlay)
 - Canvas confetti on subtask complete
 - Framer Motion animations throughout (card enter/exit, progress bar, sidebar ring)
 - react-hot-toast notifications with motivational quotes
@@ -174,7 +177,7 @@ Per product direction: **export remains client-side only**; **sidebar layout** w
 
 **Testing**
 
-- **Vitest** + Testing Library (`npm run test`) — **`dueDateUtils`**, **`goalEmojiSuggest`**, **`goalUtils`**, **`useGoals`**, **`AddGoalDialog`**, **`ThemeToggle`**, **`src/test/setup.ts`** in-memory **localStorage** mock
+- **Vitest** + Testing Library (`npm run test`) — **`dueDateUtils`**, **`goalEmojiSuggest`**, **`goalUtils`**, **`reconcileFetchedGoals`**, **`linkSegments`** / **`linkifyText`**, **`useGoals`**, **`AddGoalDialog`**, **`ThemeToggle`**, **`src/test/setup.ts`** in-memory **localStorage** mock
 
 **Docs**
 
@@ -196,9 +199,10 @@ src/
     EmptyState          — Shared empty / no-results illustration
     EditGoalDialog      — Edit goal modal (+ due picker + emoji title)
     DueNotificationToggle — Bell: browser due reminders (option A)
-    DueReminderInAppToast — Large in-tab mirror when system notification fires
+    DueReminderInAppToastPanel — Large in-tab mirror UI (mounted via `showDueReminderInAppToast` in lib)
     ExportDialog        — Export modal (JSON/CSV/PDF)
-    LinkifiedText       — Plain-text URLs → links in notes/showcase copy
+    LinkifiedText       — Plain-text URLs → links in notes/showcase copy (parsing in `lib/linkSegments`)
+    VirtualWindowGoalList — Window-scroll virtualization for long goal/archive lists
     ShowcaseQuickDialog — Quick edit showcase URL / caption / screenshot when complete
     GoalCard            — Goal card + subtasks + due urgency chrome + showcase block when complete
     GoalCategoryPicker  — Optional goal folder (categories relation)
@@ -221,6 +225,9 @@ src/
   lib/
     dueNotifications     — `runDueNotificationCheck`, localStorage prefs & dedupe keys
     dueDateUtils         — Due normalization + urgency helpers
+    linkSegments           — `parseLinkSegments` for LinkifiedText / tests
+    reconcileFetchedGoals — Merge PocketBase fetch with client `orderedGoals` / overlap guard
+    showDueReminderInAppToast — react-hot-toast wrapper for due reminder panel
     exportGoals          — JSON/CSV/PDF export
     goalShowcaseAsset    — `getGoalShowcaseImageUrl`, `goalHasShowcaseMedia`
     showcaseImageUpload  — Max size / MIME validation for showcase screenshots
@@ -242,7 +249,7 @@ src/
     goal                 — Goal, Subtask interfaces
   test/                  — Vitest specs + setup
   assets/
-    celebration.json    — Lottie animation data
+    celebration.json    — Legacy Lottie file (unused by current CSS-first overlay; optional cleanup)
 ```
 
 ---
