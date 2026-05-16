@@ -24,7 +24,7 @@ interface StickyHeaderProps {
   onCreateCategory: (name: string) => Promise<string | null>;
   addGoalOpen?: boolean;
   onAddGoalOpenChange?: (open: boolean) => void;
-  /** Pre-select folder in New Goal when opened from filtered list */
+  /** Pre-select category on New Goal when opened from a filtered list */
   initialCategoryId?: string | null;
   dueNotificationsSlot?: ReactNode;
 }

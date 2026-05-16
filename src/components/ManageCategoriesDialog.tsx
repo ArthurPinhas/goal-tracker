@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { editPenGhostButtonClass } from "@/lib/editAffordance";
 import { FolderCog, Pencil, Trash2 } from "lucide-react";
 import type { GoalCategory } from "@/types/goal";
 
@@ -88,10 +90,9 @@ export function ManageCategoriesDialog({
           <Button
             type="button"
             variant="outline"
-            size="sm"
             disabled={disabled || categories.length === 0}
-            className="shrink-0 max-md:min-h-11 h-11 md:h-9 rounded-lg gap-1.5 border-border/60"
-            title="Rename or remove categories"
+            className="shrink-0 h-11 md:h-10 px-3 rounded-lg gap-2 border-border/60 bg-background/80 backdrop-blur-sm shadow-sm hover:bg-secondary/40 font-medium text-sm"
+            title="Rename or delete categories"
           >
             <FolderCog className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Manage</span>
@@ -101,7 +102,7 @@ export function ManageCategoriesDialog({
           <DialogHeader className="space-y-2">
             <DialogTitle className="text-xl font-semibold tracking-tight">Categories</DialogTitle>
             <DialogDescription className="text-sm leading-relaxed">
-              Rename a folder or delete it. Deleting removes the folder from your goals; goals stay in your list.
+              Rename a category or delete it. Deleting removes the label from your goals; the goals stay in your list.
             </DialogDescription>
           </DialogHeader>
           <ul className="space-y-2 pt-1 max-h-[min(60vh,360px)] overflow-y-auto">
@@ -155,7 +156,7 @@ export function ManageCategoriesDialog({
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-9 w-9 text-muted-foreground"
+                          className={cn("h-9 w-9", editPenGhostButtonClass)}
                           title="Rename"
                           onClick={() => startEdit(c)}
                         >
@@ -188,11 +189,11 @@ export function ManageCategoriesDialog({
             <AlertDialogDescription className="space-y-2">
               {deleteCount > 0 ? (
                 <span>
-                  This folder is used by {deleteCount} goal{deleteCount === 1 ? "" : "s"}. Those goals will have no
+                  This category is used by {deleteCount} goal{deleteCount === 1 ? "" : "s"}. Those goals will have no
                   category after you delete it.
                 </span>
               ) : (
-                <span>No goals use this folder. It will be removed from the list.</span>
+                <span>No goals use this category. It will be removed from the list.</span>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>

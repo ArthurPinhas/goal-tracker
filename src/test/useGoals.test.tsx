@@ -100,18 +100,21 @@ const { pb: mockPb, resetPocketBaseMock } = vi.hoisted(() => {
             sort_order: number;
             completed?: boolean;
             category?: string | null;
+            showcase_url?: string | null;
+            showcase_caption?: string | null;
+            archived?: boolean;
           }) => {
             const id = `g${S.gid++}`;
             S.goals.push({
               id,
-              archived: false,
+              archived: data.archived ?? false,
               name: data.name,
               description: data.description,
               due_date: data.due_date,
               emoji: data.emoji ?? null,
               notes: data.notes ?? null,
-              showcase_url: null,
-              showcase_caption: null,
+              showcase_url: data.showcase_url ?? null,
+              showcase_caption: data.showcase_caption ?? null,
               showcase_image: null,
               user: data.user,
               sort_order: data.sort_order,
@@ -152,19 +155,25 @@ const { pb: mockPb, resetPocketBaseMock } = vi.hoisted(() => {
       }
       if (name === 'subtasks') {
         return {
-          create: async (data: { name: string; goal: string; completed: boolean; notes?: string | null }) => {
+          create: async (data: {
+            name: string;
+            goal: string;
+            completed: boolean;
+            notes?: string | null;
+            effort?: number | null;
+          }) => {
             const id = `s${S.sid++}`;
             S.subs.push({
               id,
               goal: data.goal,
               name: data.name,
               completed: data.completed,
-              effort: null,
+              effort: data.effort ?? null,
               notes: (data.notes ?? '') || '',
             });
             return { id };
           },
-          update: async (id: string, patch: Partial<Pick<SubRow, 'completed' | 'effort' | 'notes'>>) => {
+          update: async (id: string, patch: Partial<Pick<SubRow, 'completed' | 'effort' | 'notes' | 'name'>>) => {
             const s = S.subs.find((x) => x.id === id);
             if (s) Object.assign(s, patch);
           },
@@ -377,6 +386,30 @@ describe('useGoals (CRUD sanity)', () => {
     });
   });
 
+  it('renames a subtask', async () => {
+    const { result } = hook();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.createGoal('G', '', null);
+    });
+    const goalId = result.current.goals[0].id;
+
+    await act(async () => {
+      await result.current.addSubtask(goalId, 'Old name');
+    });
+
+    const subId = result.current.goals[0].subtasks[0].id;
+
+    await act(async () => {
+      await result.current.renameSubtask(subId, 'New name');
+    });
+
+    await waitFor(() => {
+      expect(result.current.goals[0].subtasks[0].title).toBe('New name');
+    });
+  });
+
   it('archives and restores a goal', async () => {
     const { result } = hook();
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -451,6 +484,77 @@ describe('useGoals (CRUD sanity)', () => {
     await waitFor(() => {
       expect(result.current.goals[0].subtasks).toHaveLength(1);
       expect(result.current.goals[0].is_completed).toBe(false);
+    });
+  });
+
+  it('duplicates a goal and subtasks as fresh incomplete copies', async () => {
+    const { result } = hook();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.createGoal('Original', 'Desc line', null);
+    });
+    const gid = result.current.goals[0].id;
+
+    await act(async () => {
+      await result.current.addSubtask(gid, 'Step A');
+      await result.current.addSubtask(gid, 'Step B', 'note');
+    });
+
+    await waitFor(() => expect(result.current.goals[0].subtasks).toHaveLength(2));
+
+    const subA = result.current.goals[0].subtasks.find((s) => s.title === 'Step A');
+    expect(subA).toBeDefined();
+
+    await act(async () => {
+      await result.current.toggleSubtask(gid, subA!.id);
+    });
+
+    await waitFor(() =>
+      expect(result.current.goals[0].subtasks.find((s) => s.id === subA!.id)?.is_completed).toBe(true),
+    );
+
+    await act(async () => {
+      await result.current.duplicateGoal(gid);
+    });
+
+    await waitFor(() => expect(result.current.goals).toHaveLength(2));
+
+    const dup = result.current.goals.find((g) => g.title === 'Original (copy)');
+    expect(dup).toBeDefined();
+    expect(dup!.description).toBe('Desc line');
+    expect(dup!.is_completed).toBe(false);
+    expect(dup!.subtasks).toHaveLength(2);
+    expect(dup!.subtasks.every((s) => !s.is_completed)).toBe(true);
+    const dupNote = dup!.subtasks.find((s) => s.title === 'Step B');
+    expect(dupNote?.notes).toBe('note');
+  });
+
+  it('duplicates from archived list snapshot', async () => {
+    const { result } = hook();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.createGoal('From archive', '', null);
+    });
+    const id = result.current.goals[0].id;
+    await act(async () => {
+      await result.current.addSubtask(id, 'Only step');
+    });
+
+    await act(async () => {
+      await result.current.archiveGoal(id);
+    });
+
+    await waitFor(() => expect(result.current.archivedGoals).toHaveLength(1));
+
+    await act(async () => {
+      await result.current.duplicateGoal(id);
+    });
+
+    await waitFor(() => {
+      expect(result.current.goals.some((g) => g.title === 'From archive (copy)')).toBe(true);
+      expect(result.current.goals.find((g) => g.title === 'From archive (copy)')?.subtasks).toHaveLength(1);
     });
   });
 });

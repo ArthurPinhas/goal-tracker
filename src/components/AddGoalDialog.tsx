@@ -34,7 +34,7 @@ interface AddGoalDialogProps {
   compactTriggerBelowMd?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  /** Pre-select this folder when the dialog opens (e.g. match the category filter). */
+  /** Pre-select this category when the dialog opens (e.g. match the category filter). */
   initialCategoryId?: string | null;
 }
 

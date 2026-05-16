@@ -125,21 +125,21 @@ Per product direction: **export remains client-side only**; **sidebar layout** w
 
 **Goals**
 
-- Create, edit, delete (including **optional due date** in create/edit — `GoalDueDatePicker`; optional **notes** textarea; optional **`category`** via `GoalCategoryPicker`)
-- **Categories** — PocketBase **`categories`** collection; **`ManageCategoriesDialog`** for rename/delete; filter by category on **Index**
+- Create, edit, delete (including **optional due date** in create/edit — `GoalDueDatePicker`; optional **notes** textarea; optional **`category`** via `GoalCategoryPicker`); **`duplicateGoal`** — copies goal fields + subtasks as a new active goal (fresh checklist; showcase image file not duplicated)
+- **Categories** — PocketBase **`categories`** collection; **`ManageCategoriesDialog`** for rename/delete; **Index** **Categories** popover — filter **all** / **only selected** (multi-select) / **hide selected** (multi-select)
 - Archive / restore / permanently delete archived goals
 - Drag-and-drop reorder (**Framer Motion `Reorder`**), persisted to **`sort_order`**
 - **New goals appear at top** after fetch (PB sort + **`Index` orderedGoals merge**)
 - Progress bar — weighted by effort if set, equal weight otherwise
 - Search across goal title, description, **goal notes**, subtask titles, **subtask notes**, and **category** names
-- Filter tabs: **All / Active / Done / On display / Archived**; **deadline refinement** + **due-date sort**
+- Filter tabs: **All / Active / Done / On display / Archived**; **deadline refinement** + **due-date sort**; **Expand all** / **Collapse all** cards (**Index** toolbar); **duplicate** control on **`GoalCard`** (+ archived rows)
 - **Bulk select** — delete / archive many goals from the **current tab view**; drag reorder is off while bulk mode is on
 - **Large libraries** — **`VirtualWindowGoalList`** (TanStack Virtual) + **`useDeferredValue`** on search + memoized rows; **`reconcileFetchedGoals`** merges fetch results with **`orderedGoals`** safely
 - **Showcase (complete goals)** — optional **`showcase_url`**, **`showcase_caption`**, and/or **`showcase_image`** (single image file on **`goals`**); **Edit goal** + quick showcase dialog support upload, replace, and remove; **`GoalShowcaseBlock`** on **`GoalCard`**; hero **`HeroShowcaseStrip`** and **On display** filter on **`Index`**; public file URL via **`getGoalShowcaseImageUrl`** (`src/lib/goalShowcaseAsset.ts`), client validation in **`showcaseImageUpload.ts`**
 
 **Subtasks**
 
-- Add, toggle complete/incomplete, delete
+- Add, toggle complete/incomplete, delete; **rename title** inline (`renameSubtask` / pencil + check on **`SubtaskItem`**)
 - **`SubtaskSproutGlyph`** (`micro/MicroGlyphs.tsx`) — brief line-art sprout **to the right of the title** on complete; auto **fades out** after a couple of seconds (`smoothOut`)
 - Optional effort points (1–5) — power-user toggle per subtask
 - Optional **plain-text notes** per subtask (inline expand on card)
@@ -173,6 +173,7 @@ Per product direction: **export remains client-side only**; **sidebar layout** w
 - Index **hero** is a clipped gradient block; subtle **`whileHover`** on **username** + hero stat trio (**Goals**, **Completed**, **Subtasks done**) when motion is allowed; transition to the list is a **narrow seam** — avoid reintroducing stacked full-bleed gradient washes over gutters/particles.
 - Motivational quote in header — rotates on refresh
 - Dialogs / alerts / tooltips / dropdowns / select / calendar / radix toasts aligned to the same **rounded-xl / dark depth** language where applicable
+- **Edit affordance** — shared sky-tinted ghost icon styling via **`src/lib/editAffordance.ts`** (goal edit, subtask rename, category rename in **`ManageCategoriesDialog`**)
 
 **Export**
 
@@ -181,7 +182,7 @@ Per product direction: **export remains client-side only**; **sidebar layout** w
 
 **Infrastructure**
 
-- PWA icons + **Vite PWA** plugin (`vite.config.ts` — dev server **`8080`**)
+- PWA icons + **Vite PWA** plugin (`vite.config.ts` — dev server **`3000`** by default)
 - **`import.meta.env.VITE_POCKETBASE_URL`** only — never committed real secrets (use **`.gitignore`'d `.env`**, ship **`.env.example`** template)
 - **`.gitignore`**: PocketBase dirs, `**/pb_data/`, SQLite, `.env.*` (allow `.env.example`)
 - PocketBase client singleton `src/lib/pocketbase.ts`
@@ -213,14 +214,14 @@ src/
     NewGoalHoverBloom   — Optional bloom on “new goal” affordances
     CelebrationOverlay — Full-screen celebration (CSS-first; legacy Lottie asset optional)
     EmptyState          — Shared empty / no-results illustration
-    EditGoalDialog      — Edit goal modal (+ due picker + emoji title)
+    EditGoalDialog      — Edit goal modal (+ due picker + emoji title); optional duplicate action
     DueNotificationToggle — Bell: browser due reminders (option A)
     DueReminderInAppToastPanel — Large in-tab mirror UI (mounted via `showDueReminderInAppToast` in lib)
     ExportDialog        — Export modal (JSON/CSV/PDF)
     LinkifiedText       — Plain-text URLs → links in notes/showcase copy (parsing in `lib/linkSegments`)
     VirtualWindowGoalList — Window-scroll virtualization for long goal/archive lists
     ShowcaseQuickDialog — Quick edit showcase URL / caption / screenshot when complete
-    GoalCard            — Goal card + subtasks + due urgency chrome + showcase block when complete
+    GoalCard            — Goal card + subtasks + due urgency chrome + showcase when complete; duplicate; list fold signal from Index
     GoalCategoryPicker  — Optional goal folder (categories relation)
     GoalShowcaseBlock   — Completed-goal showcase: uploaded image + link previews
     HeroShowcaseStrip   — Hero row of goals “on display” (URL and/or uploaded image)
@@ -236,10 +237,11 @@ src/
   hooks/
     useAuth             — Auth state (PocketBase)
     useGoalEmojiSuggest — Debounced emoji suggestion for title
-    useGoals            — All goal + subtask CRUD + categories
+    useGoals            — All goal + subtask CRUD + categories (`duplicateGoal`, `renameSubtask`, …)
     useDueNotifications — Interval + visibility hooks for due `Notification` checks
     useResponsiveUI     — Breakpoints, lite motion tier, celebration quality
   lib/
+    editAffordance       — Shared sky ghost-button classes for edit pencils (goal / subtask / categories)
     dueNotifications     — `runDueNotificationCheck`, localStorage prefs & dedupe keys
     dueDateUtils         — Due normalization + urgency helpers
     linkSegments           — `parseLinkSegments` for LinkifiedText / tests
@@ -384,7 +386,7 @@ npm run dev
 ./pocketbase serve
 ```
 
-- **Frontend:** URL printed by Vite (this repo configures **port `8080`** in `vite.config.ts`).
+- **Frontend:** URL printed by Vite (this repo configures **port `3000`** in `vite.config.ts` by default).
 - **PocketBase admin:** http://127.0.0.1:8090/_/  
 - Before first goal with metadata: in PocketBase Admin add optional **`due_date`** (type **date**), **`notes`**, optional **`showcase_image`** (type **file**, single), **`showcase_url`**, and **`showcase_caption`** (type **text**) on **`goals`**, and optional **`notes`** (type **text**) on **`subtasks`**.
 

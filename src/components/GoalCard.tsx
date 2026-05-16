@@ -14,7 +14,7 @@ import { LinkifiedText } from "@/components/LinkifiedText";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { CalendarDays, Trash2, Trophy, GripVertical, ChevronDown, Archive, StickyNote, Loader2 } from "lucide-react";
+import { CalendarDays, Trash2, Trophy, GripVertical, ChevronDown, Archive, StickyNote, Loader2, Copy } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { getEnergyAccent } from "@/lib/energyAccent";
@@ -60,12 +60,16 @@ interface GoalCardProps {
   bulkSelected?: boolean;
   onBulkToggle?: (goalId: string, selected: boolean) => void;
   onArchive?: (goalId: string) => void;
+  onDuplicate: (goalId: string) => void | Promise<void>;
+  onRenameSubtask: (subtaskId: string, title: string) => void | Promise<void>;
+  /** Index-driven expand/collapse-all; `id` increments per command (initial id must sync mount without folding). */
+  listFoldTick: { id: number; collapsed: boolean };
   showDragHandle?: boolean;
   /** When set (touch / narrow layouts), drag-to-reorder only starts from the grip — avoids scroll fighting. */
   reorderHandlePointerDown?: (event: PointerEvent<HTMLSpanElement>) => void;
 }
 
-const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebrating = false, onToggleSubtask, onAddSubtask, onDelete, onDeleteSubtask, onEdit, categories, onCreateCategory, onPatchGoalCategory, onSetEffort, onUpdateSubtaskNotes, onToggleGoalStandaloneComplete, pendingGoalComplete, bulkSelectionMode = false, bulkSelected = false, onBulkToggle, onArchive, showDragHandle = true, reorderHandlePointerDown }: GoalCardProps) => {
+const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isCelebrating = false, onToggleSubtask, onAddSubtask, onDelete, onDeleteSubtask, onEdit, categories, onCreateCategory, onPatchGoalCategory, onSetEffort, onUpdateSubtaskNotes, onRenameSubtask, onToggleGoalStandaloneComplete, pendingGoalComplete, bulkSelectionMode = false, bulkSelected = false, onBulkToggle, onArchive, onDuplicate, listFoldTick, showDragHandle = true, reorderHandlePointerDown }: GoalCardProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const [showGoalNotes, setShowGoalNotes] = useState(false);
   const [quickShowcaseOpen, setQuickShowcaseOpen] = useState(false);
@@ -91,6 +95,18 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
   /** Tracks real completion transitions — avoids spurious toasts when % flickers */
   const prevCompleteRef = useRef<boolean | null>(null);
   const prevSubtaskLenRef = useRef<number | null>(null);
+  const appliedListFoldId = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (appliedListFoldId.current === null) {
+      appliedListFoldId.current = listFoldTick.id;
+      if (listFoldTick.id > 0 && !isCelebrating) setCollapsed(listFoldTick.collapsed);
+      return;
+    }
+    if (appliedListFoldId.current === listFoldTick.id) return;
+    appliedListFoldId.current = listFoldTick.id;
+    if (!isCelebrating) setCollapsed(listFoldTick.collapsed);
+  }, [listFoldTick.id, listFoldTick.collapsed, isCelebrating]);
 
   useEffect(() => {
     const complete = isGoalComplete(goal);
@@ -132,6 +148,11 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
     [goal.id, onToggleSubtask]
   );
 
+  const handleRenameSubtaskTitle = useCallback(
+    (subtaskId: string, title: string) => onRenameSubtask(subtaskId, title),
+    [onRenameSubtask]
+  );
+
   const flushGoalNotes = () => {
     const t = goalNoteDraft.trim();
     if (t !== (goal.notes || "").trim()) {
@@ -154,24 +175,24 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
     if (isCelebrating) setCollapsed(false);
   }, [isCelebrating]);
 
-  /** Outer shell clips expanded showcase / inner hover scale so content stays inside the mint frame. */
-  const useCompleteShell = isComplete && !isCelebrating;
-  const shellCorner = useCompleteShell ? "rounded-xl" : "rounded-2xl";
+  const shellCorner = "rounded-2xl";
 
   const innerCard = (
     <motion.div
-      id={useCompleteShell ? undefined : `goal-card-${goal.id}`}
+      id={`goal-card-${goal.id}`}
       animate={controls}
       whileHover={!isCelebrating && !reduceMotion ? tactileHover : undefined}
       transition={premiumSpring}
       className={cn(
-        "relative isolate z-[1] overflow-visible border transition-[transform,box-shadow] duration-300 ease-out",
+        "relative isolate z-[1] overflow-visible border transition-[transform,box-shadow,ring-color] duration-300 ease-out",
         shellCorner,
         "surface-grain backdrop-blur-sm border-border/50 bg-card shadow-neo-card te-goal-card-surface",
         "dark:border-white/[0.11]",
         isCelebrating && heavyCelebration && "celebration-card ring-2 ring-mint/75 ring-offset-2 ring-offset-background dark:ring-offset-background",
         isCelebrating && !heavyCelebration && "celebration-card-minimal ring-2 ring-gold/70 ring-offset-2 ring-offset-background dark:ring-offset-background",
-        !isCelebrating && isComplete && !useCompleteShell && "ring-2 ring-mint/80 goal-card-hero-shell",
+        !isCelebrating &&
+          isComplete &&
+          "ring-2 ring-mint/80 goal-card-hero-shell ease-out hover:ring-amber-300/55",
         !isCelebrating && !isComplete && dueUrgency === "overdue" && "ring-2 ring-red-500/45",
         !isCelebrating && !isComplete && dueUrgency === "soon" && "ring-2 ring-gold/45",
         !isCelebrating && isInProgress && "goal-pulse-ring",
@@ -188,7 +209,7 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
         {!isCelebrating && (
           <div
             aria-hidden
-            className={cn("pointer-events-none absolute inset-[-1px] z-0", shellCorner)}
+            className={cn("pointer-events-none absolute inset-[-1px] z-0 rounded-2xl")}
             style={{
               boxShadow: isComplete
                 ? `
@@ -212,7 +233,7 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
           <>
             <div className="goal-card-hero-gold" aria-hidden />
             <div
-              className={cn("pointer-events-none absolute inset-0 z-[2] opacity-25 mix-blend-screen", shellCorner)}
+              className={cn("pointer-events-none absolute inset-0 z-[2] opacity-25 mix-blend-screen rounded-2xl")}
               style={{
                 background: `radial-gradient(circle at 50% 0%, rgba(${energy.ringRgb},0.16), transparent 55%)`,
               }}
@@ -404,13 +425,31 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
 
           <div
             className={cn(
-              "flex items-center justify-end gap-0.5 max-md:min-h-11 md:gap-1",
+              "flex shrink-0 items-center justify-end gap-0.5 max-md:min-h-11 md:gap-1",
               bulkSelectionMode
                 ? "col-span-3 col-start-1 row-start-2 md:col-span-1 md:col-start-4 md:row-start-1"
-                : "col-span-2 col-start-1 md:col-span-1 md:col-start-3 md:row-start-1",
+                : "col-span-2 col-start-1 row-start-2 md:col-span-1 md:col-start-3 md:row-start-1",
             )}
           >
-            <EditGoalDialog goal={goal} categories={categories} onCreateCategory={onCreateCategory} onPatchGoalCategory={onPatchGoalCategory} onEdit={onEdit} />
+            <EditGoalDialog
+              goal={goal}
+              categories={categories}
+              onCreateCategory={onCreateCategory}
+              onPatchGoalCategory={onPatchGoalCategory}
+              onEdit={onEdit}
+              onDuplicate={onDuplicate}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 shrink-0 touch-manipulation rounded-lg md:h-8 md:w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+              onClick={() => void onDuplicate(goal.id)}
+              title="Duplicate goal"
+              aria-label="Duplicate goal"
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
             {isComplete && !isCelebrating && onArchive && (
               <Button
                 variant="ghost"
@@ -624,6 +663,7 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
                             onDelete={onDeleteSubtask}
                             onSetEffort={onSetEffort}
                             onUpdateNotes={onUpdateSubtaskNotes}
+                            onRenameTitle={handleRenameSubtaskTitle}
                           />
                         </div>
                       ) : (
@@ -643,6 +683,7 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
                             onDelete={onDeleteSubtask}
                             onSetEffort={onSetEffort}
                             onUpdateNotes={onUpdateSubtaskNotes}
+                            onRenameTitle={handleRenameSubtaskTitle}
                           />
                         </motion.div>
                       ),
@@ -656,19 +697,7 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
       </motion.div>
   );
 
-  return useCompleteShell ? (
-    <div
-      id={`goal-card-${goal.id}`}
-      className={cn(
-        "relative isolate z-[1] min-w-0 max-w-full rounded-2xl p-1 overflow-hidden",
-        "ring-2 ring-mint/80 goal-card-hero-shell",
-      )}
-    >
-      {innerCard}
-    </div>
-  ) : (
-    innerCard
-  );
+  return innerCard;
 });
 
 GoalCard.displayName = "GoalCard";

@@ -25,14 +25,13 @@ import { showDueReminderInAppToast } from "@/lib/showDueReminderInAppToast";
 import { UserHeroAvatar } from "@/components/UserHeroAvatar";
 import { HeroShowcaseStrip } from "@/components/HeroShowcaseStrip";
 import { PageSideAmbience } from "@/components/PageSideAmbience";
-import { FilterLeafFanGlyph } from "@/components/micro/MicroGlyphs";
 import { EmptyState } from "@/components/EmptyState";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Target, LogOut, Search, Volume2, VolumeX, Check, Loader2, AlertCircle, Archive, RotateCcw, CheckSquare, Trash2, CalendarDays, SearchX, Sparkles, Trophy, FolderTree, ListChecks } from "lucide-react";
+import { Target, LogOut, Search, Volume2, VolumeX, Check, Loader2, AlertCircle, Archive, RotateCcw, CheckSquare, Trash2, CalendarDays, SearchX, Sparkles, Trophy, FolderTree, ListChecks, Copy, ChevronsDown, ChevronsUp, Tags, ChevronDown } from "lucide-react";
 import { isSoundEnabled, toggleSound } from "@/lib/sounds";
 import { formatDueChip, getDueUrgency, isIncompleteForDueDate } from "@/lib/dueDateUtils";
 import { appleEase, appleSpring, appleSpringGentle, smoothOut } from "@/lib/motion";
@@ -43,6 +42,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { pickRandom, HERO_HEADER_QUOTES, GOAL_COMPLETE_TOASTS } from "@/lib/motivationalCopy";
 
 /** Window virtualizer: rows self-measure; estimate only seeds layout. */
@@ -50,9 +52,18 @@ const VIRTUAL_GOALS_THRESHOLD = 10;
 const VIRTUAL_ROW_GOAL_ESTIMATE_PX = 280;
 const VIRTUAL_ROW_ARCHIVED_ESTIMATE_PX = 168;
 
+/** Stable keyframes/refs for hero greeting pulses — avoids Framer replaying scale on unrelated re-renders. */
+const HERO_GREET_HEY_SCALES = [1, 1.2, 1] as const;
+const HERO_GREET_NAME_SCALES = [1, 1.34, 1] as const;
+const HERO_GREET_QUOTE_SCALES = [1, 1.07, 1] as const;
+const HERO_GREET_TIMES_HEY = [0, 0.48, 1] as const;
+const HERO_GREET_TIMES_NAME = [0, 0.44, 1] as const;
+const HERO_GREET_TIMES_QUOTE = [0, 0.46, 1] as const;
+
 type Filter = 'all' | 'active' | 'done' | 'showcase' | 'archived';
 type DueFilter = 'all' | 'has_due' | 'overdue' | 'due_soon';
 type GoalSortMode = 'manual' | 'due_asc';
+type CategoryFilterMode = 'all' | 'include' | 'exclude';
 
 function sortGoalsByDueAsc(goals: Goal[]): Goal[] {
   return [...goals].sort((a, b) => {
@@ -89,6 +100,9 @@ type SharedGoalCardProps = Pick<
   | "categories"
   | "onCreateCategory"
   | "onPatchGoalCategory"
+  | "onDuplicate"
+  | "onRenameSubtask"
+  | "listFoldTick"
 >;
 
 function ActiveReorderGoalItem({
@@ -152,13 +166,61 @@ const Index = () => {
   const ui = useResponsiveUI();
   const reduceMotion = useReducedMotion();
   const heroMicroHover = ui.liteMotion || reduceMotion ? undefined : { y: -1, scale: 1.02 };
-  const { goals, categories, loading, pendingSubtasks, pendingGoalComplete, saveStatus, archivedGoals, archivedLoading, createGoal, createCategory, patchGoalCategory, renameCategory, deleteCategory, editGoal, deleteGoal, archiveGoal, restoreGoal, deleteArchivedGoal, fetchArchivedGoals, addSubtask, toggleSubtask, toggleGoalStandaloneComplete, deleteSubtask, updateSubtaskEffort, updateSubtaskNotes, reorderGoals, flushCelebrationIntentGoalIds, bulkDeleteGoals, bulkArchiveGoals, bulkDeleteArchivedGoals } = useGoals();
+  /** Greeting name: vertical hover only — `scale` on hover fought the pulse and felt like random zooms. */
+  const heroGreetingNameHover = ui.liteMotion || reduceMotion ? undefined : { y: -3 };
+  /** One-shot pulses; memoized so parent re-renders don’t restart animations. */
+  const heroGreetMotion = useMemo(() => {
+    if (reduceMotion === true) {
+      return {
+        heyAnimate: { scale: 1 as const },
+        heyTransition: { duration: 0 },
+        nameAnimate: { scale: 1 as const },
+        nameTransition: { duration: 0 },
+        quoteAnimate: { scale: 1 as const },
+        quoteTransition: { duration: 0 },
+      };
+    }
+    return {
+      heyAnimate: { scale: HERO_GREET_HEY_SCALES },
+      heyTransition: {
+        duration: 1.38,
+        ease: appleEase,
+        times: HERO_GREET_TIMES_HEY,
+        delay: 0.08,
+      },
+      nameAnimate: { scale: HERO_GREET_NAME_SCALES },
+      nameTransition: {
+        duration: 1.58,
+        ease: appleEase,
+        times: HERO_GREET_TIMES_NAME,
+        delay: 1.58,
+      },
+      quoteAnimate: { scale: HERO_GREET_QUOTE_SCALES },
+      quoteTransition: {
+        duration: 1.08,
+        ease: appleEase,
+        times: HERO_GREET_TIMES_QUOTE,
+        delay: 3.28,
+      },
+    };
+  }, [reduceMotion]);
+
+  const {
+    heyAnimate: heroHeyAnimate,
+    heyTransition: heroHeyTransition,
+    nameAnimate: heroNameAnimate,
+    nameTransition: heroNameTransition,
+    quoteAnimate: heroQuoteAnimate,
+    quoteTransition: heroQuoteTransition,
+  } = heroGreetMotion;
+
+  const { goals, categories, loading, pendingSubtasks, pendingGoalComplete, saveStatus, archivedGoals, archivedLoading, createGoal, createCategory, patchGoalCategory, renameCategory, deleteCategory, editGoal, deleteGoal, duplicateGoal, archiveGoal, restoreGoal, deleteArchivedGoal, fetchArchivedGoals, addSubtask, toggleSubtask, toggleGoalStandaloneComplete, deleteSubtask, updateSubtaskEffort, updateSubtaskNotes, renameSubtask, reorderGoals, flushCelebrationIntentGoalIds, bulkDeleteGoals, bulkArchiveGoals, bulkDeleteArchivedGoals } = useGoals();
   const heroLine = useMemo(() => pickRandom(HERO_HEADER_QUOTES), []);
   const [orderedGoals, setOrderedGoals] = useState<Goal[]>([]);
   const [search, setSearch] = useState('');
-  const [categoryFilterId, setCategoryFilterId] = useState<string | null>(null);
+  const [categoryFilterMode, setCategoryFilterMode] = useState<CategoryFilterMode>('all');
+  const [categoryFilterIds, setCategoryFilterIds] = useState<string[]>([]);
   const [filter, setFilter] = useState<Filter>('all');
-  const [filterGlyphPulse, setFilterGlyphPulse] = useState<Partial<Record<Filter, number>>>({});
   const [dueFilter, setDueFilter] = useState<DueFilter>('all');
   const [goalSortMode, setGoalSortMode] = useState<GoalSortMode>('manual');
   const [celebratingGoals, setCelebratingGoals] = useState<Set<string>>(new Set());
@@ -175,6 +237,7 @@ const Index = () => {
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(() => new Set());
   const [bulkWorking, setBulkWorking] = useState(false);
+  const [goalListFoldTick, setGoalListFoldTick] = useState(() => ({ id: 0, collapsed: false }));
   const dueNotify = useDueNotifications(goals, {
     onDelivered: ({ title, body }) => {
       showDueReminderInAppToast(title, body);
@@ -281,10 +344,6 @@ const Index = () => {
   const handleLogout = () => { logout(); navigate("/login"); };
   const handleToggleSound = () => setSoundOn(toggleSound());
 
-  useEffect(() => {
-    setBulkSelected(new Set());
-  }, [filter, categoryFilterId, dueFilter, search]);
-
   const handleBulkToggle = useCallback((goalId: string, selected: boolean) => {
     setBulkSelected((prev) => {
       const next = new Set(prev);
@@ -294,12 +353,50 @@ const Index = () => {
     });
   }, []);
 
+  const bumpGoalListFold = useCallback((collapsed: boolean) => {
+    setGoalListFoldTick((p) => ({ id: p.id + 1, collapsed }));
+  }, []);
+
   const deferredSearch = useDeferredValue(search);
   const searchLower = deferredSearch.toLowerCase().trim();
+
+  const categoryFilterIdSet = useMemo(() => new Set(categoryFilterIds), [categoryFilterIds]);
+
   const matchesCategory = useCallback(
-    (g: Goal) => !categoryFilterId || g.category?.id === categoryFilterId,
-    [categoryFilterId],
+    (g: Goal) => {
+      if (categoryFilterMode === 'all') return true;
+      const cid = g.category?.id ?? null;
+      if (categoryFilterMode === 'include') {
+        if (categoryFilterIds.length === 0) return true;
+        if (!cid) return false;
+        return categoryFilterIdSet.has(cid);
+      }
+      if (categoryFilterIds.length === 0) return true;
+      if (!cid) return true;
+      return !categoryFilterIdSet.has(cid);
+    },
+    [categoryFilterMode, categoryFilterIds, categoryFilterIdSet],
   );
+
+  const categoryFilterKey = useMemo(
+    () => `${categoryFilterMode}:${[...categoryFilterIds].sort().join(',')}`,
+    [categoryFilterMode, categoryFilterIds],
+  );
+
+  const initialCategoryIdForNewGoal = useMemo((): string | null => {
+    if (categoryFilterMode === 'include' && categoryFilterIds.length === 1) return categoryFilterIds[0];
+    return null;
+  }, [categoryFilterMode, categoryFilterIds]);
+
+  const categoryFilterRestrictsView = useMemo(() => {
+    if (categoryFilterMode === 'all') return false;
+    return categoryFilterIds.length > 0;
+  }, [categoryFilterMode, categoryFilterIds]);
+
+  useEffect(() => {
+    setBulkSelected(new Set());
+  }, [filter, categoryFilterKey, dueFilter, search]);
+
   const matchesSearch = useCallback(
     (g: Goal) => {
       if (!searchLower) return true;
@@ -363,6 +460,10 @@ const Index = () => {
 
   const showActive = filter !== 'done' && filter !== 'archived' && filter !== 'showcase';
   const showCompleted = filter !== 'active' && filter !== 'archived';
+
+  const showGoalCardFoldControls =
+    filter !== 'archived' &&
+    ((showActive && activeGoals.length > 0) || (showCompleted && completedGoals.length > 0));
 
   const selectableGoalsFlat = useMemo(() => {
     if (filter === 'archived') {
@@ -471,6 +572,9 @@ const Index = () => {
       categories,
       onCreateCategory: createCategory,
       onPatchGoalCategory: patchGoalCategory,
+      onDuplicate: duplicateGoal,
+      onRenameSubtask: renameSubtask,
+      listFoldTick: goalListFoldTick,
     }),
     [
       pendingSubtasks,
@@ -487,6 +591,9 @@ const Index = () => {
       categories,
       createCategory,
       patchGoalCategory,
+      duplicateGoal,
+      renameSubtask,
+      goalListFoldTick,
     ],
   );
 
@@ -529,7 +636,7 @@ const Index = () => {
             onCreateCategory={createCategory}
             addGoalOpen={addGoalOpen}
             onAddGoalOpenChange={setAddGoalOpen}
-            initialCategoryId={categoryFilterId}
+            initialCategoryId={initialCategoryIdForNewGoal}
             dueNotificationsSlot={dueReminderToggle}
           />
         )}
@@ -557,30 +664,32 @@ const Index = () => {
                         Goal Tracker
                       </span>
                     </div>
-                    <motion.h1
-                      initial={ui.liteMotion ? false : { opacity: 0, y: 14 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={
-                        ui.liteMotion ? { duration: 0 } : { duration: 0.52, ease: appleEase, delay: 0.05 }
-                      }
-                      className="relative z-[1] text-2xl sm:text-3xl md:text-[2rem] font-semibold font-heading text-white tracking-tight text-balance break-words [text-shadow:0_2px_24px_rgba(0,0,0,0.35)]"
-                    >
-                      Hey,{' '}
+                    <h1 className="relative z-[1] text-2xl sm:text-3xl md:text-[2rem] font-semibold font-heading text-white tracking-tight text-balance break-words [text-shadow:0_2px_24px_rgba(0,0,0,0.35)]">
                       <motion.span
-                        className="inline-block cursor-default rounded-lg px-0.5 -mx-0.5"
-                        whileHover={heroMicroHover}
-                        transition={appleSpringGentle}
+                        className="inline-block origin-bottom-left will-change-transform"
+                        initial={{ opacity: 1, scale: 1 }}
+                        animate={heroHeyAnimate}
+                        transition={heroHeyTransition}
+                      >
+                        Hey
+                      </motion.span>
+                      <span className="inline">,</span>
+                      {' '}
+                      <motion.span
+                        className="inline-block origin-bottom-left cursor-default rounded-lg px-0.5 -mx-0.5 will-change-transform"
+                        initial={{ opacity: 1, scale: 1 }}
+                        animate={heroNameAnimate}
+                        transition={heroNameTransition}
+                        whileHover={heroGreetingNameHover}
                       >
                         {username}
                       </motion.span>
-                    </motion.h1>
+                    </h1>
                     <motion.p
-                      initial={ui.liteMotion ? false : { opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={
-                        ui.liteMotion ? { duration: 0 } : { duration: 0.52, ease: appleEase, delay: 0.12 }
-                      }
-                      className="text-white/45 text-xs sm:text-sm italic leading-relaxed max-w-xl"
+                      initial={{ opacity: 1, scale: 1 }}
+                      animate={heroQuoteAnimate}
+                      transition={heroQuoteTransition}
+                      className="block origin-left max-w-xl will-change-transform text-white/45 text-xs sm:text-sm italic leading-relaxed"
                     >
                       &ldquo;{heroLine}&rdquo;
                     </motion.p>
@@ -595,30 +704,32 @@ const Index = () => {
                       Goal Tracker
                     </span>
                   </div>
-                  <motion.h1
-                    initial={ui.liteMotion ? false : { opacity: 0, y: 14 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={
-                      ui.liteMotion ? { duration: 0 } : { duration: 0.52, ease: appleEase, delay: 0.05 }
-                    }
-                    className="relative z-[1] text-2xl sm:text-3xl md:text-[2rem] font-semibold font-heading text-white tracking-tight text-balance break-words [text-shadow:0_2px_24px_rgba(0,0,0,0.35)]"
-                  >
-                    Hey,{' '}
+                  <h1 className="relative z-[1] text-2xl sm:text-3xl md:text-[2rem] font-semibold font-heading text-white tracking-tight text-balance break-words [text-shadow:0_2px_24px_rgba(0,0,0,0.35)]">
                     <motion.span
-                      className="inline-block cursor-default rounded-lg px-0.5 -mx-0.5"
-                      whileHover={heroMicroHover}
-                      transition={appleSpringGentle}
+                      className="inline-block origin-bottom-left will-change-transform"
+                      initial={{ opacity: 1, scale: 1 }}
+                      animate={heroHeyAnimate}
+                      transition={heroHeyTransition}
+                    >
+                      Hey
+                    </motion.span>
+                    <span className="inline">,</span>
+                    {' '}
+                    <motion.span
+                      className="inline-block origin-bottom-left cursor-default rounded-lg px-0.5 -mx-0.5 will-change-transform"
+                      initial={{ opacity: 1, scale: 1 }}
+                      animate={heroNameAnimate}
+                      transition={heroNameTransition}
+                      whileHover={heroGreetingNameHover}
                     >
                       {username}
                     </motion.span>
-                  </motion.h1>
+                  </h1>
                   <motion.p
-                    initial={ui.liteMotion ? false : { opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={
-                      ui.liteMotion ? { duration: 0 } : { duration: 0.52, ease: appleEase, delay: 0.12 }
-                    }
-                    className="text-white/45 text-xs sm:text-sm italic leading-relaxed max-w-xl"
+                    initial={{ opacity: 1, scale: 1 }}
+                    animate={heroQuoteAnimate}
+                    transition={heroQuoteTransition}
+                    className="block origin-left max-w-xl will-change-transform text-white/45 text-xs sm:text-sm italic leading-relaxed"
                   >
                     &ldquo;{heroLine}&rdquo;
                   </motion.p>
@@ -632,7 +743,7 @@ const Index = () => {
                 onCreateCategory={createCategory}
                 open={addGoalOpen}
                 onOpenChange={setAddGoalOpen}
-                initialCategoryId={categoryFilterId}
+                initialCategoryId={initialCategoryIdForNewGoal}
               />
               {dueReminderToggle}
               <ThemeToggle variant="header" className="h-11 w-11 touch-manipulation md:h-9 md:w-9" />
@@ -724,7 +835,7 @@ const Index = () => {
                 title="Set your first goal"
                 description="Break it into steps. Track your progress. Celebrate every win."
               >
-                <AddGoalDialog onAdd={createGoal} categories={categories} onCreateCategory={createCategory} triggerClassName="cta-glow" initialCategoryId={categoryFilterId} />
+                <AddGoalDialog onAdd={createGoal} categories={categories} onCreateCategory={createCategory} triggerClassName="cta-glow" initialCategoryId={initialCategoryIdForNewGoal} />
               </EmptyState>
             ) : (
               <motion.div
@@ -746,30 +857,161 @@ const Index = () => {
                         onChange={(e) => setSearch(e.target.value)}
                       />
                     </div>
-                    <div className="flex gap-2 w-full sm:w-auto sm:shrink-0 sm:items-stretch">
-                      <Select
-                        value={categoryFilterId ?? '__all__'}
-                        onValueChange={(v) => setCategoryFilterId(v === '__all__' ? null : v)}
-                      >
-                        <SelectTrigger
-                          aria-label="Filter by category"
-                          className="flex-1 min-w-0 sm:flex-initial w-full sm:w-[min(100%,220px)] shrink-0 max-md:min-h-11 min-h-11 md:min-h-10 h-11 md:h-10 rounded-lg transition-all duration-300 app-surface-input"
+                    <div className="flex flex-row items-center gap-2 w-full sm:w-auto shrink-0">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className={cn(
+                              "h-11 md:h-10 w-full sm:w-44 shrink-0 justify-between gap-2 px-3 rounded-lg touch-manipulation font-medium text-sm",
+                              "border-border/60 bg-background/80 backdrop-blur-sm shadow-sm",
+                              "hover:bg-secondary/40 hover:border-border",
+                              "focus-visible:ring-2 focus-visible:ring-sky-400/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                            )}
+                            aria-label="Category filter"
+                            aria-haspopup="dialog"
+                          >
+                            <span className="flex items-center gap-2 min-w-0">
+                              <Tags className="h-4 w-4 shrink-0 text-sky-400/90" aria-hidden />
+                              <span className="truncate">Categories</span>
+                            </span>
+                            <span className="flex items-center gap-1.5 shrink-0">
+                              <span
+                                className={cn(
+                                  "h-2 w-2 rounded-full shrink-0 ring-2 ring-offset-2 ring-offset-background transition-colors",
+                                  categoryFilterRestrictsView
+                                    ? "bg-sky-400 ring-sky-400/35"
+                                    : "bg-muted-foreground/25 ring-transparent",
+                                )}
+                                title={
+                                  categoryFilterRestrictsView ? "Category filter active" : "Showing all categories"
+                                }
+                                aria-hidden
+                              />
+                              <ChevronDown className="h-4 w-4 text-muted-foreground opacity-80" aria-hidden />
+                            </span>
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="w-[min(calc(100vw-1.5rem),20rem)] p-0 rounded-xl border-border/60 shadow-xl"
+                          align="end"
+                          sideOffset={6}
                         >
-                          <FolderTree className="h-4 w-4 mr-2 shrink-0 text-muted-foreground" aria-hidden />
-                          <SelectValue placeholder="Category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__all__">All categories</SelectItem>
-                          {categories.map((c) => {
-                            const n = displayGoals.filter((g) => g.category?.id === c.id).length;
-                            return (
-                              <SelectItem key={c.id} value={c.id}>
-                                {`${c.name} (${n})`}
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
+                          <div className="border-b border-border/50 px-3 py-2.5 bg-muted/30">
+                            <p className="text-xs font-semibold text-foreground">Category filter</p>
+                            <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
+                              Include several categories, or hide ones you don&apos;t want in this view.
+                            </p>
+                          </div>
+                          <div className="p-3 space-y-3">
+                            <RadioGroup
+                              value={categoryFilterMode}
+                              onValueChange={(v) => {
+                                const m = v as CategoryFilterMode;
+                                setCategoryFilterMode(m);
+                                if (m === "all") setCategoryFilterIds([]);
+                              }}
+                              className="gap-2"
+                            >
+                              <div className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-secondary/50">
+                                <RadioGroupItem value="all" id="cf-all" />
+                                <Label htmlFor="cf-all" className="cursor-pointer text-sm font-normal leading-snug flex-1">
+                                  All categories
+                                </Label>
+                              </div>
+                              <div className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-secondary/50">
+                                <RadioGroupItem value="include" id="cf-include" disabled={categories.length === 0} />
+                                <Label
+                                  htmlFor="cf-include"
+                                  className={cn(
+                                    "cursor-pointer text-sm font-normal leading-snug flex-1",
+                                    categories.length === 0 && "opacity-50 cursor-not-allowed",
+                                  )}
+                                >
+                                  Only selected categories
+                                </Label>
+                              </div>
+                              <div className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-secondary/50">
+                                <RadioGroupItem value="exclude" id="cf-exclude" disabled={categories.length === 0} />
+                                <Label
+                                  htmlFor="cf-exclude"
+                                  className={cn(
+                                    "cursor-pointer text-sm font-normal leading-snug flex-1",
+                                    categories.length === 0 && "opacity-50 cursor-not-allowed",
+                                  )}
+                                >
+                                  Hide selected categories
+                                </Label>
+                              </div>
+                            </RadioGroup>
+
+                            {categories.length === 0 ? (
+                              <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border/60 px-2.5 py-2">
+                                You don&apos;t have categories yet. Use{" "}
+                                <span className="font-medium text-foreground">Manage</span> to add some, or assign them
+                                when editing a goal.
+                              </p>
+                            ) : categoryFilterMode !== "all" ? (
+                              <>
+                                <div className="rounded-lg border border-border/50 bg-card/40 px-2 py-2">
+                                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                                    {categoryFilterMode === "include"
+                                      ? "Show goals in these categories only"
+                                      : "Hide goals in these categories"}
+                                  </p>
+                                  <div className="max-h-52 overflow-y-auto space-y-0.5 -mx-0.5 px-0.5">
+                                    {categories.map((c) => {
+                                      const checked = categoryFilterIds.includes(c.id);
+                                      const n = displayGoals.filter((g) => g.category?.id === c.id).length;
+                                      return (
+                                        <label
+                                          key={c.id}
+                                          className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-secondary/60 cursor-pointer touch-manipulation min-h-9"
+                                        >
+                                          <Checkbox
+                                            checked={checked}
+                                            onCheckedChange={(v) => {
+                                              const on = v === true;
+                                              setCategoryFilterIds((prev) => {
+                                                if (on) return prev.includes(c.id) ? prev : [...prev, c.id];
+                                                return prev.filter((id) => id !== c.id);
+                                              });
+                                            }}
+                                            className="border-muted-foreground/50"
+                                          />
+                                          <span className="flex-1 min-w-0 truncate text-sm">{c.name}</span>
+                                          <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{n}</span>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="sm"
+                                    className="h-8 flex-1 text-xs font-semibold rounded-lg"
+                                    onClick={() => setCategoryFilterIds(categories.map((c) => c.id))}
+                                  >
+                                    Select all
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 flex-1 text-xs font-semibold rounded-lg"
+                                    onClick={() => setCategoryFilterIds([])}
+                                  >
+                                    Clear
+                                  </Button>
+                                </div>
+                              </>
+                            ) : null}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                       {categories.length > 0 ? (
                         <ManageCategoriesDialog
                           categories={categories}
@@ -791,21 +1033,17 @@ const Index = () => {
                       <motion.button
                         key={f}
                         type="button"
-                        onClick={() => {
-                          setFilter(f);
-                          setFilterGlyphPulse((p) => ({ ...p, [f]: (p[f] ?? 0) + 1 }));
-                        }}
+                        onClick={() => setFilter(f)}
                         whileTap={ui.liteMotion ? undefined : { scale: 0.97 }}
                         transition={appleSpring}
                         className={cn(
-                          "max-md:min-h-11 min-h-10 touch-manipulation px-3 sm:px-4 py-2 rounded-full text-xs font-semibold capitalize transition-all duration-300 ease-out inline-flex items-center gap-1.5",
+                          "max-md:min-h-11 min-h-10 touch-manipulation px-3 sm:px-4 py-2 rounded-full text-xs font-semibold capitalize transition-all duration-300 ease-out inline-flex items-center justify-center",
                           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                           filter === f
                             ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 scale-[1.02] ring-2 ring-primary/25"
                             : "bg-secondary/80 dark:bg-secondary/70 text-muted-foreground hover:text-foreground hover:bg-secondary border border-border/50 hover:border-border hover:scale-[1.02] active:scale-[0.98]",
                         )}
                       >
-                        <FilterLeafFanGlyph active={filter === f} pulseKey={filterGlyphPulse[f] ?? 0} />
                         <span className="tabular-nums">{label}</span>
                       </motion.button>
                       ))}
@@ -828,6 +1066,30 @@ const Index = () => {
                           </>
                         )}
                       </Button>
+                      {showGoalCardFoldControls && (
+                        <>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-9 rounded-lg touch-manipulation text-xs font-semibold shrink-0 gap-1.5"
+                            onClick={() => bumpGoalListFold(false)}
+                          >
+                            <ChevronsDown className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+                            Expand all
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-9 rounded-lg touch-manipulation text-xs font-semibold shrink-0 gap-1.5"
+                            onClick={() => bumpGoalListFold(true)}
+                          >
+                            <ChevronsUp className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+                            Collapse all
+                          </Button>
+                        </>
+                      )}
                       {bulkMode && (
                         <>
                           <Button
@@ -1022,7 +1284,6 @@ const Index = () => {
                           renderItem={(goal, i) => (
                             <motion.div
                               layout={!suppressCardLayout}
-                              className="perf-skip-offscreen"
                               initial={ui.liteMotion ? false : { opacity: 0, y: 16 }}
                               animate={{
                                 opacity: 1,
@@ -1051,7 +1312,6 @@ const Index = () => {
                               <motion.div
                                 layout={!suppressCardLayout}
                                 key={goal.id}
-                                className="perf-skip-offscreen"
                                 initial={ui.liteMotion ? false : { opacity: 0, y: 16 }}
                                 animate={{
                                   opacity: 1,
@@ -1101,7 +1361,6 @@ const Index = () => {
                           renderItem={(goal, i) => (
                             <motion.div
                               layout={!suppressCardLayout}
-                              className="perf-skip-offscreen"
                               initial={ui.liteMotion ? false : { opacity: 0, y: 16 }}
                               animate={{
                                 opacity: 1,
@@ -1132,7 +1391,6 @@ const Index = () => {
                               <motion.div
                                 layout={!suppressCardLayout}
                                 key={goal.id}
-                                className="perf-skip-offscreen"
                                 initial={ui.liteMotion ? false : { opacity: 0, y: 16 }}
                                 animate={{
                                   opacity: 1,
@@ -1240,6 +1498,9 @@ const Index = () => {
                                       </div>
                                     </div>
                                     <div className="flex items-center justify-end gap-1 shrink-0 sm:pt-0.5 max-md:min-h-10">
+                                      <Button variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-primary touch-manipulation" onClick={() => void duplicateGoal(goal.id)} title="Duplicate as new active goal">
+                                        <Copy className="h-3.5 w-3.5" />
+                                      </Button>
                                       <Button variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-mint hover:bg-mint/12 touch-manipulation" onClick={() => restoreGoal(goal.id)} title="Restore to active">
                                         <RotateCcw className="h-3.5 w-3.5" />
                                       </Button>
@@ -1316,6 +1577,9 @@ const Index = () => {
                             </div>
                           </div>
                           <div className="flex items-center justify-end gap-1 shrink-0 sm:pt-0.5 max-md:min-h-10">
+                            <Button variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-primary touch-manipulation" onClick={() => void duplicateGoal(goal.id)} title="Duplicate as new active goal">
+                              <Copy className="h-3.5 w-3.5" />
+                            </Button>
                             <Button variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-mint hover:bg-mint/12 touch-manipulation" onClick={() => restoreGoal(goal.id)} title="Restore to active">
                               <RotateCcw className="h-3.5 w-3.5" />
                             </Button>
@@ -1359,12 +1623,12 @@ const Index = () => {
                         title={`No matches for "${search}"`}
                         description="Try a shorter search or clear the box to see all goals."
                       />
-                    ) : categoryFilterId ? (
+                    ) : categoryFilterRestrictsView ? (
                       <EmptyState
                         compact
                         icon={FolderTree}
-                        title="Nothing in this category"
-                        description="Choose “All categories” in the filter, or pick a different category."
+                        title="Nothing matches category filter"
+                        description="Switch the category filter to “All categories”, or open Categories and adjust which categories are included or hidden."
                       />
                     ) : dueFilter !== 'all' ? (
                       <EmptyState

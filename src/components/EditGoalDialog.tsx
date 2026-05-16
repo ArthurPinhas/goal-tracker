@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import GoalDueDatePicker from "@/components/GoalDueDatePicker";
 import GoalEmojiTitleSection from "@/components/GoalEmojiTitleSection";
 import { GoalCategoryPicker } from "@/components/GoalCategoryPicker";
-import { Pencil } from "lucide-react";
+import { Copy, Pencil } from "lucide-react";
 import type { Goal, GoalCategory, GoalShowcaseFileOptions } from "@/types/goal";
 import { isGoalComplete } from "@/lib/goalUtils";
 import { normalizeShowcaseUrl } from "@/lib/showcaseUrl";
@@ -24,6 +24,8 @@ import {
   SHOWCASE_IMAGE_ACCEPT,
   validateShowcaseImageFile,
 } from "@/lib/showcaseImageUpload";
+import { cn } from "@/lib/utils";
+import { editPenGhostButtonClass } from "@/lib/editAffordance";
 
 interface EditGoalDialogProps {
   goal: Goal;
@@ -31,6 +33,7 @@ interface EditGoalDialogProps {
   onCreateCategory: (name: string) => Promise<string | null>;
   /** When set, creating a new category from this dialog also saves it on this goal immediately. */
   onPatchGoalCategory?: (goalId: string, categoryId: string) => Promise<void>;
+  onDuplicate?: (goalId: string) => void | Promise<void>;
   onEdit: (
     goalId: string,
     name: string,
@@ -45,7 +48,7 @@ interface EditGoalDialogProps {
   ) => void;
 }
 
-const EditGoalDialog = ({ goal, categories, onCreateCategory, onPatchGoalCategory, onEdit }: EditGoalDialogProps) => {
+const EditGoalDialog = ({ goal, categories, onCreateCategory, onPatchGoalCategory, onDuplicate, onEdit }: EditGoalDialogProps) => {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(goal.title);
   const [description, setDescription] = useState(goal.description);
@@ -150,7 +153,10 @@ const EditGoalDialog = ({ goal, categories, onCreateCategory, onPatchGoalCategor
         <Button
           variant="ghost"
           size="icon"
-            className="h-10 w-10 md:h-8 md:w-8 shrink-0 touch-manipulation rounded-lg text-muted-foreground hover:text-gold hover:bg-gold/12 dark:text-muted-foreground/90"
+          className={cn(
+            "h-10 w-10 md:h-8 md:w-8 shrink-0 touch-manipulation",
+            editPenGhostButtonClass,
+          )}
         >
           <Pencil className="h-4 w-4" />
         </Button>
@@ -293,7 +299,26 @@ const EditGoalDialog = ({ goal, categories, onCreateCategory, onPatchGoalCategor
               className="resize-y min-h-[72px] rounded-xl app-surface-input transition-shadow duration-300"
             />
           </div>
-          <div className="flex justify-end pt-1">
+          <div
+            className={cn(
+              "flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:items-center",
+              onDuplicate ? "sm:justify-between" : "sm:justify-end",
+            )}
+          >
+            {onDuplicate ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 touch-manipulation rounded-xl md:min-h-10 gap-2 border-border/70"
+                onClick={() => {
+                  void onDuplicate(goal.id);
+                  setOpen(false);
+                }}
+              >
+                <Copy className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                Duplicate goal
+              </Button>
+            ) : null}
             <Button type="submit" disabled={!title.trim()} className="min-h-11 touch-manipulation px-6 md:min-h-10 shadow-md shadow-primary/20">
               Save
             </Button>

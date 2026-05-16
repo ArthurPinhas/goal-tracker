@@ -28,14 +28,15 @@ A personal goal-tracking app: break goals into weighted subtasks, see **live pro
 ## Features
 
 - **Auth** — register, login, logout; each user only sees their own data (PocketBase rules).
-- **Goals** — create, edit, delete, optional **folder** (**`categories`** + per-goal **`category`**; **ManageCategoriesDialog** for rename/delete when using folders), archive / restore, drag-and-drop order (manual sort only when deadline filter is **Any** and sort is **Manual**).
+- **Goals** — create, edit, delete, **duplicate** (copies goal fields and subtasks as a fresh incomplete goal; showcase image file not duplicated), optional **category** (**`categories`** + per-goal **`category`**), archive / restore, drag-and-drop order (manual sort only when deadline filter is **Any** and sort is **Manual**). **Manage categories** (rename/delete) from Index when categories exist.
 - **Optional due dates** — per-goal deadline, overdue / due-soon emphasis, filters & sort-by-due sidebar stats.
 - **Due reminders (browser)** — optional Notification API alerts when a goal is **due today** or **overdue** (incomplete). Works while the tab or installed PWA has focus; no server push or background delivery (see limitations below).
 - **Notes** — plain-text notes on goals and subtasks; included in search and exports (JSON / CSV / PDF).
 - **Showcase (completed goals)** — optional **screenshot upload** (PocketBase file) and/or external link + short caption in **Edit goal** or the quick showcase control once a goal is done; appears as a highlighted “win” block on the card, can surface in the optional hero **On display** strip, and in exports (JSON / CSV / PDF include caption, URL, and uploaded **filename** where present—the file itself is not embedded in export files).
-- **Subtasks** — add, toggle (optimistic), delete; optional effort (1–5) for weighted progress.
+- **Subtasks** — add, toggle (optimistic), delete; **rename** inline (pencil / save); optional effort (1–5) for weighted progress.
 - **Progress** — equal weight by default; effort-weighted when any subtask has effort set.
-- **Search & tabs** — search across goal and subtask **titles**, **descriptions**, **notes**, **categories**, and showcase URL/caption; filters (**All · Active · Done · On display · Archived**), deadline refinement (Any / has date / overdue / ≤7 days), and optional sort by due date. Typing uses React **`useDeferredValue`** so the search box stays responsive with large libraries.
+- **Search & tabs** — search across goal and subtask **titles**, **descriptions**, **notes**, **category** names, and showcase URL/caption; filters (**All · Active · Done · On display · Archived**), deadline refinement (Any / has date / overdue / ≤7 days), and optional sort by due date. **Category filter** — **Categories** opens a popover: **all categories**, **only selected** (multi-select), or **hide selected** (multi-select). Goals **without** a category are included only if your mode allows it (**hide selected** keeps them visible; **only selected** lists only checked categories). Typing uses React **`useDeferredValue`** so the search box stays responsive with large libraries.
+- **List chrome** — **Expand all** / **Collapse all** goal cards from the toolbar; **duplicate goal** and **archive** actions on cards (duplicate also available from archived rows).
 - **Bulk actions** — “Select goals” mode with **select all in view**, **bulk delete**, and **bulk archive** for completed selections (respects the current tab and filters). Drag-to-reorder is disabled while bulk mode is on.
 - **Performance** — window virtualization for **active** (non-reorder paths), **completed**, and **archived** lists when a slice has **≥ 10** rows; memoized goal/subtask rows; Framer **`layout`** animations ease off when **many** cards are visible or the UI is in the reduced-motion tier; **`content-visibility`** hints on list wrappers where supported.
 - **Celebrations** — full-screen milestone overlay (CSS / motion tiers via responsive hook—heavy GPU-friendly path on capable desktops), canvas confetti on subtask complete, optional sounds (`localStorage`).
@@ -45,7 +46,7 @@ A personal goal-tracking app: break goals into weighted subtasks, see **live pro
 
 ### UI polish (recent)
 
-The app is **dark-first** with a shared visual language: design tokens in `src/index.css` (card vs background, muted text, dot grid), **`app-surface-input`** for elevated fields in dark mode, **`ui-section-label`** for form section labels, shared motion tuning in `src/lib/motion.ts`, and upgraded primitives (dialogs, alerts, tooltips, dropdowns, select, calendar, toasts). **`PageSideAmbience`** on **Index**, **`micro/MicroGlyphs`** for small line-art motion (filters, subtask-complete sprout, etc.), and subtle **hero/sidebar hover** accents when motion is allowed. Auth uses **`gradient-header`** on login/register — not a separate ambient component. Index uses a **clipped hero** and a **narrow seam** into list content — not stacked full-bleed gradient washes over page chrome.
+The app is **dark-first** with a shared visual language: design tokens in `src/index.css` (card vs background, muted text, dot grid), **`app-surface-input`** for elevated fields in dark mode, **`ui-section-label`** for form section labels, shared motion tuning in `src/lib/motion.ts`, and upgraded primitives (dialogs, alerts, tooltips, dropdowns, select, calendar, toasts). **`editAffordance`** (`src/lib/editAffordance.ts`) centralizes the **sky-tinted edit pencil** styling on goal edit, subtask rename, and manage-category rename so controls stay consistent. **`PageSideAmbience`** on **Index**, **`micro/MicroGlyphs`** for small line-art motion (filters, subtask-complete sprout, etc.), and subtle **hero/sidebar hover** accents when motion is allowed. Auth uses **`gradient-header`** on login/register — not a separate ambient component. Index uses a **clipped hero** and a **narrow seam** into list content — not stacked full-bleed gradient washes over page chrome.
 
 ---
 
@@ -90,7 +91,7 @@ Use your deployed PocketBase HTTPS URL for production builds only if that URL is
 
 Configure in the PocketBase Admin UI (`/_/`):
 
-- **`categories`** — `user` (relation → users), **`name`** (text). Used as optional folders for goals; create and pick them when adding or editing a goal.
+- **`categories`** — `user` (relation → users), **`name`** (text). Optional labels for goals; create and pick them when adding or editing a goal (**Manage** on Index).
 
 - **`goals`** — `user` (relation → users), `name`, `description`, `archived` (bool), `sort_order` (number), **`completed`** (bool — for goals with **no** subtasks, marks the goal done directly; reset when you add subtasks), optional **`category`** (relation → **categories**, single, max 1 — optional), plus optional **`due_date`** (type **date**), optional **`emoji`** (type **text**), optional **`notes`** (type **text** — plain text only), optional **`showcase_image`** (type **file**, single — screenshot for completed-goal showcase; restrict to images and align max size with client, ~5 MB), optional **`showcase_url`** (type **text** — `http`/`https` link shown when the goal is complete), and optional **`showcase_caption`** (type **text** — short line above the link).
 
@@ -114,7 +115,7 @@ Terminal 2 — dev server:
 npm run dev
 ```
 
-- App: URL printed in the terminal (this repo’s Vite config uses port **8080** by default)
+- App: URL printed in the terminal (this repo’s Vite dev server defaults to port **3000** in `vite.config.ts`)
 - PocketBase Admin: [http://127.0.0.1:8090/_/](http://127.0.0.1:8090/_/)
 
 ---
@@ -137,7 +138,7 @@ npm run dev
 src/
   components/     # GoalCard, dialogs, VirtualWindowGoalList, micro/MicroGlyphs, PageSideAmbience, sidebar, …
   hooks/          # useAuth, useGoals, useDueNotifications, useResponsiveUI, …
-  lib/            # pocketbase client, goalUtils, dueDateUtils, linkSegments, reconcileFetchedGoals, showDueReminderInAppToast, due notifications, export, sounds
+  lib/            # pocketbase client, goalUtils, dueDateUtils, linkSegments, reconcileFetchedGoals, showDueReminderInAppToast, due notifications, export, sounds, editAffordance (shared edit-pencil styling)
   pages/          # Index, Login, Register, NotFound
   providers/      # ThemeProvider (next-themes)
   types/          # Goal, Subtask

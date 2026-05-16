@@ -313,6 +313,51 @@ export function useGoals() {
     }
   };
 
+  /** Copies goal fields and subtasks into a new active goal. Progress and checklist completion reset; showcase image is not copied (file field). */
+  const duplicateGoal = async (goalId: string) => {
+    const goal = goals.find((g) => g.id === goalId) ?? archivedGoals.find((g) => g.id === goalId);
+    if (!goal) return;
+    const uid = pb.authStore.record?.id;
+    if (!uid) return;
+
+    try {
+      markSaving();
+      const created = await pb.collection('goals').create({
+        name: `${goal.title} (copy)`,
+        description: goal.description,
+        due_date: goal.due_date || null,
+        emoji: goal.emoji || null,
+        notes: goal.notes || null,
+        completed: false,
+        category: goal.category?.id ?? null,
+        showcase_url: goal.showcase_url || null,
+        showcase_caption: goal.showcase_caption?.trim() || null,
+        user: uid,
+        sort_order: -Date.now(),
+        archived: false,
+      });
+
+      const newGoalId = created.id;
+
+      for (const st of goal.subtasks) {
+        await pb.collection('subtasks').create({
+          name: st.title,
+          goal: newGoalId,
+          completed: false,
+          notes: st.notes || null,
+          effort: st.effort ?? null,
+        });
+      }
+
+      await fetchGoals();
+      markSaved();
+      toast.success('Goal duplicated.');
+    } catch (err) {
+      markError();
+      toast.error(isNetworkError(err) ? 'No connection. Duplicate not saved.' : 'Failed to duplicate goal.');
+    }
+  };
+
   const editGoal = async (
     goalId: string,
     name: string,
@@ -645,6 +690,28 @@ export function useGoals() {
     }
   };
 
+  const renameSubtask = async (subtaskId: string, title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) {
+      toast.error('Subtask name cannot be empty.');
+      return;
+    }
+    try {
+      markSaving();
+      await pb.collection('subtasks').update(subtaskId, { name: trimmed });
+      setGoals((prev) =>
+        prev.map((g) => ({
+          ...g,
+          subtasks: g.subtasks.map((s) => (s.id === subtaskId ? { ...s, title: trimmed } : s)),
+        })),
+      );
+      markSaved();
+    } catch (err) {
+      markError();
+      toast.error(isNetworkError(err) ? 'No connection. Name not saved.' : 'Failed to rename subtask.');
+    }
+  };
+
   const reorderGoals = async (ordered: Goal[]) => {
     try {
       markSaving();
@@ -674,6 +741,7 @@ export function useGoals() {
     deleteCategory,
     editGoal,
     deleteGoal,
+    duplicateGoal,
     archiveGoal,
     restoreGoal,
     deleteArchivedGoal,
@@ -687,6 +755,7 @@ export function useGoals() {
     deleteSubtask,
     updateSubtaskEffort,
     updateSubtaskNotes,
+    renameSubtask,
     reorderGoals,
     flushCelebrationIntentGoalIds,
   };

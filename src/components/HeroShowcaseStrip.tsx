@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Goal } from "@/types/goal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { appleEase } from "@/lib/motion";
+import { appleEase, premiumSpring } from "@/lib/motion";
 import { getGoalShowcaseImageUrl } from "@/lib/goalShowcaseAsset";
 import {
   isLikelyDirectImageUrl,
@@ -29,16 +29,20 @@ function HeroShowcaseTile({
   const fav = url ? showcaseFaviconSrc(url) : "";
 
   return (
-    <button
+    <motion.button
       type="button"
       onClick={onJump}
+      whileHover={{ y: -6, transition: premiumSpring }}
+      whileTap={{ scale: 0.98 }}
       className={cn(
-        "group shrink-0 w-[108px] sm:w-[118px] text-left rounded-lg overflow-hidden",
-        "ring-1 ring-white/15 bg-white/10 backdrop-blur-sm transition hover:ring-amber-300/50 hover:bg-white/14",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+        "group shrink-0 w-[108px] sm:w-[118px] text-left rounded-lg outline-none",
+        "border border-white/20 bg-white/10 backdrop-blur-sm shadow-md shadow-black/30",
+        "transition-[border-color,box-shadow,background-color] duration-300 ease-out",
+        "hover:border-amber-300/65 hover:bg-white/14 hover:shadow-xl hover:shadow-black/45",
+        "focus-visible:border-amber-300/85 focus-visible:ring-2 focus-visible:ring-amber-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
       )}
     >
-      <div className="h-[52px] sm:h-14 bg-black/35 relative">
+      <div className="h-[52px] sm:h-14 bg-black/35 relative overflow-hidden rounded-t-lg">
         {uploaded ? (
           <img
             src={uploaded}
@@ -74,11 +78,11 @@ function HeroShowcaseTile({
           </div>
         )}
       </div>
-      <p className="px-2 py-1.5 text-[10px] font-medium leading-snug text-white/90 line-clamp-2 [text-shadow:0_1px_12px_rgba(0,0,0,0.35)]">
+      <p className="rounded-b-lg px-2 py-1.5 text-[10px] font-medium leading-snug text-white/90 line-clamp-2 [text-shadow:0_1px_12px_rgba(0,0,0,0.35)]">
         {goal.emoji ? `${goal.emoji} ` : ""}
         {goal.title}
       </p>
-    </button>
+    </motion.button>
   );
 }
 
@@ -170,37 +174,29 @@ export function HeroShowcaseStrip({
               heroWinsOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
             )}
           >
-            <div className="min-h-0 overflow-hidden">
-              <motion.div
-                initial={false}
-                animate={
-                  heroWinsOpen
-                    ? { opacity: 1, y: 0, transition: { duration: 0.38, ease: appleEase } }
-                    : { opacity: 0, y: -6, transition: { duration: 0.28, ease: appleEase } }
-                }
-                className="space-y-2 pt-0.5"
-              >
+            <div className="min-h-0 overflow-hidden px-1">
+              <div className="space-y-2 pt-0.5">
                 <motion.div
                   initial={false}
                   animate={heroWinsOpen ? "open" : "closed"}
                   variants={{
                     open: {
-                      transition: { staggerChildren: 0.045, delayChildren: 0.05 },
+                      transition: { staggerChildren: 0.048, delayChildren: 0.08 },
                     },
                     closed: {
-                      transition: { staggerChildren: 0.03, staggerDirection: -1 },
+                      transition: { staggerChildren: 0.026, staggerDirection: -1 },
                     },
                   }}
-                  className="flex gap-2 overflow-x-auto pb-1 -mx-0.5 px-0.5 scroll-pl-1 [scrollbar-width:thin]"
+                  className="flex gap-3 overflow-x-auto px-1 py-2 sm:py-2.5 -mx-1 scroll-pl-2 [scrollbar-width:thin]"
                 >
                   {spotlightGoals.map((g) => (
                     <motion.div
                       key={g.id}
                       variants={{
-                        open: { opacity: 1, y: 0, transition: { duration: 0.36, ease: appleEase } },
-                        closed: { opacity: 0, y: 8, transition: { duration: 0.22 } },
+                        open: { opacity: 1, transition: { duration: 0.34, ease: appleEase } },
+                        closed: { opacity: 0, transition: { duration: 0.18, ease: appleEase } },
                       }}
-                      className="shrink-0"
+                      className="shrink-0 flex items-center py-1"
                     >
                       <HeroShowcaseTile goal={g} onJump={() => onJumpToGoal(g.id)} />
                     </motion.div>
@@ -209,7 +205,7 @@ export function HeroShowcaseStrip({
                 <p className="text-[10px] text-white/38 leading-relaxed px-0.5">
                   Tiles jump to the goal card. Open the real link from the card.
                 </p>
-              </motion.div>
+              </div>
             </div>
           </div>
         </div>

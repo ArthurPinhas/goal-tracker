@@ -1,16 +1,19 @@
+import toast from "react-hot-toast";
 import { useEffect, useRef, useState, memo } from "react";
 import { motion, useReducedMotion, useAnimation } from "framer-motion";
 import { useResponsiveUI } from "@/hooks/useResponsiveUI";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2, Loader2, StickyNote } from "lucide-react";
+import { Trash2, Loader2, StickyNote, Pencil, Check } from "lucide-react";
 import { Subtask } from "@/types/goal";
 import { LinkifiedText } from "@/components/LinkifiedText";
 import { SubtaskCheckboxSpark } from "@/components/SubtaskCheckboxSpark";
 import { SubtaskSproutGlyph } from "@/components/micro/MicroGlyphs";
 import { playSubtaskDone, playRemove } from "@/lib/sounds";
 import { cn } from "@/lib/utils";
+import { editPenGhostButtonClasses } from "@/lib/editAffordance";
 import { mechanicalSnap, premiumSpring, smoothOut, tactileHover, tactileTap } from "@/lib/motion";
 
 interface SubtaskItemProps {
@@ -22,6 +25,7 @@ interface SubtaskItemProps {
   onDelete: (subtaskId: string) => void;
   onSetEffort: (subtaskId: string, effort: number | null) => void;
   onUpdateNotes: (subtaskId: string, notes: string) => void;
+  onRenameTitle: (subtaskId: string, title: string) => void | Promise<void>;
 }
 
 const EFFORT_LABELS: Record<number, string> = {
@@ -40,14 +44,18 @@ const SubtaskItem = memo(function SubtaskItem({
   onDelete,
   onSetEffort,
   onUpdateNotes,
+  onRenameTitle,
 }: SubtaskItemProps) {
   const { liteMotion } = useResponsiveUI();
   const reduceMotion = useReducedMotion();
   const bumpRow = useAnimation();
   const prevCompleted = useRef(subtask.is_completed);
   const prevSubtaskId = useRef(subtask.id);
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const [showEffort, setShowEffort] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(subtask.title);
   const [noteDraft, setNoteDraft] = useState(subtask.notes);
   const [sparkBurst, setSparkBurst] = useState(0);
   const [sproutKey, setSproutKey] = useState(0);
@@ -55,6 +63,14 @@ const SubtaskItem = memo(function SubtaskItem({
   useEffect(() => {
     setNoteDraft(subtask.notes);
   }, [subtask.notes]);
+
+  useEffect(() => {
+    if (!editingTitle) setTitleDraft(subtask.title);
+  }, [subtask.title, editingTitle]);
+
+  useEffect(() => {
+    if (editingTitle) titleInputRef.current?.focus();
+  }, [editingTitle]);
 
   useEffect(() => {
     if (prevSubtaskId.current !== subtask.id) {
@@ -91,6 +107,23 @@ const SubtaskItem = memo(function SubtaskItem({
     if (t !== (subtask.notes || "").trim()) onUpdateNotes(subtask.id, t);
   };
 
+  const commitTitleEdit = () => {
+    const t = titleDraft.trim();
+    if (!t) {
+      toast.error("Subtask name cannot be empty.");
+      setTitleDraft(subtask.title);
+      setEditingTitle(false);
+      return;
+    }
+    if (t !== subtask.title.trim()) void onRenameTitle(subtask.id, t);
+    setEditingTitle(false);
+  };
+
+  const cancelTitleEdit = () => {
+    setTitleDraft(subtask.title);
+    setEditingTitle(false);
+  };
+
   return (
     <motion.div
       layout={false}
@@ -100,40 +133,116 @@ const SubtaskItem = memo(function SubtaskItem({
       className="flex flex-col gap-1 rounded-xl border border-transparent px-2 py-1.5 -mx-2 transition-colors duration-300 ease-out group/sub hover:bg-secondary/30 dark:hover:border-border/45 dark:hover:bg-card/40 dark:hover:shadow-neo-card overflow-visible"
     >
       <motion.div animate={bumpRow} className="flex flex-wrap items-center gap-x-1 gap-y-2 min-w-0">
-        <label className="flex items-center gap-3 min-w-0 flex-1 basis-[min(100%,14rem)] cursor-pointer md:basis-0">
+        <div className="flex items-center gap-3 min-w-0 flex-1 basis-[min(100%,14rem)] md:basis-0">
           {isPending ? (
-            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+            <>
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+              <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                <motion.span
+                  id={`subtask-label-${subtask.id}`}
+                  animate={{
+                    opacity: subtask.is_completed ? 0.5 : 1,
+                  }}
+                  transition={premiumSpring}
+                  className={`text-sm min-w-0 flex-1 truncate ${subtask.is_completed ? "line-through text-muted-foreground" : "text-card-foreground"}`}
+                >
+                  {subtask.title}
+                </motion.span>
+                <SubtaskSproutGlyph playKey={sproutKey} />
+              </div>
+            </>
           ) : (
-            <span className="relative inline-flex shrink-0">
-              <SubtaskCheckboxSpark
-                burstKey={sparkBurst}
-                accentColor={particleAccent}
-                disabled={liteMotion}
-              />
-              <Checkbox
-                checked={subtask.is_completed}
-                onCheckedChange={handleToggle}
-                className="border-muted-foreground data-[state=checked]:bg-primary data-[state=checked]:border-primary shrink-0"
-                aria-labelledby={`subtask-label-${subtask.id}`}
-              />
-            </span>
+            <>
+              <label
+                htmlFor={`subtask-check-${subtask.id}`}
+                className="relative inline-flex shrink-0 cursor-pointer touch-manipulation"
+              >
+                <span className="relative inline-flex shrink-0">
+                  <SubtaskCheckboxSpark
+                    burstKey={sparkBurst}
+                    accentColor={particleAccent}
+                    disabled={liteMotion}
+                  />
+                  <Checkbox
+                    id={`subtask-check-${subtask.id}`}
+                    checked={subtask.is_completed}
+                    onCheckedChange={handleToggle}
+                    className="border-muted-foreground data-[state=checked]:bg-primary data-[state=checked]:border-primary shrink-0"
+                    aria-labelledby={`subtask-label-${subtask.id}`}
+                  />
+                </span>
+              </label>
+              {!editingTitle ? (
+                <label
+                  htmlFor={`subtask-check-${subtask.id}`}
+                  className="flex min-w-0 flex-1 cursor-pointer touch-manipulation items-center gap-1.5"
+                >
+                  <motion.span
+                    id={`subtask-label-${subtask.id}`}
+                    animate={{
+                      opacity: subtask.is_completed ? 0.5 : 1,
+                    }}
+                    transition={premiumSpring}
+                    className={`text-sm min-w-0 flex-1 truncate ${subtask.is_completed ? "line-through text-muted-foreground" : "text-card-foreground"}`}
+                  >
+                    {subtask.title}
+                  </motion.span>
+                  <SubtaskSproutGlyph playKey={sproutKey} />
+                </label>
+              ) : (
+                <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                  <Input
+                    ref={titleInputRef}
+                    id={`subtask-label-${subtask.id}`}
+                    value={titleDraft}
+                    onChange={(e) => setTitleDraft(e.target.value)}
+                    onBlur={commitTitleEdit}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        e.preventDefault();
+                        cancelTitleEdit();
+                      }
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        commitTitleEdit();
+                      }
+                    }}
+                    className="h-9 min-w-0 flex-1 rounded-lg text-sm app-surface-input"
+                    aria-label="Subtask name"
+                  />
+                  <SubtaskSproutGlyph playKey={sproutKey} />
+                </div>
+              )}
+            </>
           )}
-          <span className="flex min-w-0 flex-1 items-center gap-1.5">
-            <motion.span
-              id={`subtask-label-${subtask.id}`}
-              animate={{
-                opacity: subtask.is_completed ? 0.5 : 1,
-              }}
-              transition={premiumSpring}
-              className={`text-sm min-w-0 flex-1 truncate ${subtask.is_completed ? "line-through text-muted-foreground" : "text-card-foreground"}`}
-            >
-              {subtask.title}
-            </motion.span>
-            <SubtaskSproutGlyph playKey={sproutKey} />
-          </span>
-        </label>
+        </div>
 
         <div className="flex items-center gap-1 shrink-0 max-md:ml-auto max-md:min-h-10">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "h-10 w-10 md:h-7 md:w-7 opacity-100 md:opacity-0 md:group-hover/sub:opacity-100 focus-visible:opacity-100 touch-manipulation",
+              editPenGhostButtonClasses({ active: editingTitle }),
+            )}
+            title={editingTitle ? "Save name" : "Edit name"}
+            aria-pressed={editingTitle}
+            disabled={isPending}
+            onMouseDown={(e) => {
+              if (editingTitle) e.preventDefault();
+            }}
+            onClick={() => {
+              if (editingTitle) {
+                commitTitleEdit();
+              } else {
+                setShowEffort(false);
+                setEditingTitle(true);
+              }
+            }}
+          >
+            {editingTitle ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+          </Button>
           {showEffort && (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
