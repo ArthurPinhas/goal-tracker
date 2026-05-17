@@ -148,7 +148,7 @@ export function HeroShowcaseStrip({
               </span>
               <ChevronDown
                 className={cn(
-                  "h-4 w-4 shrink-0 text-white/50 ml-auto transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                  "h-4 w-4 shrink-0 text-white/50 ml-auto transition-transform duration-500 ease-smooth-out",
                   heroWinsOpen && "rotate-180"
                 )}
                 aria-hidden
@@ -170,7 +170,7 @@ export function HeroShowcaseStrip({
             role="region"
             aria-labelledby="hero-wins-trigger"
             className={cn(
-              "grid min-h-0 transition-[grid-template-rows] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+              "grid min-h-0 transition-[grid-template-rows] duration-500 ease-smooth-out",
               heroWinsOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
             )}
           >

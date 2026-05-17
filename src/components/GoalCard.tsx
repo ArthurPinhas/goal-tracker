@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback, memo, type PointerEvent } from "react";
 import toast from "react-hot-toast";
-import { motion, AnimatePresence, useAnimation, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import type { Goal, GoalCategory, GoalShowcaseFileOptions } from "@/types/goal";
 import { calcProgress, getProgressColor, isGoalComplete } from "@/lib/goalUtils";
 import { goalHasShowcaseMedia, getGoalShowcaseImageUrl } from "@/lib/goalShowcaseAsset";
@@ -18,6 +18,7 @@ import { CalendarDays, Trash2, Trophy, GripVertical, ChevronDown, Archive, Stick
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { getEnergyAccent } from "@/lib/energyAccent";
+import { getCategoryAccent } from "@/lib/categoryColor";
 import { premiumSpring, smoothOut, tactileHover, tactileTap } from "@/lib/motion";
 import type { CelebrationQuality } from "@/hooks/useResponsiveUI";
 import { formatDueChip, getDueUrgency, isIncompleteForDueDate } from "@/lib/dueDateUtils";
@@ -84,7 +85,6 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
   const dueUrgency = getDueUrgency(goal.due_date, incompleteForDue && !isComplete);
   const energy = getEnergyAccent(goal.id, goal.category?.id);
   const doneCount = goal.subtasks.filter((s) => s.is_completed).length;
-  const controls = useAnimation();
   const reduceMotion = useReducedMotion();
   /** Desktop-only: sweep, particles, infinite glow, scale bounce — too heavy on touch devices */
   const heavyCelebration = celebrationQuality === "full";
@@ -180,7 +180,6 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
   const innerCard = (
     <motion.div
       id={`goal-card-${goal.id}`}
-      animate={controls}
       whileHover={!isCelebrating && !reduceMotion ? tactileHover : undefined}
       transition={premiumSpring}
       className={cn(
@@ -381,30 +380,40 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
                   {goal.title}
                 </span>
                 {collapsed && (
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="w-20 h-1.5 rounded-full bg-secondary overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{ width: `${percentage}%`, backgroundColor: getProgressColor(percentage) }}
-                      />
-                    </div>
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {goal.subtasks.length > 0
-                        ? `${doneCount}/${goal.subtasks.length}`
-                        : goal.is_completed
-                          ? 'Done'
-                          : '—'}
-                    </span>
-                  </div>
+                  <span className="text-xs text-muted-foreground/70 tabular-nums shrink-0">
+                    {goal.subtasks.length > 0
+                      ? `${doneCount}/${goal.subtasks.length}`
+                      : goal.is_completed
+                        ? 'Done'
+                        : '—'}
+                  </span>
                 )}
               </div>
-              {goal.category && (
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  <span className="inline-flex max-w-full min-w-0 items-center truncate rounded-md border border-border/60 bg-secondary/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground dark:bg-secondary/30">
-                    {goal.category.name}
-                  </span>
-                </div>
+              {collapsed && (
+                <motion.div
+                  className="absolute bottom-0 left-0 right-0 h-[3px] rounded-b-2xl overflow-hidden"
+                  aria-hidden
+                >
+                  <motion.div
+                    className="h-full rounded-b-2xl"
+                    style={{ backgroundColor: getProgressColor(percentage) }}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${percentage}%` }}
+                    transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                  />
+                </motion.div>
               )}
+              {goal.category && (() => {
+                const ca = getCategoryAccent(goal.category.id);
+                return (
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    <span className={cn("inline-flex max-w-full min-w-0 items-center gap-1.5 truncate rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide", ca.pill, ca.pillDark, ca.text)}>
+                      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", ca.dot)} aria-hidden />
+                      {goal.category.name}
+                    </span>
+                  </div>
+                );
+              })()}
               {goal.due_date && (
                 <div
                   className={cn(

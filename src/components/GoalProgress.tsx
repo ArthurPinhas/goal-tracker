@@ -1,16 +1,11 @@
 import { useEffect } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { appleSpring } from "@/lib/motion";
+import { getProgressColor } from "@/lib/goalUtils";
 
 interface GoalProgressProps {
   percentage: number;
 }
-
-const getProgressColor = (pct: number): string => {
-  if (pct >= 100) return '#f59e0b';
-  if (pct >= 50) return '#22c55e';
-  return '#34d399';
-};
 
 const GoalProgress = ({ percentage }: GoalProgressProps) => {
   const motionPct = useMotionValue(0);

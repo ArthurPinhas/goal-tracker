@@ -15,7 +15,8 @@ import { Label } from "@/components/ui/label";
 import GoalDueDatePicker from "@/components/GoalDueDatePicker";
 import GoalEmojiTitleSection from "@/components/GoalEmojiTitleSection";
 import { GoalCategoryPicker } from "@/components/GoalCategoryPicker";
-import { Copy, Pencil } from "lucide-react";
+import { BookTemplate, Copy, Pencil } from "lucide-react";
+import { saveTemplate } from "@/lib/goalTemplates";
 import type { Goal, GoalCategory, GoalShowcaseFileOptions } from "@/types/goal";
 import { isGoalComplete } from "@/lib/goalUtils";
 import { normalizeShowcaseUrl } from "@/lib/showcaseUrl";
@@ -299,26 +300,47 @@ const EditGoalDialog = ({ goal, categories, onCreateCategory, onPatchGoalCategor
               className="resize-y min-h-[72px] rounded-xl app-surface-input transition-shadow duration-300"
             />
           </div>
-          <div
-            className={cn(
-              "flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:items-center",
-              onDuplicate ? "sm:justify-between" : "sm:justify-end",
-            )}
-          >
-            {onDuplicate ? (
+          <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
               <Button
                 type="button"
-                variant="outline"
-                className="min-h-11 touch-manipulation rounded-xl md:min-h-10 gap-2 border-border/70"
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-xs text-muted-foreground hover:text-foreground min-h-11 md:min-h-9"
                 onClick={() => {
-                  void onDuplicate(goal.id);
-                  setOpen(false);
+                  saveTemplate({
+                    name: title.trim() || goal.title,
+                    description: description.trim(),
+                    emoji: emoji,
+                    notes: notes.trim(),
+                    subtasks: goal.subtasks.map((s) => ({
+                      title: s.title,
+                      effort: s.effort ?? null,
+                    })),
+                  });
+                  import("react-hot-toast").then(({ default: toast }) =>
+                    toast.success("Template saved"),
+                  );
                 }}
               >
-                <Copy className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
-                Duplicate goal
+                <BookTemplate className="h-3.5 w-3.5" />
+                Save as template
               </Button>
-            ) : null}
+              {onDuplicate ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11 touch-manipulation rounded-xl md:min-h-10 gap-2 border-border/70"
+                  onClick={() => {
+                    void onDuplicate(goal.id);
+                    setOpen(false);
+                  }}
+                >
+                  <Copy className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                  Duplicate goal
+                </Button>
+              ) : null}
+            </div>
             <Button type="submit" disabled={!title.trim()} className="min-h-11 touch-manipulation px-6 md:min-h-10 shadow-md shadow-primary/20">
               Save
             </Button>

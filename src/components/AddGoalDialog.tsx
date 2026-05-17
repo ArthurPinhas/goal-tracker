@@ -11,12 +11,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { BookTemplate } from "lucide-react";
 import GoalDueDatePicker from "@/components/GoalDueDatePicker";
 import GoalEmojiTitleSection from "@/components/GoalEmojiTitleSection";
 import { GoalCategoryPicker } from "@/components/GoalCategoryPicker";
 import { NewGoalHoverBloom } from "@/components/NewGoalHoverBloom";
+import { TemplatesDialog } from "@/components/TemplatesDialog";
 import { cn } from "@/lib/utils";
 import type { GoalCategory } from "@/types/goal";
+import type { GoalTemplate } from "@/lib/goalTemplates";
 
 interface AddGoalDialogProps {
   onAdd: (
@@ -59,6 +62,7 @@ const AddGoalDialog = ({
   const [notes, setNotes] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [triggerBloom, setTriggerBloom] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
 
   useEffect(() => {
     if (open && !prevOpen.current) {
@@ -154,12 +158,32 @@ const AddGoalDialog = ({
               className="resize-y min-h-[72px] rounded-xl app-surface-input transition-shadow duration-300"
             />
           </div>
-          <div className="flex justify-end pt-1">
+          <div className="flex items-center justify-between pt-1 gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => setTemplatesOpen(true)}
+            >
+              <BookTemplate className="h-3.5 w-3.5" />
+              From template
+            </Button>
             <Button type="submit" disabled={!title.trim()} className="min-h-11 touch-manipulation px-6 md:min-h-10 shadow-md shadow-primary/20">
               Create
             </Button>
           </div>
         </form>
+        <TemplatesDialog
+          open={templatesOpen}
+          onOpenChange={setTemplatesOpen}
+          onApply={(t: GoalTemplate) => {
+            setTitle(t.name);
+            setDescription(t.description);
+            setEmoji(t.emoji);
+            setNotes(t.notes);
+          }}
+        />
       </DialogContent>
     </Dialog>
   );

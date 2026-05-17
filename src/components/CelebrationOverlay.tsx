@@ -42,7 +42,7 @@ function OrbitingSparkles({
     >
       {angles.map((deg, i) => (
         <span
-          key={deg}
+          key={i}
           className={cn(
             "absolute left-1/2 top-1/2 rounded-full",
             i % 3 === 0 && "h-2 w-2 bg-gold shadow-[0_0_12px_hsl(var(--gold)/0.75)]",

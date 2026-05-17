@@ -58,9 +58,8 @@ function SoundAssetWarmup() {
   useEffect(() => {
     if (!PRELOAD_UI_SAMPLES) return;
     preloadUiSoundSamples();
-    const touchPrime = () => preloadUiSoundSamples();
-    window.addEventListener("pointerdown", touchPrime, { passive: true });
-    return () => window.removeEventListener("pointerdown", touchPrime);
+    window.addEventListener("pointerdown", preloadUiSoundSamples, { passive: true, once: true });
+    return () => window.removeEventListener("pointerdown", preloadUiSoundSamples);
   }, []);
   return null;
 }

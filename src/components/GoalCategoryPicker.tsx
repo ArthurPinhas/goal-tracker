@@ -10,6 +10,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { GoalCategory } from "@/types/goal";
+import { getCategoryAccent } from "@/lib/categoryColor";
+import { cn } from "@/lib/utils";
 
 const NONE = "__none__";
 
@@ -56,11 +58,17 @@ export function GoalCategoryPicker({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={NONE}>No category</SelectItem>
-            {categories.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
+            {categories.map((c) => {
+              const ca = getCategoryAccent(c.id);
+              return (
+                <SelectItem key={c.id} value={c.id}>
+                  <span className="flex items-center gap-2">
+                    <span className={cn("h-2 w-2 shrink-0 rounded-full", ca.dot)} aria-hidden />
+                    {c.name}
+                  </span>
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
       </div>

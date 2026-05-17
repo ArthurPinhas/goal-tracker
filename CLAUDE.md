@@ -126,16 +126,19 @@ Per product direction: **export remains client-side only**; **sidebar layout** w
 **Goals**
 
 - Create, edit, delete (including **optional due date** in create/edit — `GoalDueDatePicker`; optional **notes** textarea; optional **`category`** via `GoalCategoryPicker`); **`duplicateGoal`** — copies goal fields + subtasks as a new active goal (fresh checklist; showcase image file not duplicated)
-- **Categories** — PocketBase **`categories`** collection; **`ManageCategoriesDialog`** for rename/delete; **Index** **Categories** popover — filter **all** / **only selected** (multi-select) / **hide selected** (multi-select)
+- **Categories** — PocketBase **`categories`** collection; **`ManageCategoriesDialog`** for rename/delete; **Index** **Categories** popover — filter **all** / **only selected** (multi-select) / **hide selected** (multi-select); category color dots via **`getCategoryAccent`** (`src/lib/categoryColor.ts`) — stable hash of PB ID → 8-variant accent palette; colored pills on cards, pickers, and manage dialog
 - Archive / restore / permanently delete archived goals
 - Drag-and-drop reorder (**Framer Motion `Reorder`**), persisted to **`sort_order`**
 - **New goals appear at top** after fetch (PB sort + **`Index` orderedGoals merge**)
 - Progress bar — weighted by effort if set, equal weight otherwise
 - Search across goal title, description, **goal notes**, subtask titles, **subtask notes**, and **category** names
-- Filter tabs: **All / Active / Done / On display / Archived**; **deadline refinement** + **due-date sort**; **Expand all** / **Collapse all** cards (**Index** toolbar); **duplicate** control on **`GoalCard`** (+ archived rows)
+- Filter tabs: **All / Active / Done / On display / Archived** — **segmented control** with Framer Motion `layoutId` sliding indicator; **deadline refinement** + **due-date sort**; **Expand all** / **Collapse all** cards (**Index** toolbar); **duplicate** control on **`GoalCard`** (+ archived rows)
 - **Bulk select** — delete / archive many goals from the **current tab view**; drag reorder is off while bulk mode is on
 - **Large libraries** — **`VirtualWindowGoalList`** (TanStack Virtual) + **`useDeferredValue`** on search + memoized rows; **`reconcileFetchedGoals`** merges fetch results with **`orderedGoals`** safely
 - **Showcase (complete goals)** — optional **`showcase_url`**, **`showcase_caption`**, and/or **`showcase_image`** (single image file on **`goals`**); **Edit goal** + quick showcase dialog support upload, replace, and remove; **`GoalShowcaseBlock`** on **`GoalCard`**; hero **`HeroShowcaseStrip`** and **On display** filter on **`Index`**; public file URL via **`getGoalShowcaseImageUrl`** (`src/lib/goalShowcaseAsset.ts`), client validation in **`showcaseImageUpload.ts`**
+- **Goal templates** — save/apply/delete via **`src/lib/goalTemplates.ts`** (`localStorage` key `goal-tracker-templates`); **`TemplatesDialog`** lists saved templates; **"Save as template"** in **`EditGoalDialog`** footer; **"From template"** in **`AddGoalDialog`** footer; no PB schema change
+- **Cmd+K command palette** — **`CommandPalette`** component (cmdk-based via shadcn `Command`); Cmd/Ctrl+K toggles; commands: new goal, export, toggle theme, switch filter, jump to goal (top 12 shown)
+- **`GoalCard` collapsed state** — 3 px full-width bottom progress strip using `getProgressColor`; removes old 80 px mini-bar
 
 **Subtasks**
 
@@ -162,18 +165,19 @@ Per product direction: **export remains client-side only**; **sidebar layout** w
 
 - **Light / dark theme** — **`ThemeToggle`** (`next-themes`, default **dark**, key `goal-tracker-theme`; inline script in `index.html` limits flash); tokens in **`src/index.css`** (`:root` light / `.dark` dark). **`app-surface-input`** (dark elevated fields), **`ui-section-label`** (uppercase micro-labels), softer dot grid in dark.
 - **Micro-line UI accents** — **`src/components/micro/MicroGlyphs.tsx`**: subtask sprout, **`FilterLeafFanGlyph`** (three-leaf fan on active filter + **click pulse**), export / archive / bell / link ribbons, etc.; tuned with **`useReducedMotion`** where relevant.
-- **Motion** — shared tuning in **`src/lib/motion.ts`** (`springContent`, **`appleSpring`**, **`appleSpringGentle`**, **`smoothOut`**, **`tactileHover`** / **`tactileTap`**) for springs and easing (Index, cards, dialogs, auth, celebration, archive).
+- **Motion** — shared tuning in **`src/lib/motion.ts`** (`springContent`, **`appleSpring`**, **`appleSpringGentle`**, **`smoothOut`**, **`tactileHover`** / **`tactileTap`**) for springs and easing (Index, cards, dialogs, auth, celebration, archive). Tailwind config has **`ease-smooth-out`** token (`cubic-bezier(0.22,1,0.36,1)`).
 - `Sonner` and **react-hot-toast** use resolved theme / card-style chrome (`src/components/ui/sonner.tsx`, `App.tsx`).
 - Sticky header (`StickyHeader`) — theme + **due reminders** + add goal + sound + logout
-- Sidebar (`GoalSidebar`) — overall **momentum ring** + **At a glance** stats (**Active**, **Achieved**, **Subtasks**, **Overdue**, **Due ≤7d**) with subtle **per-row `whileHover`** (desktop); optional **Daily mantra** card
+- Sidebar (`GoalSidebar`) — **momentum ring** (completed/total with animated `strokeDashoffset`; **`AnimatedCounter`** spring numbers); **At a glance** stats (**Active**, **Achieved**, **Subtasks**, **Overdue**, **Due ≤7d**) with animated counters and per-row `whileHover`; **Insights panel** (collapsible — completion rate %, progress distribution buckets, category breakdown); **Daily mantra** card
 - Skeleton loading cards (`SkeletonGoalCard`), **IndexRouteFallback** (lazy route shell)
 - Save status indicator (Saving… / Saved / Error) bottom-right
-- Cmd/Ctrl+N opens new goal dialog
+- Cmd/Ctrl+N opens new goal dialog; **Cmd/Ctrl+K** opens **`CommandPalette`**
 - Ambient treatment: **Index** uses **`PageSideAmbience`** for side gutter ambience; **Login** / **Register** use the shared **`gradient-header`** treatment (no separate auth-only particle layer).
 - Index **hero** is a clipped gradient block; subtle **`whileHover`** on **username** + hero stat trio (**Goals**, **Completed**, **Subtasks done**) when motion is allowed; transition to the list is a **narrow seam** — avoid reintroducing stacked full-bleed gradient washes over gutters/particles.
 - Motivational quote in header — rotates on refresh
 - Dialogs / alerts / tooltips / dropdowns / select / calendar / radix toasts aligned to the same **rounded-xl / dark depth** language where applicable
 - **Edit affordance** — shared sky-tinted ghost icon styling via **`src/lib/editAffordance.ts`** (goal edit, subtask rename, category rename in **`ManageCategoriesDialog`**)
+- **`EmptyState`** — optional `illustrationSlot` prop for custom SVGs; **`GoalTrackerIllustration`** export (animated target rings + sparkles) used on the primary "no goals yet" state
 
 **Export**
 
@@ -217,18 +221,20 @@ src/
     EditGoalDialog      — Edit goal modal (+ due picker + emoji title); optional duplicate action
     DueNotificationToggle — Bell: browser due reminders (option A)
     DueReminderInAppToastPanel — Large in-tab mirror UI (mounted via `showDueReminderInAppToast` in lib)
-    ExportDialog        — Export modal (JSON/CSV/PDF)
+    CommandPalette      — Cmd+K palette (cmdk): new goal, export, theme toggle, filter switch, jump to goal
+    ExportDialog        — Export modal (JSON/CSV/PDF); accepts optional controlled `open`/`onOpenChange` props
     LinkifiedText       — Plain-text URLs → links in notes/showcase copy (parsing in `lib/linkSegments`)
+    TemplatesDialog     — List/apply/delete saved goal templates (localStorage)
     VirtualWindowGoalList — Window-scroll virtualization for long goal/archive lists
     ShowcaseQuickDialog — Quick edit showcase URL / caption / screenshot when complete
-    GoalCard            — Goal card + subtasks + due urgency chrome + showcase when complete; duplicate; list fold signal from Index
-    GoalCategoryPicker  — Optional goal folder (categories relation)
+    GoalCard            — Goal card + subtasks + due urgency chrome + showcase when complete; duplicate; list fold signal from Index; 3 px collapsed progress strip
+    GoalCategoryPicker  — Optional goal folder (categories relation); colored dot per category
     GoalShowcaseBlock   — Completed-goal showcase: uploaded image + link previews
     HeroShowcaseStrip   — Hero row of goals “on display” (URL and/or uploaded image)
     GoalDueDatePicker   — Popover + calendar due date (+ clear)
     GoalEmojiTitleSection — Title + optional emoji suggest / shuffle / picker
     GoalProgress        — Progress bar (fills to 100%; **no** separate end-cap check glyph)
-    GoalSidebar         — Desktop stats sidebar
+    GoalSidebar         — Desktop stats sidebar (momentum ring, at-a-glance, insights panel, mantra, export)
     IndexRouteFallback  — Loading shell for lazy `Index` route
     SkeletonGoalCard    — Loading placeholder
     StickyHeader        — Scroll-activated header
@@ -241,9 +247,11 @@ src/
     useDueNotifications — Interval + visibility hooks for due `Notification` checks
     useResponsiveUI     — Breakpoints, lite motion tier, celebration quality
   lib/
+    categoryColor        — `getCategoryAccent(id)` → stable 8-variant color tokens (dot/pill/text/border)
     editAffordance       — Shared sky ghost-button classes for edit pencils (goal / subtask / categories)
     dueNotifications     — `runDueNotificationCheck`, localStorage prefs & dedupe keys
     dueDateUtils         — Due normalization + urgency helpers
+    goalTemplates        — `listTemplates`, `saveTemplate`, `deleteTemplate`, `renameTemplate`; localStorage key `goal-tracker-templates`
     linkSegments           — `parseLinkSegments` for LinkifiedText / tests
     reconcileFetchedGoals — Merge PocketBase fetch with client `orderedGoals` / overlap guard
     showDueReminderInAppToast — react-hot-toast wrapper for due reminder panel
@@ -315,8 +323,11 @@ For a **literal step-by-step** aimed at beginners self-hosting on **Synology** (
 
 Not committed roadmap — for planning only (aligned with **V2**):
 
-1. **Categories / tags / folders** — **optional folders shipped** (`categories` + goal `category`); richer tagging / nesting still V2+.  
-2. **Recurring goals / habits** — retention / daily use.  
+1. **Categories / tags / folders** — **optional folders shipped** (`categories` + goal `category`); colored dots via `getCategoryAccent`; richer tagging / nesting still V2+.  
+2. **Goal templates** — **shipped**: save/apply/delete in localStorage via `goalTemplates.ts`; "Save as template" in EditGoalDialog; "From template" in AddGoalDialog.  
+3. **Cmd+K command palette** — **shipped**: `CommandPalette` — new goal, export, theme, filter, jump.  
+4. **Light analytics** — **shipped**: collapsible Insights panel in sidebar (completion rate, distribution, category breakdown).  
+5. **Recurring goals / habits** — retention / daily use; **deferred** — needs background scheduler / PB hooks.  
 3. **Read-only share links** — high value vs effort if rules + token are done carefully.  
 4. **Goal templates** — strong effort-to-impact ratio.  
 5. **Light analytics** (streaks, weekly completions) — optional sidebar/Page without full “dashboard.”  
@@ -331,20 +342,22 @@ Not committed roadmap — for planning only (aligned with **V2**):
 
 Planned beyond current V1+ — **discuss before building**.
 
-**Already shipped (do not duplicate as roadmap work): goal due dates, light/dark theme, plain-text notes on goals/subtasks, browser due reminders (option A).**
+**Already shipped (do not duplicate as roadmap work): goal due dates, light/dark theme, plain-text notes on goals/subtasks, browser due reminders (option A), goal templates (localStorage), Cmd+K command palette, light insights panel in sidebar.**
 
 | Feature | Notes |
 |---|---|
 | Goal categories / folders | **Shipped (V1+):** optional `categories` + per-goal **`category`** — multi-level nesting / tags beyond one folder = future |
+| Goal templates | **Shipped (V1+):** localStorage-based save/apply/delete (`src/lib/goalTemplates.ts`); no PB schema change |
+| Cmd+K command palette | **Shipped (V1+):** `CommandPalette` — new goal, export, theme toggle, filter switch, jump to goal |
+| Light analytics (sidebar) | **Shipped (V1+):** collapsible Insights panel — completion rate %, progress distribution, category breakdown |
 | Email export / scheduled email digest | Send goals summary (SMTP or Resend) |
-| Goal templates | Save / reuse structures |
 | Sub-subtasks (task nesting) | 3-level hierarchy: Category → Goal → Subtask → Task |
-| Analytics dashboard | Streaks, completion over time |
+| Full analytics dashboard | Streaks, completion over time, historical charts |
 | Sharing goals | Read-only links |
 | PWA offline mode | Full offline + sync |
 | Mobile app | RN or Capacitor |
 | Docker / Synology deploy | Self-host PocketBase + frontend |
-| Recurring goals | Scheduled reset / habits |
+| Recurring goals | Scheduled reset / habits (deferred — needs PB hooks + background scheduler) |
 
 ---
 

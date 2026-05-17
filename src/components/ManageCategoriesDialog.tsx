@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { editPenGhostButtonClass } from "@/lib/editAffordance";
 import { FolderCog, Pencil, Trash2 } from "lucide-react";
 import type { GoalCategory } from "@/types/goal";
+import { getCategoryAccent } from "@/lib/categoryColor";
 
 type ManageCategoriesDialogProps = {
   categories: GoalCategory[];
@@ -145,11 +146,14 @@ export function ManageCategoriesDialog({
                     </div>
                   ) : (
                     <>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-sm truncate">{c.name}</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {n === 0 ? "No goals" : `${n} goal${n === 1 ? "" : "s"}`}
-                        </p>
+                      <div className="min-w-0 flex-1 flex items-center gap-2">
+                        <span className={cn("h-2 w-2 shrink-0 rounded-full", getCategoryAccent(c.id).dot)} aria-hidden />
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{c.name}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {n === 0 ? "No goals" : `${n} goal${n === 1 ? "" : "s"}`}
+                          </p>
+                        </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0 self-end sm:self-center">
                         <Button

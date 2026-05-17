@@ -25,7 +25,8 @@ import { showDueReminderInAppToast } from "@/lib/showDueReminderInAppToast";
 import { UserHeroAvatar } from "@/components/UserHeroAvatar";
 import { HeroShowcaseStrip } from "@/components/HeroShowcaseStrip";
 import { PageSideAmbience } from "@/components/PageSideAmbience";
-import { EmptyState } from "@/components/EmptyState";
+import { EmptyState, GoalTrackerIllustration } from "@/components/EmptyState";
+import { CommandPalette } from "@/components/CommandPalette";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -33,6 +34,7 @@ import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Target, LogOut, Search, Volume2, VolumeX, Check, Loader2, AlertCircle, Archive, RotateCcw, CheckSquare, Trash2, CalendarDays, SearchX, Sparkles, Trophy, FolderTree, ListChecks, Copy, ChevronsDown, ChevronsUp, Tags, ChevronDown } from "lucide-react";
 import { isSoundEnabled, toggleSound } from "@/lib/sounds";
+import { getCategoryAccent } from "@/lib/categoryColor";
 import { formatDueChip, getDueUrgency, isIncompleteForDueDate } from "@/lib/dueDateUtils";
 import { appleEase, appleSpring, appleSpringGentle, smoothOut } from "@/lib/motion";
 import {
@@ -104,6 +106,100 @@ type SharedGoalCardProps = Pick<
   | "onRenameSubtask"
   | "listFoldTick"
 >;
+
+function ArchivedGoalRow({
+  goal,
+  bulkMode,
+  isBulkSelected,
+  onBulkToggle,
+  onDuplicate,
+  onRestore,
+  onDelete,
+}: {
+  goal: Goal;
+  bulkMode: boolean;
+  isBulkSelected: boolean;
+  onBulkToggle: (goalId: string, selected: boolean) => void;
+  onDuplicate: (goalId: string) => void | Promise<void>;
+  onRestore: (goalId: string) => void;
+  onDelete: (goalId: string) => void;
+}) {
+  const pct = calcProgress(goal);
+  const done = goal.subtasks.filter((s) => s.is_completed).length;
+  const subtaskSummary =
+    goal.subtasks.length > 0
+      ? `${done}/${goal.subtasks.length} subtasks`
+      : goal.is_completed
+        ? 'Standalone · complete'
+        : 'No subtasks';
+  return (
+    <div className="group rounded-2xl border border-border/55 bg-card/60 backdrop-blur-sm px-4 py-4 flex gap-3 sm:gap-4 flex-col sm:flex-row sm:items-start opacity-90 hover:opacity-100 transition-all duration-300 hover:border-border/80 hover:shadow-xl hover:shadow-black/25 dark:bg-card/55 dark:hover:shadow-black/40">
+      {bulkMode && (
+        <div className="flex shrink-0 items-start pt-1">
+          <Checkbox
+            checked={isBulkSelected}
+            onCheckedChange={(v) => onBulkToggle(goal.id, v === true)}
+            aria-label={`Select archived goal ${goal.title}`}
+            className="border-muted-foreground/50 data-[state=checked]:bg-primary"
+          />
+        </div>
+      )}
+      <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-start min-w-0">
+        <div className="flex items-start gap-3 min-w-0 flex-1">
+          <Archive className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-sm flex items-center gap-1.5 min-w-0">
+              {goal.emoji && <span className="shrink-0 text-base leading-none">{goal.emoji}</span>}
+              <span className="truncate min-w-0">{goal.title}</span>
+            </p>
+            {goal.description && (
+              <div className="text-xs text-muted-foreground truncate mt-0.5 min-w-0">
+                <LinkifiedText text={goal.description} as="span" />
+              </div>
+            )}
+            {goal.due_date && (
+              <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                <CalendarDays className="h-3 w-3 shrink-0 opacity-80" />
+                <span>Due {formatDueChip(goal.due_date)}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <CheckSquare className="h-3 w-3 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground tabular-nums">{subtaskSummary} · {Math.round(pct)}%</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-1 shrink-0 sm:pt-0.5 max-md:min-h-10">
+          <Button variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-primary touch-manipulation" onClick={() => void onDuplicate(goal.id)} title="Duplicate as new active goal">
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-mint hover:bg-mint/12 touch-manipulation" onClick={() => onRestore(goal.id)} title="Restore to active">
+            <RotateCcw className="h-3.5 w-3.5" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-destructive touch-manipulation">
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete &ldquo;{goal.title}&rdquo;?</AlertDialogTitle>
+                <AlertDialogDescription>Permanently deletes from archive. Cannot be undone.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction variant="destructive" onClick={() => onDelete(goal.id)}>
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ActiveReorderGoalItem({
   goal,
@@ -228,6 +324,8 @@ const Index = () => {
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const [addGoalOpen, setAddGoalOpen] = useState(false);
+  const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const mainGoalListRef = useRef<HTMLDivElement>(null);
   const activeVirtualAnchorRef = useRef<HTMLDivElement>(null);
@@ -329,12 +427,16 @@ const Index = () => {
     }
   }, [filter, fetchArchivedGoals]);
 
-  // Cmd/Ctrl+N opens new goal dialog
+  // Cmd/Ctrl+N opens new goal dialog; Cmd/Ctrl+K opens command palette
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
         e.preventDefault();
         setAddGoalOpen(true);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCmdPaletteOpen((prev) => !prev);
       }
     };
     window.addEventListener('keydown', handler);
@@ -617,6 +719,14 @@ const Index = () => {
   return (
     <div className="min-h-[100dvh] min-h-screen overflow-x-visible bg-background relative z-10 app-page-layer">
       <PageSideAmbience />
+      <CommandPalette
+        open={cmdPaletteOpen}
+        onOpenChange={setCmdPaletteOpen}
+        goals={displayGoals}
+        setFilter={setFilter}
+        setAddGoalOpen={setAddGoalOpen}
+        setExportOpen={setExportOpen}
+      />
       {/* Goal win overlay — CSS rings; Lottie removed for performance */}
       <AnimatePresence>
         {showCelebration && (
@@ -832,6 +942,7 @@ const Index = () => {
             ) : displayGoals.length === 0 ? (
               <EmptyState
                 icon={Target}
+                illustrationSlot={<GoalTrackerIllustration />}
                 title="Set your first goal"
                 description="Break it into steps. Track your progress. Celebrate every win."
               >
@@ -964,6 +1075,7 @@ const Index = () => {
                                     {categories.map((c) => {
                                       const checked = categoryFilterIds.includes(c.id);
                                       const n = displayGoals.filter((g) => g.category?.id === c.id).length;
+                                      const ca = getCategoryAccent(c.id);
                                       return (
                                         <label
                                           key={c.id}
@@ -980,6 +1092,7 @@ const Index = () => {
                                             }}
                                             className="border-muted-foreground/50"
                                           />
+                                          <span className={cn("h-2 w-2 shrink-0 rounded-full", ca.dot)} aria-hidden />
                                           <span className="flex-1 min-w-0 truncate text-sm">{c.name}</span>
                                           <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{n}</span>
                                         </label>
@@ -1022,31 +1135,45 @@ const Index = () => {
                       ) : null}
                     </div>
                   </div>
-                  <div className="flex gap-2 flex-wrap">
+                  {/* Segmented filter control */}
+                  <div className="flex flex-wrap gap-1.5 rounded-xl border border-border/50 bg-secondary/30 p-1 dark:bg-secondary/20 dark:border-border/35 backdrop-blur-sm">
                     {([
-                      { f: 'all', label: `All (${displayGoals.length})` },
-                      { f: 'active', label: `Active (${activeGoalsBase.length})` },
-                      { f: 'done', label: `Done (${completedGoalsBase.length})` },
-                      { f: 'showcase', label: `On display (${showcaseCount})` },
-                      { f: 'archived', label: `Archived${archivedGoals.length > 0 ? ` (${archivedGoals.length})` : ''}` },
-                    ] as { f: Filter; label: string }[]).map(({ f, label }) => (
-                      <motion.button
+                      { f: 'all', label: 'All', count: displayGoals.length },
+                      { f: 'active', label: 'Active', count: activeGoalsBase.length },
+                      { f: 'done', label: 'Done', count: completedGoalsBase.length },
+                      { f: 'showcase', label: 'Display', count: showcaseCount },
+                      { f: 'archived', label: 'Archived', count: archivedGoals.length > 0 ? archivedGoals.length : null },
+                    ] as { f: Filter; label: string; count: number | null }[]).map(({ f, label, count }) => (
+                      <button
                         key={f}
                         type="button"
                         onClick={() => setFilter(f)}
-                        whileTap={ui.liteMotion ? undefined : { scale: 0.97 }}
-                        transition={appleSpring}
                         className={cn(
-                          "max-md:min-h-11 min-h-10 touch-manipulation px-3 sm:px-4 py-2 rounded-full text-xs font-semibold capitalize transition-all duration-300 ease-out inline-flex items-center justify-center",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                          "relative max-md:min-h-10 min-h-9 touch-manipulation px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors duration-200 inline-flex items-center justify-center gap-1.5 flex-1 min-w-0",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
                           filter === f
-                            ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 scale-[1.02] ring-2 ring-primary/25"
-                            : "bg-secondary/80 dark:bg-secondary/70 text-muted-foreground hover:text-foreground hover:bg-secondary border border-border/50 hover:border-border hover:scale-[1.02] active:scale-[0.98]",
+                            ? "bg-background text-foreground shadow-md shadow-black/12 dark:shadow-black/35 dark:bg-card/90"
+                            : "text-muted-foreground hover:text-foreground hover:bg-background/50",
                         )}
                       >
-                        <span className="tabular-nums">{label}</span>
-                      </motion.button>
-                      ))}
+                        {filter === f && !ui.liteMotion && (
+                          <motion.span
+                            layoutId="filter-active-indicator"
+                            className="absolute inset-0 rounded-lg bg-background shadow-md shadow-black/12 dark:shadow-black/35 dark:bg-card/90 -z-[1]"
+                            transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                          />
+                        )}
+                        <span className="relative z-[1] truncate">{label}</span>
+                        {count !== null && count > 0 && (
+                          <span className={cn(
+                            "relative z-[1] shrink-0 tabular-nums rounded-md px-1 text-[10px] font-bold",
+                            filter === f ? "text-primary" : "text-muted-foreground/70"
+                          )}>
+                            {count}
+                          </span>
+                        )}
+                      </button>
+                    ))}
                   </div>
                   {!loading && (displayGoals.length > 0 || (filter === "archived" && archivedGoals.length > 0)) && (
                     <div className="flex flex-wrap items-center gap-2 pt-3 mt-1 border-t border-border/50">
@@ -1190,29 +1317,34 @@ const Index = () => {
                         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.12em]">
                           Deadline
                         </span>
-                        <div className="flex gap-1.5 flex-wrap">
+                        <div className="flex gap-1 rounded-xl border border-border/50 bg-secondary/30 p-1 dark:bg-secondary/20 dark:border-border/35 backdrop-blur-sm">
                           {([
                             { df: 'all' as DueFilter, label: 'Any' },
                             { df: 'has_due', label: 'Has date' },
                             { df: 'overdue', label: 'Overdue' },
                             { df: 'due_soon', label: '≤7 days' },
                           ] as const).map(({ df, label }) => (
-                            <motion.button
+                            <button
                               key={df}
                               type="button"
                               onClick={() => setDueFilter(df)}
-                              whileTap={ui.liteMotion ? undefined : { scale: 0.97 }}
-                              transition={appleSpring}
                               className={cn(
-                                "max-md:min-h-11 min-h-10 touch-manipulation px-4 py-2 rounded-full text-xs font-semibold transition-all duration-300 ease-out",
-                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                                "relative max-md:min-h-10 min-h-8 touch-manipulation px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors duration-200 flex-1",
+                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
                                 dueFilter === df
-                                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 scale-[1.02] ring-2 ring-primary/25"
-                                  : "bg-secondary/80 dark:bg-secondary/70 text-muted-foreground hover:text-foreground hover:bg-secondary border border-border/50 hover:border-border hover:scale-[1.02] active:scale-[0.98]",
+                                  ? "text-foreground"
+                                  : "text-muted-foreground hover:text-foreground hover:bg-background/50",
                               )}
                             >
+                              {dueFilter === df && !ui.liteMotion && (
+                                <motion.span
+                                  layoutId="due-filter-indicator"
+                                  className="absolute inset-0 rounded-lg bg-background shadow-md shadow-black/12 dark:shadow-black/35 dark:bg-card/90 -z-[1]"
+                                  transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                                />
+                              )}
                               {label}
-                            </motion.button>
+                            </button>
                           ))}
                         </div>
                       </div>
@@ -1344,11 +1476,17 @@ const Index = () => {
                   <div className="space-y-3" id={filter === "showcase" ? "showcase-gallery" : undefined}>
                     {showActive && activeGoals.length > 0 && (
                       <div className="flex items-center gap-3 pt-2">
-                        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
-                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.2em]">
-                          {filter === "showcase" ? "Wins on display" : "Completed"}
-                        </span>
-                        <div className="h-px flex-1 bg-gradient-to-l from-transparent via-border to-transparent" />
+                        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border/80 to-transparent" />
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Trophy className="h-3.5 w-3.5 text-mint/80" aria-hidden />
+                          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.2em]">
+                            {filter === "showcase" ? "Wins on display" : "Completed"}
+                          </span>
+                          <span className="text-[10px] tabular-nums font-bold text-mint/70">
+                            {filter === "showcase" ? showcaseCount : completedGoals.length}
+                          </span>
+                        </div>
+                        <div className="h-px flex-1 bg-gradient-to-l from-transparent via-border/80 to-transparent" />
                       </div>
                     )}
                     <div ref={completedVirtualAnchorRef}>
@@ -1451,162 +1589,32 @@ const Index = () => {
                             scrollAnchorRef={archivedVirtualAnchorRef}
                             rowEstimatePx={VIRTUAL_ROW_ARCHIVED_ESTIMATE_PX}
                             gap={12}
-                            renderItem={(goal) => {
-                              const pct = calcProgress(goal);
-                              const done = goal.subtasks.filter((s) => s.is_completed).length;
-                              const subtaskSummary =
-                                goal.subtasks.length > 0
-                                  ? `${done}/${goal.subtasks.length} subtasks`
-                                  : goal.is_completed
-                                    ? 'Standalone · complete'
-                                    : 'No subtasks';
-                              return (
-                                <div className="group rounded-2xl border border-border/55 bg-card/60 backdrop-blur-sm px-4 py-4 flex gap-3 sm:gap-4 flex-col sm:flex-row sm:items-start opacity-90 hover:opacity-100 transition-all duration-300 hover:border-border/80 hover:shadow-xl hover:shadow-black/25 dark:bg-card/55 dark:hover:shadow-black/40">
-                                  {bulkMode && (
-                                    <div className="flex shrink-0 items-start pt-1">
-                                      <Checkbox
-                                        checked={bulkSelected.has(goal.id)}
-                                        onCheckedChange={(v) => handleBulkToggle(goal.id, v === true)}
-                                        aria-label={`Select archived goal ${goal.title}`}
-                                        className="border-muted-foreground/50 data-[state=checked]:bg-primary"
-                                      />
-                                    </div>
-                                  )}
-                                  <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-start min-w-0">
-                                    <div className="flex items-start gap-3 min-w-0 flex-1">
-                                      <Archive className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                                      <div className="flex-1 min-w-0">
-                                        <p className="font-medium text-sm flex items-center gap-1.5 min-w-0">
-                                          {goal.emoji && <span className="shrink-0 text-base leading-none">{goal.emoji}</span>}
-                                          <span className="truncate min-w-0">{goal.title}</span>
-                                        </p>
-                                        {goal.description && (
-                                          <div className="text-xs text-muted-foreground truncate mt-0.5 min-w-0">
-                                            <LinkifiedText text={goal.description} as="span" />
-                                          </div>
-                                        )}
-                                        {goal.due_date && (
-                                          <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                                            <CalendarDays className="h-3 w-3 shrink-0 opacity-80" />
-                                            <span>Due {formatDueChip(goal.due_date)}</span>
-                                          </div>
-                                        )}
-                                        <div className="flex items-center gap-1.5 mt-1.5">
-                                          <CheckSquare className="h-3 w-3 text-muted-foreground" />
-                                          <span className="text-xs text-muted-foreground tabular-nums">{subtaskSummary} · {pct}%</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center justify-end gap-1 shrink-0 sm:pt-0.5 max-md:min-h-10">
-                                      <Button variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-primary touch-manipulation" onClick={() => void duplicateGoal(goal.id)} title="Duplicate as new active goal">
-                                        <Copy className="h-3.5 w-3.5" />
-                                      </Button>
-                                      <Button variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-mint hover:bg-mint/12 touch-manipulation" onClick={() => restoreGoal(goal.id)} title="Restore to active">
-                                        <RotateCcw className="h-3.5 w-3.5" />
-                                      </Button>
-                                      <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                          <Button variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-destructive touch-manipulation">
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                          </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                          <AlertDialogHeader>
-                                            <AlertDialogTitle>Delete "{goal.title}"?</AlertDialogTitle>
-                                            <AlertDialogDescription>Permanently deletes from archive. Cannot be undone.</AlertDialogDescription>
-                                          </AlertDialogHeader>
-                                          <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction variant="destructive" onClick={() => deleteArchivedGoal(goal.id)}>
-                                              Delete
-                                            </AlertDialogAction>
-                                          </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                      </AlertDialog>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            }}
+                            renderItem={(goal) => (
+                              <ArchivedGoalRow
+                                key={goal.id}
+                                goal={goal}
+                                bulkMode={bulkMode}
+                                isBulkSelected={bulkSelected.has(goal.id)}
+                                onBulkToggle={handleBulkToggle}
+                                onDuplicate={duplicateGoal}
+                                onRestore={restoreGoal}
+                                onDelete={deleteArchivedGoal}
+                              />
+                            )}
                           />
                         ) : (
-                          selectableGoalsFlat.map((goal) => {
-                      const pct = calcProgress(goal);
-                      const done = goal.subtasks.filter((s) => s.is_completed).length;
-                      const subtaskSummary =
-                        goal.subtasks.length > 0
-                          ? `${done}/${goal.subtasks.length} subtasks`
-                          : goal.is_completed
-                            ? 'Standalone · complete'
-                            : 'No subtasks';
-                      return (
-                        <div key={goal.id} className="group rounded-2xl border border-border/55 bg-card/60 backdrop-blur-sm px-4 py-4 flex gap-3 sm:gap-4 flex-col sm:flex-row sm:items-start opacity-90 hover:opacity-100 transition-all duration-300 hover:border-border/80 hover:shadow-xl hover:shadow-black/25 dark:bg-card/55 dark:hover:shadow-black/40">
-                          {bulkMode && (
-                            <div className="flex shrink-0 items-start pt-1">
-                              <Checkbox
-                                checked={bulkSelected.has(goal.id)}
-                                onCheckedChange={(v) => handleBulkToggle(goal.id, v === true)}
-                                aria-label={`Select archived goal ${goal.title}`}
-                                className="border-muted-foreground/50 data-[state=checked]:bg-primary"
-                              />
-                            </div>
-                          )}
-                          <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-start min-w-0">
-                          <div className="flex items-start gap-3 min-w-0 flex-1">
-                            <Archive className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm flex items-center gap-1.5 min-w-0">
-                                {goal.emoji && <span className="shrink-0 text-base leading-none">{goal.emoji}</span>}
-                                <span className="truncate min-w-0">{goal.title}</span>
-                              </p>
-                              {goal.description && (
-                                <div className="text-xs text-muted-foreground truncate mt-0.5 min-w-0">
-                                  <LinkifiedText text={goal.description} as="span" />
-                                </div>
-                              )}
-                              {goal.due_date && (
-                                <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                                  <CalendarDays className="h-3 w-3 shrink-0 opacity-80" />
-                                  <span>Due {formatDueChip(goal.due_date)}</span>
-                                </div>
-                              )}
-                              <div className="flex items-center gap-1.5 mt-1.5">
-                                <CheckSquare className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground tabular-nums">{subtaskSummary} · {pct}%</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-end gap-1 shrink-0 sm:pt-0.5 max-md:min-h-10">
-                            <Button variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-primary touch-manipulation" onClick={() => void duplicateGoal(goal.id)} title="Duplicate as new active goal">
-                              <Copy className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-mint hover:bg-mint/12 touch-manipulation" onClick={() => restoreGoal(goal.id)} title="Restore to active">
-                              <RotateCcw className="h-3.5 w-3.5" />
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-destructive touch-manipulation">
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete "{goal.title}"?</AlertDialogTitle>
-                                  <AlertDialogDescription>Permanently deletes from archive. Cannot be undone.</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction variant="destructive" onClick={() => deleteArchivedGoal(goal.id)}>
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                          </div>
-                        </div>
-                      );
-                          })
+                          selectableGoalsFlat.map((goal) => (
+                            <ArchivedGoalRow
+                              key={goal.id}
+                              goal={goal}
+                              bulkMode={bulkMode}
+                              isBulkSelected={bulkSelected.has(goal.id)}
+                              onBulkToggle={handleBulkToggle}
+                              onDuplicate={duplicateGoal}
+                              onRestore={restoreGoal}
+                              onDelete={deleteArchivedGoal}
+                            />
+                          ))
                         )}
                       </div>
                     )}
@@ -1675,6 +1683,8 @@ const Index = () => {
               totalSubtasks={totalSubtasks}
               overdueCount={overdueCount}
               dueSoonCount={dueSoonCount}
+              exportOpen={exportOpen}
+              onExportOpenChange={setExportOpen}
             />
           </div>
         </div>

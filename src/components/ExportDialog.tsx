@@ -9,6 +9,9 @@ import { ExportSheetGlyph } from "@/components/micro/MicroGlyphs";
 
 interface ExportDialogProps {
   goals: Goal[];
+  /** Controlled open state — when provided, ExportDialog is externally controlled */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 type Format = 'json' | 'csv' | 'pdf';
@@ -19,8 +22,10 @@ const FORMATS: { id: Format; label: string; desc: string; Icon: React.ComponentT
   { id: 'pdf', label: 'PDF', desc: 'Formatted report, print-ready', Icon: File },
 ];
 
-const ExportDialog = ({ goals }: ExportDialogProps) => {
-  const [open, setOpen] = useState(false);
+const ExportDialog = ({ goals, open: controlledOpen, onOpenChange: controlledOnOpenChange }: ExportDialogProps) => {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = controlledOnOpenChange !== undefined ? controlledOnOpenChange : setInternalOpen;
   const [selected, setSelected] = useState<Format>('pdf');
   const [triggerHover, setTriggerHover] = useState(false);
 
