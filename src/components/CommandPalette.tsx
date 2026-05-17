@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import { useTheme } from "next-themes";
 import { Target, Archive, Plus, Sun, Moon, Download, Filter, Trophy, ListChecks } from "lucide-react";
 import {

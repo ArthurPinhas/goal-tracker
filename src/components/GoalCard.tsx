@@ -399,7 +399,7 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
                     style={{ backgroundColor: getProgressColor(percentage) }}
                     initial={{ width: 0 }}
                     animate={{ width: `${percentage}%` }}
-                    transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                    transition={{ duration: 0.6, ease: smoothOut }}
                   />
                 </motion.div>
               )}

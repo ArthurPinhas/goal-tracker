@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, useDeferredValue, type ComponentProps } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, useDeferredValue, lazy, Suspense, type ComponentProps } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, Reorder, useDragControls, useReducedMotion } from "framer-motion";
 import toast from "react-hot-toast";
@@ -14,6 +14,7 @@ import GoalCard from "@/components/GoalCard";
 import { VirtualWindowGoalList } from "@/components/VirtualWindowGoalList";
 import AddGoalDialog from "@/components/AddGoalDialog";
 import { ManageCategoriesDialog } from "@/components/ManageCategoriesDialog";
+const ExportDialogControlled = lazy(() => import("@/components/ExportDialog"));
 import SkeletonGoalCard from "@/components/SkeletonGoalCard";
 import CelebrationOverlay from "@/components/CelebrationOverlay";
 import StickyHeader from "@/components/StickyHeader";
@@ -727,6 +728,12 @@ const Index = () => {
         setAddGoalOpen={setAddGoalOpen}
         setExportOpen={setExportOpen}
       />
+      {/* Palette-triggered export — controlled dialog, shares the same lazy chunk as GoalSidebar's ExportDialog */}
+      {exportOpen && (
+        <Suspense fallback={null}>
+          <ExportDialogControlled goals={displayGoals} open={exportOpen} onOpenChange={setExportOpen} />
+        </Suspense>
+      )}
       {/* Goal win overlay — CSS rings; Lottie removed for performance */}
       <AnimatePresence>
         {showCelebration && (
@@ -1683,8 +1690,6 @@ const Index = () => {
               totalSubtasks={totalSubtasks}
               overdueCount={overdueCount}
               dueSoonCount={dueSoonCount}
-              exportOpen={exportOpen}
-              onExportOpenChange={setExportOpen}
             />
           </div>
         </div>

@@ -17,8 +17,6 @@ interface GoalSidebarProps {
   totalSubtasks: number;
   overdueCount: number;
   dueSoonCount: number;
-  exportOpen?: boolean;
-  onExportOpenChange?: (open: boolean) => void;
 }
 
 function AnimatedCounter({ value, className }: { value: number; className?: string }) {
@@ -219,10 +217,9 @@ function AnalyticsPanel({ goals, completedCount }: { goals: Goal[]; completedCou
                   <span className="text-[10px] font-semibold font-te uppercase tracking-[0.12em] text-muted-foreground">
                     Completion rate
                   </span>
-                  <AnimatedCounter
-                    value={completionRate}
-                    className="text-sm font-bold tabular-nums text-foreground"
-                  />
+                  <span className="text-sm font-bold tabular-nums text-foreground">
+                    <AnimatedCounter value={completionRate} />%
+                  </span>
                 </div>
                 <ProgressBar pct={completionRate} colorClass="bg-primary" />
               </div>
@@ -289,8 +286,6 @@ const GoalSidebar = ({
   totalSubtasks,
   overdueCount,
   dueSoonCount,
-  exportOpen,
-  onExportOpenChange,
 }: GoalSidebarProps) => {
   const dailyMantra = useMemo(() => pickRandom(DAILY_MANTRAS), []);
   const reduce = useReducedMotion();
@@ -370,7 +365,7 @@ const GoalSidebar = ({
             </div>
           }
         >
-          <ExportDialog goals={goals} open={exportOpen} onOpenChange={onExportOpenChange} />
+          <ExportDialog goals={goals} />
         </Suspense>
       </div>
     </motion.aside>

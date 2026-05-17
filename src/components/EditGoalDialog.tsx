@@ -318,9 +318,7 @@ const EditGoalDialog = ({ goal, categories, onCreateCategory, onPatchGoalCategor
                       effort: s.effort ?? null,
                     })),
                   });
-                  import("react-hot-toast").then(({ default: toast }) =>
-                    toast.success("Template saved"),
-                  );
+                  toast.success("Template saved");
                 }}
               >
                 <BookTemplate className="h-3.5 w-3.5" />

@@ -23,9 +23,10 @@ const FORMATS: { id: Format; label: string; desc: string; Icon: React.ComponentT
 ];
 
 const ExportDialog = ({ goals, open: controlledOpen, onOpenChange: controlledOnOpenChange }: ExportDialogProps) => {
+  const isControlled = controlledOpen !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
-  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
-  const setOpen = controlledOnOpenChange !== undefined ? controlledOnOpenChange : setInternalOpen;
+  const open = isControlled ? controlledOpen! : internalOpen;
+  const setOpen = isControlled ? controlledOnOpenChange! : setInternalOpen;
   const [selected, setSelected] = useState<Format>('pdf');
   const [triggerHover, setTriggerHover] = useState(false);
 
@@ -47,20 +48,22 @@ const ExportDialog = ({ goals, open: controlledOpen, onOpenChange: controlledOnO
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full gap-2 text-xs overflow-hidden rounded-lg"
-          onMouseEnter={() => setTriggerHover(true)}
-          onMouseLeave={() => setTriggerHover(false)}
-          onFocus={() => setTriggerHover(true)}
-          onBlur={() => setTriggerHover(false)}
-        >
-          <ExportSheetGlyph active={triggerHover} />
-          Export goals
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full gap-2 text-xs overflow-hidden rounded-lg"
+            onMouseEnter={() => setTriggerHover(true)}
+            onMouseLeave={() => setTriggerHover(false)}
+            onFocus={() => setTriggerHover(true)}
+            onBlur={() => setTriggerHover(false)}
+          >
+            <ExportSheetGlyph active={triggerHover} />
+            Export goals
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-sm">
         <DialogHeader className="space-y-2">
           <DialogTitle className="text-xl font-semibold tracking-tight">Export goals</DialogTitle>

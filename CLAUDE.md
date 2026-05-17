@@ -111,7 +111,7 @@ V1 is **fully shipped and functional**. PocketBase is connected, all CRUD works,
 | A | UI polish (spacing, empty states, filters, design system, primitives, motion) | **Shipped** (ongoing small tweaks) |
 | B | Due-date **browser** notifications (option A — tab/PWA active) | Shipped |
 | C | Plain-text **notes** on goals + subtasks | Shipped |
-| D | Sidebar stats / analytics expansion | **Skipped** (no full analytics dashboard); light **hover** polish on sidebar stats + mantra card only |
+| D | Sidebar stats / analytics expansion | **Shipped** — collapsible Insights panel (completion rate, distribution, category breakdown); AnimatedCounter spring numbers; GoalsAchievedRing; command palette; templates |
 | E | Ops & trust “must-haves” (production security, backups, safe exposure, recovery story) | **Not started** — checklist in *Phase E — production readiness* below |
 
 Per product direction: **export remains client-side only**; **sidebar layout** was not expanded in Phase D.
