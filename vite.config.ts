@@ -52,7 +52,6 @@ export default defineConfig({
           'framer-motion': ['framer-motion'],
           vendor: ['react', 'react-dom', 'react-router-dom'],
           pocketbase: ['pocketbase'],
-          lottie: ['lottie-react'],
         },
       },
     },

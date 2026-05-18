@@ -195,6 +195,7 @@ function AnalyticsPanel({ goals, completedCount }: { goals: Goal[]; completedCou
           animate={{ rotate: open ? 180 : 0 }}
           transition={appleSpringGentle}
           className="inline-flex"
+          aria-hidden
         >
           <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/60" />
         </motion.span>

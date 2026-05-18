@@ -186,6 +186,7 @@ const EditGoalDialog = ({ goal, categories, onCreateCategory, onPatchGoalCategor
             </Label>
             <Textarea
               id="edit-desc"
+              placeholder="Brief description of this goal…"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -226,7 +227,7 @@ const EditGoalDialog = ({ goal, categories, onCreateCategory, onPatchGoalCategor
                 />
               </div>
               <div className="space-y-2">
-                <Label className="ui-section-label">Screenshot</Label>
+                <Label htmlFor="edit-showcase-image" className="ui-section-label">Screenshot</Label>
                 <Input
                   id="edit-showcase-image"
                   type="file"

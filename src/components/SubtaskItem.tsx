@@ -275,6 +275,8 @@ const SubtaskItem = memo(function SubtaskItem({
             whileHover={reduceMotion ? undefined : tactileHover}
             whileTap={reduceMotion ? undefined : tactileTap}
             transition={premiumSpring}
+            aria-label={subtask.effort ? `Effort: ${EFFORT_LABELS[subtask.effort]} — click to change` : "Set effort"}
+            aria-pressed={showEffort}
             className={cn(
               "text-[11px] font-medium px-2 py-2 md:py-1 rounded-full min-h-10 md:min-h-8 touch-manipulation",
               "opacity-100 md:opacity-0 md:group-hover/sub:opacity-100 focus-visible:opacity-100",

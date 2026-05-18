@@ -121,6 +121,7 @@ Per product direction: **export remains client-side only**; **sidebar layout** w
 **Auth**
 
 - Register / login / logout (`useAuth`)
+- **Show/hide password toggle** on both Login and Register — `Eye`/`EyeOff` icons; `autoComplete` attrs set; Register enforces `minLength={8}`
 - Each user sees only their own goals (PocketBase API rules)
 
 **Goals**
@@ -150,7 +151,7 @@ Per product direction: **export remains client-side only**; **sidebar layout** w
 
 **Celebration UI**
 
-- Full-screen overlay on goal completion (`CelebrationOverlay` — CSS orbit / sparkles + Framer motion; **`celebrationQuality`** tiers; **`aria-hidden`** on wrapper; **no Lottie playback** in the live overlay)
+- Full-screen overlay on goal completion (`CelebrationOverlay` — CSS orbit / sparkles + Framer motion; **`celebrationQuality`** tiers; **`aria-hidden`** on wrapper; **no Lottie playback** in the live overlay; **`lottie-react` removed from bundle** — chunk dropped from vite config)
 - Canvas confetti on subtask complete
 - Framer Motion animations throughout (card enter/exit, progress bar, sidebar ring)
 - react-hot-toast notifications with motivational quotes
@@ -201,6 +202,7 @@ Per product direction: **export remains client-side only**; **sidebar layout** w
 **Docs**
 
 - Root **`README.md`** — onboarding, PocketBase schema notes, security contributor notes (**push target**: `git remote -v`, not README)
+- **`CODEBASE.md`** — codebase guide written for QA / C# background devs; covers stack, data flow, React mental model, component architecture
 
 ---
 
@@ -216,7 +218,7 @@ src/
     micro/              — MicroGlyphs + related line-art motion (filters, subtask sprout, etc.)
     ManageCategoriesDialog — Rename/delete categories; surfaced from Index when categories exist
     NewGoalHoverBloom   — Optional bloom on “new goal” affordances
-    CelebrationOverlay — Full-screen celebration (CSS-first; legacy Lottie asset optional)
+    CelebrationOverlay — Full-screen celebration (CSS-first; lottie-react removed from bundle; legacy celebration.json asset still in tree)
     EmptyState          — Shared empty / no-results illustration
     EditGoalDialog      — Edit goal modal (+ due picker + emoji title); optional duplicate action
     DueNotificationToggle — Bell: browser due reminders (option A)
@@ -276,7 +278,7 @@ src/
     goal                 — Goal, Subtask interfaces
   test/                  — Vitest specs + setup
   assets/
-    celebration.json    — Legacy Lottie file (unused by current CSS-first overlay; optional cleanup)
+    celebration.json    — Legacy Lottie file (unused; lottie-react no longer bundled; optional cleanup)
 ```
 
 ---

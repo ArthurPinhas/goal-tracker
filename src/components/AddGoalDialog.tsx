@@ -130,7 +130,7 @@ const AddGoalDialog = ({
             </Label>
             <Textarea
               id="goal-desc"
-              placeholder="Brief description of this goal..."
+              placeholder="Brief description of this goal…"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}

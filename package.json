@@ -1,7 +1,7 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "goal-tracker",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Personal goal tracker with weighted subtasks, due dates, notes, and celebrations — React, Vite, Tailwind, PocketBase.",
   "type": "module",
   "scripts": {

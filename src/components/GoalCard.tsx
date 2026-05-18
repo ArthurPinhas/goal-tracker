@@ -487,7 +487,7 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Delete "{goal.title}"?</AlertDialogTitle>
+                  <AlertDialogTitle>Delete &ldquo;{goal.title}&rdquo;?</AlertDialogTitle>
                   <AlertDialogDescription>
                     {goal.subtasks.length > 0
                       ? `Permanently deletes the goal and all ${goal.subtasks.length} subtask${goal.subtasks.length === 1 ? '' : 's'}.`
@@ -502,7 +502,7 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-            <motion.div animate={{ rotate: collapsed ? -90 : 0 }} transition={{ duration: 0.2 }}>
+            <motion.div animate={{ rotate: collapsed ? -90 : 0 }} transition={{ duration: 0.2 }} aria-hidden>
               <ChevronDown className="h-4 w-4 text-muted-foreground/50" />
             </motion.div>
           </div>

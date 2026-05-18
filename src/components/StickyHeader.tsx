@@ -65,13 +65,13 @@ const StickyHeader = ({
         />
         {dueNotificationsSlot}
         <ThemeToggle className="h-11 w-11 md:h-8 md:w-8 touch-manipulation" />
-        <Button variant="ghost" size="icon" onClick={onToggleSound} title={soundOn ? 'Mute' : 'Unmute'}
+        <Button variant="ghost" size="icon" onClick={onToggleSound} title={soundOn ? 'Mute' : 'Unmute'} aria-label={soundOn ? 'Mute sounds' : 'Unmute sounds'}
           className="h-11 w-11 md:h-8 md:w-8 text-muted-foreground hover:text-foreground touch-manipulation">
-          {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+          {soundOn ? <Volume2 className="h-4 w-4" aria-hidden /> : <VolumeX className="h-4 w-4" aria-hidden />}
         </Button>
-        <Button variant="ghost" size="icon" onClick={onLogout} title="Log out"
+        <Button variant="ghost" size="icon" onClick={onLogout} title="Log out" aria-label="Log out"
           className="h-11 w-11 md:h-8 md:w-8 text-muted-foreground hover:text-foreground touch-manipulation">
-          <LogOut className="h-4 w-4" />
+          <LogOut className="h-4 w-4" aria-hidden />
         </Button>
       </div>
     </div>
