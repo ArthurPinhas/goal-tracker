@@ -1,80 +1,73 @@
-# 🎯 Goal Tracker
+# Goal Tracker
 
-A self-hosted, personal goal-tracking application built to give you a sense of forward momentum. 
+A self-hosted, personal goal-tracking application.
 
-Unlike traditional flat to-do lists, Goal Tracker is tactile and rewarding. Break massive goals into weighted subtasks, visualize your live progress with animated momentum rings, and get celebrated with full-screen particle effects and sound cues when you finish your work.
+Goal Tracker allows you to break goals down into weighted subtasks and track progress visually. It provides a structured approach to goal management without relying on third-party cloud services for data storage.
 
-![Goal Tracker Preview](/public/placeholder.svg) *(Replace with a screenshot of your app!)*
+## Features
 
-## ✨ Features
+- **Weighted Subtasks:** Assign effort values to subtasks (1-5). The overall progress calculation adjusts based on the relative weight of completed tasks.
+- **Visual Feedback:** Progress rings and completion states provide clear indicators of goal status.
+- **Showcases:** Completed goals can store an external URL and an image for reference.
+- **Due Dates:** Set deadlines on goals. The interface highlights overdue and upcoming deadlines.
+- **Organization:** Categorize goals, drag-and-drop to adjust priority, and save structures as templates.
+- **Keyboard Navigation:** A command palette (Cmd+K) allows quick navigation and actions.
+- **Data Export:** Export your data locally to JSON, CSV, or PDF formats.
 
-- **Weighted Progress:** Assign effort points (1-5) to subtasks. Completing a massive subtask moves your progress bar significantly more than a tiny one.
-- **Visual Celebrations:** Satisfying micro-animations, canvas confetti, and full-screen milestone overlays reward you when you crush a goal.
-- **Goal Showcases:** Finished a project? Attach an external link and an uploaded screenshot to your completed goal to build a "wall of wins".
-- **Due Date Intelligence:** Set optional deadlines. Overdue and soon-to-be-due goals automatically bubble up with visual urgency cues and browser-level tab reminders.
-- **Rich Organization:** Group goals into custom colored Categories, drag-and-drop to reorder, or save recurring structures as reusable Goal Templates.
-- **Built for Speed:** Navigate entirely via the `Cmd+K` command palette. Massive goal libraries render instantly thanks to window-scroll virtualization.
-- **Total Data Ownership:** Export your data to JSON, CSV, or PDF instantly from the browser. 
+## Tech Stack
 
-## 🛠 Tech Stack
+**Frontend**
+- React 18, Vite, TypeScript
+- Tailwind CSS, shadcn/ui
+- Framer Motion
 
-**Frontend (Client-Side Only)**
-- **React 18** & **Vite** (TypeScript)
-- **Tailwind CSS** & **shadcn/ui** for dark-first, premium aesthetics
-- **Framer Motion** for spring physics and tactile micro-interactions
+**Backend**
+- PocketBase (self-hosted SQLite database and REST API)
 
-**Backend (Bring Your Own Database)**
-- **PocketBase:** Goal Tracker connects to a self-hosted PocketBase instance—a single-file SQLite database that provides Auth and a REST API out of the box.
+## Setup and Installation
 
----
+Goal Tracker is a client-side React application that connects to a local PocketBase database. Data is stored entirely on your own machine.
 
-## 🚀 Getting Started
+### 1. PocketBase Setup
 
-Goal Tracker is a purely client-side React application. It connects to a local PocketBase database that you host yourself, meaning your data never leaves your machine unless you want it to.
-
-### 1. Set Up Your Database (PocketBase)
-
-1. Download the PocketBase binary for your operating system from [pocketbase.io](https://pocketbase.io/docs/).
-2. Extract the executable into a folder of your choosing.
-3. Start your database:
+1. Download the PocketBase executable for your operating system from [pocketbase.io](https://pocketbase.io/docs/).
+2. Extract the file to a preferred directory.
+3. Start the database server:
    ```bash
    ./pocketbase serve
    ```
-4. Open `http://127.0.0.1:8090/_/` in your browser to access the Admin UI. Create your first admin account.
+4. Navigate to `http://127.0.0.1:8090/_/` in your browser to create the initial admin account.
 
-### 2. Configure Database Collections
+### 2. Database Collections
 
-To make the app work, you must define the following collections in your PocketBase Admin UI. Make sure the API Rules restrict read/write access to `@request.auth.id` matching the `user` relation.
+Configure the following collections in the PocketBase Admin UI. Ensure the API Rules for each restrict read/write access to `@request.auth.id = user.id`.
 
-- **`categories`**: `user` (Relation → users), `name` (Text).
-- **`goals`**: `user` (Relation → users), `name` (Text), `description` (Text), `archived` (Bool), `sort_order` (Number), `completed` (Bool), `category` (Relation → categories), `due_date` (Date), `emoji` (Text), `notes` (Text), `showcase_image` (File), `showcase_url` (Text), `showcase_caption` (Text).
-- **`subtasks`**: `goal` (Relation → goals), `name` (Text), `completed` (Bool), `effort` (Number), `notes` (Text).
+- **`categories`**: `user` (Relation to users), `name` (Text).
+- **`goals`**: `user` (Relation to users), `name` (Text), `description` (Text), `archived` (Bool), `sort_order` (Number), `completed` (Bool), `category` (Relation to categories), `due_date` (Date), `emoji` (Text), `notes` (Text), `showcase_image` (File), `showcase_url` (Text), `showcase_caption` (Text).
+- **`subtasks`**: `goal` (Relation to goals), `name` (Text), `completed` (Bool), `effort` (Number), `notes` (Text).
 
-### 3. Spin Up the Frontend
+### 3. Frontend Setup
 
-1. Clone this repository and install dependencies:
+1. Clone the repository and install dependencies:
    ```bash
    git clone https://github.com/YOUR_USERNAME/goal-tracker.git
    cd goal-tracker
    npm install
    ```
 
-2. Create your local environment file:
+2. Configure environment variables:
    ```bash
    cp .env.example .env
    ```
-   *(Ensure `VITE_POCKETBASE_URL=http://127.0.0.1:8090` is set in this file to point to your local PocketBase instance).*
+   Verify that `VITE_POCKETBASE_URL` is set to `http://127.0.0.1:8090`.
 
-3. Start the Vite development server:
+3. Start the development server:
    ```bash
    npm run dev
    ```
 
-4. Open `http://localhost:3000` to start crushing your goals!
+4. The application will be running at `http://localhost:3000`.
 
----
+## Security Notes
 
-## 🔒 Security & Deployment
-
-- **Public URLs:** The `VITE_POCKETBASE_URL` is intentionally bundled into the frontend application. Application security is managed entirely by your PocketBase API rules.
-- **Never Commit Data:** The `.gitignore` is configured to ignore `.env` files and `pb_data` folders. Never force-commit these files to version control, as they contain your private user data.
+The `VITE_POCKETBASE_URL` is bundled into the frontend code. Access control is handled by the PocketBase API rules. The `.gitignore` file excludes `.env` and `pb_data` directories to prevent accidental commits of local database files and environment configurations.
