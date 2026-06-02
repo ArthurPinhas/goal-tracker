@@ -2,6 +2,8 @@
 
 A self-hosted, personal goal-tracking application.
 
+![Goal Tracker Dashboard](public/screenshot.png)
+
 Goal Tracker allows you to break goals down into weighted subtasks and track progress visually. It provides a structured approach to goal management without relying on third-party cloud services for data storage.
 
 ## Features
