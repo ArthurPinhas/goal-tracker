@@ -35,3 +35,14 @@ pocketbase_*/
 *.njsproj
 *.sln
 *.sw?
+
+# Agent / IDE state
+.claude/
+.antigravitycli/
+
+# Global OS junk
+**/.DS_Store
+
+# Markdown files (exclude all except README)
+*.md
+!README.md
