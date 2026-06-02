@@ -1,6 +1,5 @@
 # Optional reference — use your own docker-compose if you already have one.
-# This file matches paths/ports used in docs/BEGINNER_SYNOLOGY_DEPLOY.md (Route 1 / home LAN).
-# Route 2: see docker-compose.tunnel.yml (localhost-only host ports).
+# see docker-compose.tunnel.yml (localhost-only host ports).
 
 services:
   pocketbase:
