@@ -1,6 +1,3 @@
-# Optional reference for Route 2 (Cloudflare Tunnel): host ports bound to 127.0.0.1 only.
-# Prefer editing your own compose the same way if you already maintain one.
-
 services:
   pocketbase:
     image: ghcr.io/muchobien/pocketbase:latest
