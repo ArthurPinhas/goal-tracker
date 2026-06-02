@@ -16,6 +16,12 @@ Goal Tracker allows you to break goals down into weighted subtasks and track pro
 - **Keyboard Navigation:** A command palette (Cmd+K) allows quick navigation and actions.
 - **Data Export:** Export your data locally to JSON, CSV, or PDF formats.
 
+<video src="[YOUR_GITHUB_LINK_HERE](https://github.com/user-attachments/assets/c95f5168-aaca-4b49-beed-391ff5175676
+)" autoplay loop muted playsinline width="100%"></video> 
+
+
+
+
 ## Tech Stack
 
 **Frontend**
