@@ -29,11 +29,14 @@ jobs:
     - name: Download and Setup PocketBase
       run: |
         # Download a recent version of PocketBase for linux
-        wget https://github.com/pocketbase/pocketbase/releases/download/v0.22.12/pocketbase_0.22.12_linux_amd64.zip -O pocketbase.zip
-        unzip pocketbase.zip
-        chmod +x pocketbase
+        mkdir -p /tmp/pb
+        wget https://github.com/pocketbase/pocketbase/releases/download/v0.22.12/pocketbase_0.22.12_linux_amd64.zip -O /tmp/pb/pocketbase.zip
+        unzip /tmp/pb/pocketbase.zip -d /tmp/pb
+        chmod +x /tmp/pb/pocketbase
+        # Copy our schema migrations so the DB initializes with the right collections
+        cp -r pb_migrations /tmp/pb/
         # Start PocketBase in the background
-        ./pocketbase serve &
+        /tmp/pb/pocketbase serve &
         # Wait a few seconds for it to start up
         sleep 3
 
