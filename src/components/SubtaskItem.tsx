@@ -191,6 +191,7 @@ const SubtaskItem = memo(function SubtaskItem({
                 </label>
               ) : (
                 <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                  <span className="sr-only">{subtask.title}</span>
                   <Input
                     ref={titleInputRef}
                     id={`subtask-label-${subtask.id}`}
@@ -227,6 +228,7 @@ const SubtaskItem = memo(function SubtaskItem({
               editPenGhostButtonClasses({ active: editingTitle }),
             )}
             title={editingTitle ? "Save name" : "Edit name"}
+            aria-label={editingTitle ? "Save name" : "Edit name"}
             aria-pressed={editingTitle}
             disabled={isPending}
             onMouseDown={(e) => {

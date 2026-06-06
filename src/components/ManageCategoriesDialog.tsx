@@ -30,7 +30,10 @@ type ManageCategoriesDialogProps = {
   goalCountForCategory: (categoryId: string) => number;
   onRename: (categoryId: string, name: string) => Promise<void>;
   onDelete: (categoryId: string) => Promise<void>;
+  onCreate: (name: string) => Promise<string | null>;
   disabled?: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 };
 
 export function ManageCategoriesDialog({
@@ -38,14 +41,18 @@ export function ManageCategoriesDialog({
   goalCountForCategory,
   onRename,
   onDelete,
+  onCreate,
   disabled = false,
+  open,
+  onOpenChange,
 }: ManageCategoriesDialogProps) {
-  const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [creating, setCreating] = useState(false);
 
   const deleteTarget = deleteId ? categories.find((c) => c.id === deleteId) : null;
   const deleteCount = deleteId ? goalCountForCategory(deleteId) : 0;
@@ -84,21 +91,21 @@ export function ManageCategoriesDialog({
     }
   };
 
+  const submitCreate = async () => {
+    const t = newName.trim();
+    if (!t || creating) return;
+    setCreating(true);
+    try {
+      await onCreate(t);
+      setNewName("");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={disabled || categories.length === 0}
-            className="shrink-0 h-11 md:h-10 px-3 rounded-lg gap-2 border-border/60 bg-background/80 backdrop-blur-sm shadow-sm hover:bg-secondary/40 font-medium text-sm"
-            title="Rename or delete categories"
-          >
-            <FolderCog className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Manage</span>
-          </Button>
-        </DialogTrigger>
+      <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader className="space-y-2">
             <DialogTitle className="text-xl font-semibold tracking-tight">Categories</DialogTitle>
@@ -183,6 +190,30 @@ export function ManageCategoriesDialog({
               );
             })}
           </ul>
+          <div className="pt-2 border-t border-border/50 flex gap-2">
+            <Input
+              placeholder="New category…"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="rounded-lg app-surface-input flex-1 min-w-0"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void submitCreate();
+                }
+              }}
+              aria-label="New category name"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              className="shrink-0"
+              disabled={!newName.trim() || creating}
+              onClick={() => void submitCreate()}
+            >
+              Add
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 

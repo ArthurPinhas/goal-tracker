@@ -76,3 +76,36 @@ Configure the following collections in the PocketBase Admin UI. Ensure the API R
 ## Security Notes
 
 The `VITE_POCKETBASE_URL` is bundled into the frontend code. Access control is handled by the PocketBase API rules. The `.gitignore` file excludes `.env` and `pb_data` directories to prevent accidental commits of local database files and environment configurations.
+
+## Testing
+
+This project includes a comprehensive end-to-end (E2E) test suite built with [Playwright](https://playwright.dev/). The suite runs in parallel and connects directly to your local PocketBase instance (meaning it will create and delete test data during runs, but it does so safely without affecting other records).
+
+Before running the tests, make sure both your Vite development server (`npm run dev`) and PocketBase server are running.
+
+### Available Test Commands
+
+- **Run all E2E tests (headless):**
+  ```bash
+  npm run test:e2e
+  ```
+
+- **Run only Sanity tests (quick check):**
+  ```bash
+  npm run test:e2e:sanity
+  ```
+
+- **Run only Regression tests (full coverage):**
+  ```bash
+  npm run test:e2e:regression
+  ```
+
+- **Run E2E tests with the Playwright UI (highly recommended for debugging):**
+  ```bash
+  npm run test:e2e:ui
+  ```
+
+- **Run E2E tests in headed mode (watch the browser):**
+  ```bash
+  npm run test:e2e:headed
+  ```

@@ -339,6 +339,8 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
 
           <motion.button
             type="button"
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? "Expand goal" : "Collapse goal"}
             whileHover={reduceMotion ? undefined : tactileHover}
             whileTap={reduceMotion ? undefined : tactileTap}
             transition={premiumSpring}
@@ -407,7 +409,7 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
                 const ca = getCategoryAccent(goal.category.id);
                 return (
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    <span className={cn("inline-flex max-w-full min-w-0 items-center gap-1.5 truncate rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide", ca.pill, ca.pillDark, ca.text)}>
+                    <span data-testid="category-pill" className={cn("inline-flex max-w-full min-w-0 items-center gap-1.5 truncate rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide", ca.pill, ca.pillDark, ca.text)}>
                       <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", ca.dot)} aria-hidden />
                       {goal.category.name}
                     </span>
@@ -416,6 +418,7 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
               })()}
               {goal.due_date && (
                 <div
+                  data-testid="due-date"
                   className={cn(
                     'flex items-center gap-1 mt-1 text-xs',
                     dueUrgency === 'overdue' && 'text-red-400 font-medium',
@@ -481,7 +484,7 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
             )}
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-10 w-10 touch-manipulation md:h-7 md:w-7 text-muted-foreground hover:text-destructive">
+                <Button aria-label="Delete goal" variant="ghost" size="icon" className="h-10 w-10 touch-manipulation md:h-7 md:w-7 text-muted-foreground hover:text-destructive">
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </AlertDialogTrigger>
@@ -512,6 +515,7 @@ const GoalCard = memo(({ goal, pendingSubtasks, celebrationQuality = 'full', isC
         <AnimatePresence initial={false}>
           {!collapsed && (
             <motion.div
+              role="region"
               initial={liteSubtreeMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
               animate={liteSubtreeMotion ? { opacity: 1 } : { height: "auto", opacity: 1 }}
               exit={liteSubtreeMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}

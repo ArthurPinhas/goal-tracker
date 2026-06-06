@@ -19,7 +19,7 @@ interface GoalSidebarProps {
   dueSoonCount: number;
 }
 
-function AnimatedCounter({ value, className }: { value: number; className?: string }) {
+function AnimatedCounter({ value, className, dataTestId }: { value: number; className?: string; dataTestId?: string }) {
   const motionVal = useMotionValue(value);
   const spring = useSpring(motionVal, { stiffness: 160, damping: 22, mass: 0.95 });
   const display = useTransform(spring, (v) => String(Math.round(v)));
@@ -28,7 +28,7 @@ function AnimatedCounter({ value, className }: { value: number; className?: stri
     motionVal.set(value);
   }, [value, motionVal]);
 
-  return <motion.span className={className}>{display}</motion.span>;
+  return <motion.span className={className} data-testid={dataTestId}>{display}</motion.span>;
 }
 
 /** Completion ring — filled based on completed/total; shows count in center */
@@ -117,9 +117,9 @@ function StatPulse({
         <span className="truncate text-[11px] font-semibold font-te uppercase tracking-[0.12em] text-muted-foreground">{label}</span>
       </div>
       {animateNum && typeof value === "number" ? (
-        <AnimatedCounter value={value} className="shrink-0 text-lg font-bold tabular-nums tracking-tight text-foreground" />
+        <AnimatedCounter value={value} className="shrink-0 text-lg font-bold tabular-nums tracking-tight text-foreground" dataTestId={`sidebar-stat-${label.toLowerCase().replace(/[^a-z0-9-]/g, '')}`} />
       ) : (
-        <span className="shrink-0 text-lg font-bold tabular-nums tracking-tight text-foreground">{value}</span>
+        <span className="shrink-0 text-lg font-bold tabular-nums tracking-tight text-foreground" data-testid={`sidebar-stat-${label.toLowerCase().replace(/[^a-z0-9-]/g, '')}`}>{value}</span>
       )}
     </motion.div>
   );

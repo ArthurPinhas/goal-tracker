@@ -1,0 +1,1418 @@
+- generic:
+  - generic:
+    - list
+    - region "Notifications alt+T"
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                    - generic: Goal Tracker
+                  - heading [level=1]:
+                    - generic: Hey
+                    - text: ","
+                  - paragraph: “What you do today shapes who you become tomorrow.”
+              - generic:
+                - button [expanded]:
+                  - img
+                  - generic: New Goal
+                - button:
+                  - generic:
+                    - img
+                - button:
+                  - generic:
+                    - img
+                - button:
+                  - img
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - paragraph: Finished something big? Add an optional link (video, image, or site) so you can revisit the win. Use Link your win on any done goal — no full edit required.
+                - button: View done goals
+            - generic:
+              - generic:
+                - generic: "23"
+                - generic: Goals
+              - generic:
+                - generic: "4"
+                - generic: Completed
+              - generic:
+                - generic: "6"
+                - generic: Subtasks done
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - textbox:
+                        - /placeholder: Search goals, subtasks, categories…
+                    - generic:
+                      - button:
+                        - generic:
+                          - img
+                          - generic: Categories
+                        - generic:
+                          - img
+                  - tablist:
+                    - tab [selected]:
+                      - generic: All
+                      - generic: "23"
+                    - tab:
+                      - generic: Active
+                      - generic: "19"
+                    - tab:
+                      - generic: Done
+                      - generic: "4"
+                    - tab:
+                      - generic: Display
+                    - tab:
+                      - generic: Archived
+                  - generic:
+                    - button:
+                      - img
+                      - text: Select goals
+                    - button:
+                      - img
+                      - text: Expand all
+                    - button:
+                      - img
+                      - text: Collapse all
+                  - generic:
+                    - generic:
+                      - generic: Deadline
+                      - generic:
+                        - button: Any
+                        - button: Has date
+                        - button: Overdue
+                        - button: ≤7 days
+                    - generic:
+                      - generic: Sort
+                      - combobox:
+                        - generic: Manual (drag to reorder)
+                        - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - button [expanded]:
+                          - generic: 🎯
+                          - generic:
+                            - generic:
+                              - generic: goal_1780732161508_hp4gm
+                        - generic:
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - generic:
+                            - img
+                      - region:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Notes
+                              - button:
+                                - img
+                          - generic:
+                            - generic:
+                              - generic: Progress
+                              - generic: 0%
+                          - generic:
+                            - generic:
+                              - generic: Subtasks · —
+                              - button:
+                                - img
+                                - text: Add
+                            - generic:
+                              - generic:
+                                - checkbox
+                              - generic: Mark goal complete (no subtasks)
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - button [expanded]:
+                          - generic:
+                            - generic:
+                              - generic: goal_1780732156270_7hitq (copy)
+                        - generic:
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - generic:
+                            - img
+                      - region:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Notes
+                              - button:
+                                - img
+                          - generic:
+                            - generic:
+                              - generic: Progress
+                              - generic: 0%
+                          - generic:
+                            - generic:
+                              - generic: Subtasks · —
+                              - button:
+                                - img
+                                - text: Add
+                            - generic:
+                              - generic:
+                                - checkbox
+                              - generic: Mark goal complete (no subtasks)
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - button [expanded]:
+                          - generic:
+                            - generic:
+                              - generic: goal_1780732154435_w9g77
+                        - generic:
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - generic:
+                            - img
+                      - region:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Notes
+                              - button:
+                                - img
+                          - generic:
+                            - generic:
+                              - generic: Progress
+                              - generic: 0%
+                          - generic:
+                            - generic:
+                              - generic: Subtasks · —
+                              - button:
+                                - img
+                                - text: Add
+                            - generic:
+                              - generic:
+                                - checkbox
+                              - generic: Mark goal complete (no subtasks)
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - button [expanded]:
+                          - generic:
+                            - generic:
+                              - generic: goal_1780732153766_g3epo
+                        - generic:
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - generic:
+                            - img
+                      - region:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Notes
+                              - button:
+                                - img
+                          - generic:
+                            - generic:
+                              - generic: Progress
+                              - generic: 0%
+                          - generic:
+                            - generic:
+                              - generic: Subtasks · —
+                              - button:
+                                - img
+                                - text: Add
+                            - generic:
+                              - generic:
+                                - checkbox
+                              - generic: Mark goal complete (no subtasks)
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - button [expanded]:
+                          - generic:
+                            - generic:
+                              - generic: goal_1780732153794_44j0d
+                        - generic:
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - generic:
+                            - img
+                      - region:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Notes
+                              - button:
+                                - img
+                          - generic:
+                            - generic:
+                              - generic: Progress
+                              - generic: 0%
+                          - generic:
+                            - generic:
+                              - generic: Subtasks · —
+                              - button:
+                                - img
+                                - text: Add
+                            - generic:
+                              - generic:
+                                - checkbox
+                              - generic: Mark goal complete (no subtasks)
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - button [expanded]:
+                          - generic:
+                            - generic:
+                              - generic: goal_1780732155148_qm2rp
+                        - generic:
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - generic:
+                            - img
+                      - region:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Notes
+                              - button:
+                                - img
+                          - generic:
+                            - generic:
+                              - generic: Progress
+                              - generic: 0%
+                          - generic:
+                            - generic:
+                              - generic: Subtasks · —
+                              - button:
+                                - img
+                                - text: Add
+                            - generic:
+                              - generic:
+                                - checkbox
+                              - generic: Mark goal complete (no subtasks)
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - button [expanded]:
+                          - generic:
+                            - generic:
+                              - generic: goal_1780732156052_oa2rs
+                        - generic:
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - generic:
+                            - img
+                      - region:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Notes
+                              - button:
+                                - img
+                          - generic:
+                            - generic:
+                              - generic: Progress
+                              - generic: 33%
+                          - generic:
+                            - generic:
+                              - generic: Subtasks · 1/3
+                              - button:
+                                - img
+                                - text: Add
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - checkbox [checked]:
+                                            - generic:
+                                              - img
+                                    - generic:
+                                      - generic: sub1
+                                  - generic:
+                                    - button:
+                                      - img
+                                    - button: Effort
+                                    - button:
+                                      - img
+                                    - button:
+                                      - img
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - checkbox
+                                    - generic:
+                                      - generic: sub2
+                                  - generic:
+                                    - button:
+                                      - img
+                                    - button: Effort
+                                    - button:
+                                      - img
+                                    - button:
+                                      - img
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - checkbox
+                                    - generic:
+                                      - generic: sub3
+                                  - generic:
+                                    - button:
+                                      - img
+                                    - button: Effort
+                                    - button:
+                                      - img
+                                    - button:
+                                      - img
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - button [expanded]:
+                          - generic:
+                            - generic:
+                              - generic: goal_1780732156163_b8qrj
+                        - generic:
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - generic:
+                            - img
+                      - region:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Notes
+                              - button:
+                                - img
+                          - generic:
+                            - generic:
+                              - generic: Progress
+                              - generic: 60%
+                          - generic:
+                            - generic:
+                              - generic: Subtasks · 1/3
+                              - button:
+                                - img
+                                - text: Add
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - checkbox
+                                    - generic:
+                                      - generic: sub1
+                                  - generic:
+                                    - button:
+                                      - img
+                                    - button: Quick
+                                    - button:
+                                      - img
+                                    - button:
+                                      - img
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - checkbox [checked]:
+                                            - generic:
+                                              - img
+                                    - generic:
+                                      - generic: sub2
+                                  - generic:
+                                    - button:
+                                      - img
+                                    - button: Medium
+                                    - button:
+                                      - img
+                                    - button:
+                                      - img
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - checkbox
+                                    - generic:
+                                      - generic: sub3
+                                  - generic:
+                                    - button:
+                                      - img
+                                    - button: Quick
+                                    - button:
+                                      - img
+                                    - button:
+                                      - img
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - button [expanded]:
+                          - generic:
+                            - generic:
+                              - generic: goal_1780732156270_7hitq
+                        - generic:
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - generic:
+                            - img
+                      - region:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Notes
+                              - button:
+                                - img
+                          - generic:
+                            - generic:
+                              - generic: Progress
+                              - generic: 0%
+                          - generic:
+                            - generic:
+                              - generic: Subtasks · —
+                              - button:
+                                - img
+                                - text: Add
+                            - generic:
+                              - generic:
+                                - checkbox
+                              - generic: Mark goal complete (no subtasks)
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - button [expanded]:
+                          - generic:
+                            - generic:
+                              - generic: goal_1780732157009_qnujh
+                        - generic:
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - generic:
+                            - img
+                      - region:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Notes
+                              - button:
+                                - img
+                          - generic:
+                            - generic:
+                              - generic: Progress
+                              - generic: 0%
+                          - generic:
+                            - generic:
+                              - generic: Subtasks · 0/1
+                              - button:
+                                - img
+                                - text: Add
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - checkbox
+                                    - generic:
+                                      - generic: sub_1780732158127_pgmwi
+                                  - generic:
+                                    - button:
+                                      - img
+                                    - button: Effort
+                                    - button:
+                                      - img
+                                    - button:
+                                      - img
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - button [expanded]:
+                          - generic:
+                            - generic:
+                              - generic: goal_1780732157229_f26y6
+                        - generic:
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - generic:
+                            - img
+                      - region:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Notes
+                              - button:
+                                - img
+                          - generic:
+                            - generic:
+                              - generic: Progress
+                              - generic: 0%
+                          - generic:
+                            - generic:
+                              - generic: Subtasks · —
+                              - button:
+                                - img
+                                - text: Add
+                            - generic:
+                              - generic:
+                                - checkbox
+                              - generic: Mark goal complete (no subtasks)
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - button [expanded]:
+                          - generic:
+                            - generic:
+                              - generic: goal_1780732157910_oph5p
+                        - generic:
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - generic:
+                            - img
+                      - region:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Notes
+                              - button:
+                                - img
+                          - generic:
+                            - generic:
+                              - generic: Progress
+                              - generic: 0%
+                          - generic:
+                            - generic:
+                              - generic: Subtasks · 0/1
+                              - button:
+                                - img
+                                - text: Add
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - checkbox
+                                    - generic:
+                                      - generic: sub_1780732157912_g0r7c
+                                  - generic:
+                                    - button:
+                                      - img
+                                    - button: Effort
+                                    - button:
+                                      - img
+                                    - button:
+                                      - img
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - button [expanded]:
+                          - generic:
+                            - generic:
+                              - generic: goal_1780732158084_bzyah
+                        - generic:
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - generic:
+                            - img
+                      - region:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Notes
+                              - button:
+                                - img
+                          - generic:
+                            - generic:
+                              - generic: Progress
+                              - generic: 0%
+                          - generic:
+                            - generic:
+                              - generic: Subtasks · 0/1
+                              - button:
+                                - img
+                                - text: Add
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - checkbox
+                                    - generic:
+                                      - generic: new_name
+                                  - generic:
+                                    - button:
+                                      - img
+                                    - button: Effort
+                                    - button:
+                                      - img
+                                    - button:
+                                      - img
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - button [expanded]:
+                          - generic:
+                            - generic:
+                              - generic: goal_1780732158738_byp0t
+                        - generic:
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - generic:
+                            - img
+                      - region:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Notes
+                              - button:
+                                - img
+                          - generic:
+                            - generic:
+                              - generic: Progress
+                              - generic: 0%
+                          - generic:
+                            - generic:
+                              - generic: Subtasks · 0/1
+                              - button:
+                                - img
+                                - text: Add
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - checkbox
+                                    - generic:
+                                      - generic: sub_1780732158740_vkzmm
+                                  - generic:
+                                    - button:
+                                      - img
+                                    - button: Effort
+                                    - button:
+                                      - img
+                                    - button:
+                                      - img
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - button [expanded]:
+                          - generic:
+                            - generic:
+                              - generic: goal_1780732161022_7497g
+                        - generic:
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - generic:
+                            - img
+                      - region:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Notes
+                              - button:
+                                - img
+                          - generic:
+                            - generic:
+                              - generic: Progress
+                              - generic: 0%
+                          - generic:
+                            - generic:
+                              - generic: Subtasks · 0/1
+                              - button:
+                                - img
+                                - text: Add
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - checkbox
+                                    - generic:
+                                      - generic: sub_1780732162198_6ty3e
+                                  - generic:
+                                    - button:
+                                      - img
+                                    - button: Effort
+                                    - button:
+                                      - img
+                                    - button:
+                                      - img
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - button [expanded]:
+                          - generic:
+                            - generic:
+                              - generic: goal_1780732163503_3bdke
+                        - generic:
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - generic:
+                            - img
+                      - region:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Notes
+                              - button:
+                                - img
+                          - generic:
+                            - generic:
+                              - generic: Progress
+                              - generic: 0%
+                          - generic:
+                            - generic:
+                              - generic: Subtasks · 0/1
+                              - button:
+                                - img
+                                - text: Add
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - checkbox
+                                    - generic:
+                                      - generic: sub_1780732164763_83lf5
+                                  - generic:
+                                    - button:
+                                      - img
+                                    - button: Effort
+                                    - button:
+                                      - img
+                                    - button:
+                                      - img
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - button [expanded]:
+                          - generic:
+                            - generic:
+                              - generic: goal_1780732165653_6kued
+                        - generic:
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - generic:
+                            - img
+                      - region:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Notes
+                              - button:
+                                - img
+                          - generic:
+                            - generic:
+                              - generic: Progress
+                              - generic: 0%
+                          - generic:
+                            - generic:
+                              - generic: Subtasks · —
+                              - button:
+                                - img
+                                - text: Add
+                            - generic:
+                              - generic:
+                                - checkbox
+                              - generic: Mark goal complete (no subtasks)
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - button [expanded]:
+                          - generic:
+                            - generic:
+                              - generic: goal_1780732166744_49fm9
+                        - generic:
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - generic:
+                            - img
+                      - region:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Notes
+                              - button:
+                                - img
+                          - generic:
+                            - generic:
+                              - generic: Progress
+                              - generic: 0%
+                          - generic:
+                            - generic:
+                              - generic: Subtasks · —
+                              - button:
+                                - img
+                                - text: Add
+                            - generic:
+                              - generic:
+                                - checkbox
+                              - generic: Mark goal complete (no subtasks)
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - button [expanded]:
+                          - generic:
+                            - generic:
+                              - generic: goal_1780732169885_5ilhx
+                        - generic:
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - button:
+                            - img
+                          - generic:
+                            - img
+                      - region:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Notes
+                              - button:
+                                - img
+                          - generic:
+                            - generic:
+                              - generic: Progress
+                              - generic: 0%
+                          - generic:
+                            - generic:
+                              - generic: Subtasks · 0/1
+                              - button:
+                                - img
+                                - text: Add
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - checkbox
+                                    - generic:
+                                      - generic: sub_1780732169887_ri1ry
+                                  - generic:
+                                    - button:
+                                      - img
+                                    - button: Effort
+                                    - button:
+                                      - img
+                                    - button:
+                                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - img
+                      - generic: Completed
+                      - generic: "4"
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - button [expanded]:
+                              - generic:
+                                - img
+                              - generic:
+                                - generic:
+                                  - generic: goal_1780732155665_eeaj6
+                            - generic:
+                              - button:
+                                - img
+                              - button:
+                                - img
+                              - button:
+                                - generic:
+                                  - generic:
+                                    - img
+                                  - img
+                              - button:
+                                - img
+                              - generic:
+                                - img
+                          - region:
+                            - generic:
+                              - generic:
+                                - paragraph: Want to save a clip, screenshot, or link to this win? Optional — upload an image or paste a URL.
+                                - button:
+                                  - img
+                                  - text: Link your win
+                              - generic:
+                                - generic:
+                                  - generic: Notes
+                                  - button:
+                                    - img
+                              - generic:
+                                - generic:
+                                  - generic: Progress
+                                  - generic: 100%
+                              - generic:
+                                - generic:
+                                  - generic: Subtasks · 1/1
+                                  - button:
+                                    - img
+                                    - text: Add
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - generic:
+                                            - generic:
+                                              - checkbox [checked]:
+                                                - generic:
+                                                  - img
+                                        - generic:
+                                          - generic: sub1
+                                      - generic:
+                                        - button:
+                                          - img
+                                        - button: Effort
+                                        - button:
+                                          - img
+                                        - button:
+                                          - img
+                      - generic:
+                        - generic:
+                          - generic:
+                            - button [expanded]:
+                              - generic:
+                                - img
+                              - generic:
+                                - generic:
+                                  - generic: goal_1780732159090_atppp
+                            - generic:
+                              - button:
+                                - img
+                              - button:
+                                - img
+                              - button:
+                                - generic:
+                                  - generic:
+                                    - img
+                                  - img
+                              - button:
+                                - img
+                              - generic:
+                                - img
+                          - region:
+                            - generic:
+                              - generic:
+                                - paragraph: Want to save a clip, screenshot, or link to this win? Optional — upload an image or paste a URL.
+                                - button:
+                                  - img
+                                  - text: Link your win
+                              - generic:
+                                - generic:
+                                  - generic: Notes
+                                  - button:
+                                    - img
+                              - generic:
+                                - generic:
+                                  - generic: Progress
+                                  - generic: 100%
+                              - generic:
+                                - generic:
+                                  - generic: Subtasks · 1/1
+                                  - button:
+                                    - img
+                                    - text: Add
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - generic:
+                                            - generic:
+                                              - checkbox [checked]:
+                                                - generic:
+                                                  - img
+                                        - generic:
+                                          - generic: sub_1780732159093_th0no
+                                      - generic:
+                                        - button:
+                                          - img
+                                        - button: Effort
+                                        - button:
+                                          - img
+                                        - button:
+                                          - img
+                      - generic:
+                        - generic:
+                          - generic:
+                            - button [expanded]:
+                              - generic:
+                                - img
+                              - generic:
+                                - generic:
+                                  - generic: goal_1780732161068_shzjl
+                            - generic:
+                              - button:
+                                - img
+                              - button:
+                                - img
+                              - button:
+                                - generic:
+                                  - generic:
+                                    - img
+                                  - img
+                              - button:
+                                - img
+                              - generic:
+                                - img
+                          - region:
+                            - generic:
+                              - generic:
+                                - paragraph: Want to save a clip, screenshot, or link to this win? Optional — upload an image or paste a URL.
+                                - button:
+                                  - img
+                                  - text: Link your win
+                              - generic:
+                                - generic:
+                                  - generic: Notes
+                                  - button:
+                                    - img
+                              - generic:
+                                - generic:
+                                  - generic: Progress
+                                  - generic: 100%
+                              - generic:
+                                - generic:
+                                  - generic: Subtasks · 1/1
+                                  - button:
+                                    - img
+                                    - text: Add
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - generic:
+                                            - generic:
+                                              - checkbox [checked]:
+                                                - generic:
+                                                  - img
+                                        - generic:
+                                          - generic: sub_1780732161069_dcufe
+                                      - generic:
+                                        - button:
+                                          - img
+                                        - button: Effort
+                                        - button:
+                                          - img
+                                        - button:
+                                          - img
+                      - generic:
+                        - generic:
+                          - generic:
+                            - button [expanded]:
+                              - generic:
+                                - img
+                              - generic:
+                                - generic:
+                                  - generic: goal_1780732163447_fw2z7
+                            - generic:
+                              - button:
+                                - img
+                              - button:
+                                - img
+                              - button:
+                                - generic:
+                                  - generic:
+                                    - img
+                                  - img
+                              - button:
+                                - img
+                              - generic:
+                                - img
+                          - region:
+                            - generic:
+                              - generic:
+                                - paragraph: Want to save a clip, screenshot, or link to this win? Optional — upload an image or paste a URL.
+                                - button:
+                                  - img
+                                  - text: Link your win
+                              - generic:
+                                - generic:
+                                  - generic: Notes
+                                  - button:
+                                    - img
+                              - generic:
+                                - generic:
+                                  - generic: Progress
+                                  - generic: 100%
+                              - generic:
+                                - generic:
+                                  - generic: Subtasks · 1/1
+                                  - button:
+                                    - img
+                                    - text: Add
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - generic:
+                                            - generic:
+                                              - checkbox [checked]:
+                                                - generic:
+                                                  - img
+                                        - generic:
+                                          - generic: sub_1780732163449_8voip
+                                      - generic:
+                                        - button:
+                                          - img
+                                        - button: Effort
+                                        - button:
+                                          - img
+                                        - button:
+                                          - img
+            - generic:
+              - complementary:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Momentum
+                      - generic: avg 21%
+                    - generic:
+                      - generic:
+                        - img
+                        - generic:
+                          - generic: "4"
+                          - generic: of 23
+                          - generic: achieved
+                  - generic:
+                    - generic: At a glance
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                          - generic: Active
+                        - generic: "19"
+                      - generic:
+                        - generic:
+                          - img
+                          - generic: Achieved
+                        - generic: "4"
+                      - generic:
+                        - generic:
+                          - img
+                          - generic: Subtasks
+                        - generic: 6/17
+                      - generic:
+                        - generic:
+                          - img
+                          - generic: Overdue
+                        - generic: "0"
+                      - generic:
+                        - generic:
+                          - img
+                          - generic: Due ≤7d
+                        - generic: "0"
+                  - generic:
+                    - button:
+                      - generic:
+                        - img
+                        - generic: Insights
+                      - generic:
+                        - img
+                  - generic:
+                    - generic:
+                      - img
+                      - generic: Daily mantra
+                    - paragraph: “Comparison fades when you have receipts.”
+                  - button:
+                    - img
+                    - text: Export goals
+  - dialog "Create Goal" [ref=e1258]:
+    - generic [ref=e1259]:
+      - heading "Create Goal" [level=2] [ref=e1260]
+      - paragraph [ref=e1261]: Set a title and optional description, due date, and private notes.
+    - generic [ref=e1262]:
+      - generic [ref=e1263]:
+        - text: Title
+        - textbox "Title" [active] [ref=e1265]:
+          - /placeholder: e.g. Learn this guitar song
+        - generic [ref=e1266]:
+          - button "Shuffle" [ref=e1267] [cursor=pointer]:
+            - img
+            - text: Shuffle
+          - button "Pick" [ref=e1268] [cursor=pointer]:
+            - img
+            - text: Pick
+      - generic [ref=e1269]:
+        - text: Description
+        - textbox "Description" [ref=e1270]:
+          - /placeholder: Brief description of this goal…
+      - generic [ref=e1271]:
+        - generic [ref=e1273]: Due date
+        - button "Due date" [ref=e1274] [cursor=pointer]:
+          - img
+          - text: No deadline
+      - generic [ref=e1275]:
+        - generic [ref=e1276]:
+          - text: Category
+          - combobox "Category" [ref=e1277] [cursor=pointer]:
+            - generic: No category
+            - img [ref=e1278]
+          - combobox [ref=e1280]
+        - generic [ref=e1281]:
+          - textbox "New category name" [ref=e1282]:
+            - /placeholder: New category…
+          - button "Add" [disabled]
+      - generic [ref=e1283]:
+        - text: Notes
+        - textbox "Notes" [ref=e1284]:
+          - /placeholder: Private notes, links, reminders…
+      - generic [ref=e1285]:
+        - button "From template" [ref=e1286] [cursor=pointer]:
+          - img
+          - text: From template
+        - button "Create" [disabled]
+    - button "Close" [ref=e1287] [cursor=pointer]:
+      - img [ref=e1288]
+      - generic [ref=e1291]: Close

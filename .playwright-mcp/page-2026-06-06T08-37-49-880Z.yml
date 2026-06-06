@@ -1,0 +1,1102 @@
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e35]:
+    - generic [ref=e37]:
+      - generic [ref=e38]:
+        - generic [ref=e40]:
+          - generic [ref=e41]:
+            - img [ref=e42]
+            - generic [ref=e46]: Goal Tracker
+          - heading "Hey ," [level=1] [ref=e47]:
+            - generic [ref=e48]: Hey
+            - text: ","
+          - paragraph [ref=e49]: “What you do today shapes who you become tomorrow.”
+        - generic [ref=e50]:
+          - button "New Goal" [ref=e51] [cursor=pointer]:
+            - img
+            - generic [ref=e52]: New Goal
+          - button "Turn on reminders for goals that are due today or overdue" [ref=e53] [cursor=pointer]:
+            - generic [ref=e54]:
+              - img
+          - button "Switch to light mode" [ref=e55] [cursor=pointer]:
+            - generic [ref=e56]:
+              - img
+          - button "Mute sounds" [ref=e57] [cursor=pointer]:
+            - img
+          - button "Log out" [ref=e58] [cursor=pointer]:
+            - img
+      - generic [ref=e60]:
+        - paragraph [ref=e61]: Finished something big? Add an optional link (video, image, or site) so you can revisit the win. Use Link your win on any done goal — no full edit required.
+        - button "View done goals" [ref=e62] [cursor=pointer]
+      - generic [ref=e63]:
+        - generic [ref=e64]:
+          - generic [ref=e65]: "23"
+          - generic [ref=e66]: Goals
+        - generic [ref=e67]:
+          - generic [ref=e68]: "4"
+          - generic [ref=e69]: Completed
+        - generic [ref=e70]:
+          - generic [ref=e71]: "6"
+          - generic [ref=e72]: Subtasks done
+    - generic [ref=e74]:
+      - generic [ref=e76]:
+        - generic [ref=e77]:
+          - generic [ref=e78]:
+            - generic [ref=e79]:
+              - img [ref=e80]
+              - textbox "Search goals, subtasks, categories…" [ref=e83]
+            - button "Category filter" [ref=e85] [cursor=pointer]:
+              - generic [ref=e86]:
+                - img
+                - generic [ref=e87]: Categories
+              - generic [ref=e88]:
+                - img
+          - tablist [ref=e90]:
+            - tab "All 23" [selected] [ref=e91] [cursor=pointer]:
+              - generic [ref=e93]: All
+              - generic [ref=e94]: "23"
+            - tab "Active 19" [ref=e95] [cursor=pointer]:
+              - generic [ref=e96]: Active
+              - generic [ref=e97]: "19"
+            - tab "Done 4" [ref=e98] [cursor=pointer]:
+              - generic [ref=e99]: Done
+              - generic [ref=e100]: "4"
+            - tab "Display" [ref=e101] [cursor=pointer]:
+              - generic [ref=e102]: Display
+            - tab "Archived" [ref=e103] [cursor=pointer]:
+              - generic [ref=e104]: Archived
+          - generic [ref=e105]:
+            - button "Select goals" [ref=e106] [cursor=pointer]:
+              - img
+              - text: Select goals
+            - button "Expand all" [ref=e107] [cursor=pointer]:
+              - img
+              - text: Expand all
+            - button "Collapse all" [ref=e108] [cursor=pointer]:
+              - img
+              - text: Collapse all
+          - generic [ref=e109]:
+            - generic [ref=e110]:
+              - generic [ref=e111]: Deadline
+              - generic [ref=e112]:
+                - button "Any" [ref=e113] [cursor=pointer]: Any
+                - button "Has date" [ref=e115] [cursor=pointer]
+                - button "Overdue" [ref=e116] [cursor=pointer]
+                - button "≤7 days" [ref=e117] [cursor=pointer]
+            - generic [ref=e118]:
+              - generic [ref=e119]: Sort
+              - combobox "Sort goals" [ref=e120] [cursor=pointer]:
+                - generic: Manual (drag to reorder)
+                - img [ref=e121]
+        - generic [ref=e123]:
+          - generic [ref=e125]:
+            - generic [ref=e126]:
+              - generic:
+                - img
+              - button "Collapse goal" [expanded] [ref=e127] [cursor=pointer]:
+                - generic [ref=e128]: 🎯
+                - generic [ref=e131]: goal_1780732161508_hp4gm
+              - generic [ref=e132]:
+                - button "Edit goal" [ref=e133] [cursor=pointer]:
+                  - img
+                - button "Duplicate goal" [ref=e134] [cursor=pointer]:
+                  - img
+                - button "Delete goal" [ref=e135] [cursor=pointer]:
+                  - img
+                - img [ref=e137]
+            - region [ref=e139]:
+              - generic [ref=e140]:
+                - generic [ref=e142]:
+                  - generic [ref=e143]: Notes
+                  - button "Notes" [ref=e144] [cursor=pointer]:
+                    - img
+                - generic [ref=e146]:
+                  - generic [ref=e147]: Progress
+                  - generic [ref=e148]: 0%
+                - generic [ref=e151]:
+                  - generic [ref=e152]:
+                    - generic [ref=e153]: Subtasks · —
+                    - button "Add" [ref=e154] [cursor=pointer]:
+                      - img
+                      - text: Add
+                  - generic [ref=e155]:
+                    - checkbox "Mark goal complete (no subtasks)" [ref=e157] [cursor=pointer]
+                    - generic [ref=e158] [cursor=pointer]: Mark goal complete (no subtasks)
+          - generic [ref=e160]:
+            - generic [ref=e161]:
+              - generic:
+                - img
+              - button "Collapse goal" [expanded] [ref=e162] [cursor=pointer]:
+                - generic [ref=e165]: goal_1780732156270_7hitq (copy)
+              - generic [ref=e166]:
+                - button "Edit goal" [ref=e167] [cursor=pointer]:
+                  - img
+                - button "Duplicate goal" [ref=e168] [cursor=pointer]:
+                  - img
+                - button "Delete goal" [ref=e169] [cursor=pointer]:
+                  - img
+                - img [ref=e171]
+            - region [ref=e173]:
+              - generic [ref=e174]:
+                - generic [ref=e176]:
+                  - generic [ref=e177]: Notes
+                  - button "Notes" [ref=e178] [cursor=pointer]:
+                    - img
+                - generic [ref=e180]:
+                  - generic [ref=e181]: Progress
+                  - generic [ref=e182]: 0%
+                - generic [ref=e185]:
+                  - generic [ref=e186]:
+                    - generic [ref=e187]: Subtasks · —
+                    - button "Add" [ref=e188] [cursor=pointer]:
+                      - img
+                      - text: Add
+                  - generic [ref=e189]:
+                    - checkbox "Mark goal complete (no subtasks)" [ref=e191] [cursor=pointer]
+                    - generic [ref=e192] [cursor=pointer]: Mark goal complete (no subtasks)
+          - generic [ref=e194]:
+            - generic [ref=e195]:
+              - generic:
+                - img
+              - button "Collapse goal" [expanded] [ref=e196] [cursor=pointer]:
+                - generic [ref=e199]: goal_1780732154435_w9g77
+              - generic [ref=e200]:
+                - button "Edit goal" [ref=e201] [cursor=pointer]:
+                  - img
+                - button "Duplicate goal" [ref=e202] [cursor=pointer]:
+                  - img
+                - button "Delete goal" [ref=e203] [cursor=pointer]:
+                  - img
+                - img [ref=e205]
+            - region [ref=e207]:
+              - generic [ref=e208]:
+                - generic [ref=e210]:
+                  - generic [ref=e211]: Notes
+                  - button "Notes" [ref=e212] [cursor=pointer]:
+                    - img
+                - generic [ref=e214]:
+                  - generic [ref=e215]: Progress
+                  - generic [ref=e216]: 0%
+                - generic [ref=e219]:
+                  - generic [ref=e220]:
+                    - generic [ref=e221]: Subtasks · —
+                    - button "Add" [ref=e222] [cursor=pointer]:
+                      - img
+                      - text: Add
+                  - generic [ref=e223]:
+                    - checkbox "Mark goal complete (no subtasks)" [ref=e225] [cursor=pointer]
+                    - generic [ref=e226] [cursor=pointer]: Mark goal complete (no subtasks)
+          - generic [ref=e228]:
+            - generic [ref=e229]:
+              - generic:
+                - img
+              - button "Collapse goal" [expanded] [ref=e230] [cursor=pointer]:
+                - generic [ref=e233]: goal_1780732153766_g3epo
+              - generic [ref=e234]:
+                - button "Edit goal" [ref=e235] [cursor=pointer]:
+                  - img
+                - button "Duplicate goal" [ref=e236] [cursor=pointer]:
+                  - img
+                - button "Delete goal" [ref=e237] [cursor=pointer]:
+                  - img
+                - img [ref=e239]
+            - region [ref=e241]:
+              - generic [ref=e242]:
+                - generic [ref=e244]:
+                  - generic [ref=e245]: Notes
+                  - button "Notes" [ref=e246] [cursor=pointer]:
+                    - img
+                - generic [ref=e248]:
+                  - generic [ref=e249]: Progress
+                  - generic [ref=e250]: 0%
+                - generic [ref=e253]:
+                  - generic [ref=e254]:
+                    - generic [ref=e255]: Subtasks · —
+                    - button "Add" [ref=e256] [cursor=pointer]:
+                      - img
+                      - text: Add
+                  - generic [ref=e257]:
+                    - checkbox "Mark goal complete (no subtasks)" [ref=e259] [cursor=pointer]
+                    - generic [ref=e260] [cursor=pointer]: Mark goal complete (no subtasks)
+          - generic [ref=e262]:
+            - generic [ref=e263]:
+              - generic:
+                - img
+              - button "Collapse goal" [expanded] [ref=e264] [cursor=pointer]:
+                - generic [ref=e267]: goal_1780732153794_44j0d
+              - generic [ref=e268]:
+                - button "Edit goal" [ref=e269] [cursor=pointer]:
+                  - img
+                - button "Duplicate goal" [ref=e270] [cursor=pointer]:
+                  - img
+                - button "Delete goal" [ref=e271] [cursor=pointer]:
+                  - img
+                - img [ref=e273]
+            - region [ref=e275]:
+              - generic [ref=e276]:
+                - generic [ref=e278]:
+                  - generic [ref=e279]: Notes
+                  - button "Notes" [ref=e280] [cursor=pointer]:
+                    - img
+                - generic [ref=e282]:
+                  - generic [ref=e283]: Progress
+                  - generic [ref=e284]: 0%
+                - generic [ref=e287]:
+                  - generic [ref=e288]:
+                    - generic [ref=e289]: Subtasks · —
+                    - button "Add" [ref=e290] [cursor=pointer]:
+                      - img
+                      - text: Add
+                  - generic [ref=e291]:
+                    - checkbox "Mark goal complete (no subtasks)" [ref=e293] [cursor=pointer]
+                    - generic [ref=e294] [cursor=pointer]: Mark goal complete (no subtasks)
+          - generic [ref=e296]:
+            - generic [ref=e297]:
+              - generic:
+                - img
+              - button "Collapse goal" [expanded] [ref=e298] [cursor=pointer]:
+                - generic [ref=e301]: goal_1780732155148_qm2rp
+              - generic [ref=e302]:
+                - button "Edit goal" [ref=e303] [cursor=pointer]:
+                  - img
+                - button "Duplicate goal" [ref=e304] [cursor=pointer]:
+                  - img
+                - button "Delete goal" [ref=e305] [cursor=pointer]:
+                  - img
+                - img [ref=e307]
+            - region [ref=e309]:
+              - generic [ref=e310]:
+                - generic [ref=e312]:
+                  - generic [ref=e313]: Notes
+                  - button "Notes" [ref=e314] [cursor=pointer]:
+                    - img
+                - generic [ref=e316]:
+                  - generic [ref=e317]: Progress
+                  - generic [ref=e318]: 0%
+                - generic [ref=e321]:
+                  - generic [ref=e322]:
+                    - generic [ref=e323]: Subtasks · —
+                    - button "Add" [ref=e324] [cursor=pointer]:
+                      - img
+                      - text: Add
+                  - generic [ref=e325]:
+                    - checkbox "Mark goal complete (no subtasks)" [ref=e327] [cursor=pointer]
+                    - generic [ref=e328] [cursor=pointer]: Mark goal complete (no subtasks)
+          - generic [ref=e330]:
+            - generic [ref=e331]:
+              - generic:
+                - img
+              - button "Collapse goal" [expanded] [ref=e332] [cursor=pointer]:
+                - generic [ref=e335]: goal_1780732156052_oa2rs
+              - generic [ref=e336]:
+                - button "Edit goal" [ref=e337] [cursor=pointer]:
+                  - img
+                - button "Duplicate goal" [ref=e338] [cursor=pointer]:
+                  - img
+                - button "Delete goal" [ref=e339] [cursor=pointer]:
+                  - img
+                - img [ref=e341]
+            - region [ref=e343]:
+              - generic [ref=e344]:
+                - generic [ref=e346]:
+                  - generic [ref=e347]: Notes
+                  - button "Notes" [ref=e348] [cursor=pointer]:
+                    - img
+                - generic [ref=e350]:
+                  - generic [ref=e351]: Progress
+                  - generic [ref=e352]: 33%
+                - generic [ref=e356]:
+                  - generic [ref=e357]:
+                    - generic [ref=e358]: Subtasks · 1/3
+                    - button "Add" [ref=e359] [cursor=pointer]:
+                      - img
+                      - text: Add
+                  - generic [ref=e362]:
+                    - generic [ref=e363]:
+                      - checkbox "sub1" [checked] [ref=e367] [cursor=pointer]:
+                        - generic:
+                          - img
+                      - generic [ref=e369] [cursor=pointer]: sub1
+                    - generic [ref=e370]:
+                      - button "Rename" [ref=e371] [cursor=pointer]:
+                        - img
+                      - button "Set effort" [ref=e372] [cursor=pointer]: Effort
+                      - button "Notes" [ref=e373] [cursor=pointer]:
+                        - img
+                      - button "Delete subtask sub1" [ref=e374] [cursor=pointer]:
+                        - img
+                  - generic [ref=e377]:
+                    - generic [ref=e378]:
+                      - checkbox "sub2" [ref=e382] [cursor=pointer]
+                      - generic [ref=e384] [cursor=pointer]: sub2
+                    - generic [ref=e385]:
+                      - button "Rename" [ref=e386] [cursor=pointer]:
+                        - img
+                      - button "Set effort" [ref=e387] [cursor=pointer]: Effort
+                      - button "Notes" [ref=e388] [cursor=pointer]:
+                        - img
+                      - button "Delete subtask sub2" [ref=e389] [cursor=pointer]:
+                        - img
+                  - generic [ref=e392]:
+                    - generic [ref=e393]:
+                      - checkbox "sub3" [ref=e397] [cursor=pointer]
+                      - generic [ref=e399] [cursor=pointer]: sub3
+                    - generic [ref=e400]:
+                      - button "Rename" [ref=e401] [cursor=pointer]:
+                        - img
+                      - button "Set effort" [ref=e402] [cursor=pointer]: Effort
+                      - button "Notes" [ref=e403] [cursor=pointer]:
+                        - img
+                      - button "Delete subtask sub3" [ref=e404] [cursor=pointer]:
+                        - img
+          - generic [ref=e406]:
+            - generic [ref=e407]:
+              - generic:
+                - img
+              - button "Collapse goal" [expanded] [ref=e408] [cursor=pointer]:
+                - generic [ref=e411]: goal_1780732156163_b8qrj
+              - generic [ref=e412]:
+                - button "Edit goal" [ref=e413] [cursor=pointer]:
+                  - img
+                - button "Duplicate goal" [ref=e414] [cursor=pointer]:
+                  - img
+                - button "Delete goal" [ref=e415] [cursor=pointer]:
+                  - img
+                - img [ref=e417]
+            - region [ref=e419]:
+              - generic [ref=e420]:
+                - generic [ref=e422]:
+                  - generic [ref=e423]: Notes
+                  - button "Notes" [ref=e424] [cursor=pointer]:
+                    - img
+                - generic [ref=e426]:
+                  - generic [ref=e427]: Progress
+                  - generic [ref=e428]: 60%
+                - generic [ref=e432]:
+                  - generic [ref=e433]:
+                    - generic [ref=e434]: Subtasks · 1/3
+                    - button "Add" [ref=e435] [cursor=pointer]:
+                      - img
+                      - text: Add
+                  - generic [ref=e438]:
+                    - generic [ref=e439]:
+                      - checkbox "sub1" [ref=e443] [cursor=pointer]
+                      - generic [ref=e445] [cursor=pointer]: sub1
+                    - generic [ref=e446]:
+                      - button "Rename" [ref=e447] [cursor=pointer]:
+                        - img
+                      - 'button "Effort: Quick — click to change" [ref=e448] [cursor=pointer]': Quick
+                      - button "Notes" [ref=e449] [cursor=pointer]:
+                        - img
+                      - button "Delete subtask sub1" [ref=e450] [cursor=pointer]:
+                        - img
+                  - generic [ref=e453]:
+                    - generic [ref=e454]:
+                      - checkbox "sub2" [checked] [ref=e458] [cursor=pointer]:
+                        - generic:
+                          - img
+                      - generic [ref=e460] [cursor=pointer]: sub2
+                    - generic [ref=e461]:
+                      - button "Rename" [ref=e462] [cursor=pointer]:
+                        - img
+                      - 'button "Effort: Medium — click to change" [ref=e463] [cursor=pointer]': Medium
+                      - button "Notes" [ref=e464] [cursor=pointer]:
+                        - img
+                      - button "Delete subtask sub2" [ref=e465] [cursor=pointer]:
+                        - img
+                  - generic [ref=e468]:
+                    - generic [ref=e469]:
+                      - checkbox "sub3" [ref=e473] [cursor=pointer]
+                      - generic [ref=e475] [cursor=pointer]: sub3
+                    - generic [ref=e476]:
+                      - button "Rename" [ref=e477] [cursor=pointer]:
+                        - img
+                      - 'button "Effort: Quick — click to change" [ref=e478] [cursor=pointer]': Quick
+                      - button "Notes" [ref=e479] [cursor=pointer]:
+                        - img
+                      - button "Delete subtask sub3" [ref=e480] [cursor=pointer]:
+                        - img
+          - generic [ref=e482]:
+            - generic [ref=e483]:
+              - generic:
+                - img
+              - button "Collapse goal" [expanded] [ref=e484] [cursor=pointer]:
+                - generic [ref=e487]: goal_1780732156270_7hitq
+              - generic [ref=e488]:
+                - button "Edit goal" [ref=e489] [cursor=pointer]:
+                  - img
+                - button "Duplicate goal" [ref=e490] [cursor=pointer]:
+                  - img
+                - button "Delete goal" [ref=e491] [cursor=pointer]:
+                  - img
+                - img [ref=e493]
+            - region [ref=e495]:
+              - generic [ref=e496]:
+                - generic [ref=e498]:
+                  - generic [ref=e499]: Notes
+                  - button "Notes" [ref=e500] [cursor=pointer]:
+                    - img
+                - generic [ref=e502]:
+                  - generic [ref=e503]: Progress
+                  - generic [ref=e504]: 0%
+                - generic [ref=e507]:
+                  - generic [ref=e508]:
+                    - generic [ref=e509]: Subtasks · —
+                    - button "Add" [ref=e510] [cursor=pointer]:
+                      - img
+                      - text: Add
+                  - generic [ref=e511]:
+                    - checkbox "Mark goal complete (no subtasks)" [ref=e513] [cursor=pointer]
+                    - generic [ref=e514] [cursor=pointer]: Mark goal complete (no subtasks)
+          - generic [ref=e516]:
+            - generic [ref=e517]:
+              - generic:
+                - img
+              - button "Collapse goal" [expanded] [ref=e518] [cursor=pointer]:
+                - generic [ref=e521]: goal_1780732157009_qnujh
+              - generic [ref=e522]:
+                - button "Edit goal" [ref=e523] [cursor=pointer]:
+                  - img
+                - button "Duplicate goal" [ref=e524] [cursor=pointer]:
+                  - img
+                - button "Delete goal" [ref=e525] [cursor=pointer]:
+                  - img
+                - img [ref=e527]
+            - region [ref=e529]:
+              - generic [ref=e530]:
+                - generic [ref=e532]:
+                  - generic [ref=e533]: Notes
+                  - button "Notes" [ref=e534] [cursor=pointer]:
+                    - img
+                - generic [ref=e536]:
+                  - generic [ref=e537]: Progress
+                  - generic [ref=e538]: 0%
+                - generic [ref=e541]:
+                  - generic [ref=e542]:
+                    - generic [ref=e543]: Subtasks · 0/1
+                    - button "Add" [ref=e544] [cursor=pointer]:
+                      - img
+                      - text: Add
+                  - generic [ref=e547]:
+                    - generic [ref=e548]:
+                      - checkbox "sub_1780732158127_pgmwi" [ref=e552] [cursor=pointer]
+                      - generic [ref=e554] [cursor=pointer]: sub_1780732158127_pgmwi
+                    - generic [ref=e555]:
+                      - button "Rename" [ref=e556] [cursor=pointer]:
+                        - img
+                      - button "Set effort" [ref=e557] [cursor=pointer]: Effort
+                      - button "Notes" [ref=e558] [cursor=pointer]:
+                        - img
+                      - button "Delete subtask sub_1780732158127_pgmwi" [ref=e559] [cursor=pointer]:
+                        - img
+          - generic [ref=e561]:
+            - generic [ref=e562]:
+              - generic:
+                - img
+              - button "Collapse goal" [expanded] [ref=e563] [cursor=pointer]:
+                - generic [ref=e566]: goal_1780732157229_f26y6
+              - generic [ref=e567]:
+                - button "Edit goal" [ref=e568] [cursor=pointer]:
+                  - img
+                - button "Duplicate goal" [ref=e569] [cursor=pointer]:
+                  - img
+                - button "Delete goal" [ref=e570] [cursor=pointer]:
+                  - img
+                - img [ref=e572]
+            - region [ref=e574]:
+              - generic [ref=e575]:
+                - generic [ref=e577]:
+                  - generic [ref=e578]: Notes
+                  - button "Notes" [ref=e579] [cursor=pointer]:
+                    - img
+                - generic [ref=e581]:
+                  - generic [ref=e582]: Progress
+                  - generic [ref=e583]: 0%
+                - generic [ref=e586]:
+                  - generic [ref=e587]:
+                    - generic [ref=e588]: Subtasks · —
+                    - button "Add" [ref=e589] [cursor=pointer]:
+                      - img
+                      - text: Add
+                  - generic [ref=e590]:
+                    - checkbox "Mark goal complete (no subtasks)" [ref=e592] [cursor=pointer]
+                    - generic [ref=e593] [cursor=pointer]: Mark goal complete (no subtasks)
+          - generic [ref=e595]:
+            - generic [ref=e596]:
+              - generic:
+                - img
+              - button "Collapse goal" [expanded] [ref=e597] [cursor=pointer]:
+                - generic [ref=e600]: goal_1780732157910_oph5p
+              - generic [ref=e601]:
+                - button "Edit goal" [ref=e602] [cursor=pointer]:
+                  - img
+                - button "Duplicate goal" [ref=e603] [cursor=pointer]:
+                  - img
+                - button "Delete goal" [ref=e604] [cursor=pointer]:
+                  - img
+                - img [ref=e606]
+            - region [ref=e608]:
+              - generic [ref=e609]:
+                - generic [ref=e611]:
+                  - generic [ref=e612]: Notes
+                  - button "Notes" [ref=e613] [cursor=pointer]:
+                    - img
+                - generic [ref=e615]:
+                  - generic [ref=e616]: Progress
+                  - generic [ref=e617]: 0%
+                - generic [ref=e620]:
+                  - generic [ref=e621]:
+                    - generic [ref=e622]: Subtasks · 0/1
+                    - button "Add" [ref=e623] [cursor=pointer]:
+                      - img
+                      - text: Add
+                  - generic [ref=e626]:
+                    - generic [ref=e627]:
+                      - checkbox "sub_1780732157912_g0r7c" [ref=e631] [cursor=pointer]
+                      - generic [ref=e633] [cursor=pointer]: sub_1780732157912_g0r7c
+                    - generic [ref=e634]:
+                      - button "Rename" [ref=e635] [cursor=pointer]:
+                        - img
+                      - button "Set effort" [ref=e636] [cursor=pointer]: Effort
+                      - button "Notes" [ref=e637] [cursor=pointer]:
+                        - img
+                      - button "Delete subtask sub_1780732157912_g0r7c" [ref=e638] [cursor=pointer]:
+                        - img
+          - generic [ref=e640]:
+            - generic [ref=e641]:
+              - generic:
+                - img
+              - button "Collapse goal" [expanded] [ref=e642] [cursor=pointer]:
+                - generic [ref=e645]: goal_1780732158084_bzyah
+              - generic [ref=e646]:
+                - button "Edit goal" [ref=e647] [cursor=pointer]:
+                  - img
+                - button "Duplicate goal" [ref=e648] [cursor=pointer]:
+                  - img
+                - button "Delete goal" [ref=e649] [cursor=pointer]:
+                  - img
+                - img [ref=e651]
+            - region [ref=e653]:
+              - generic [ref=e654]:
+                - generic [ref=e656]:
+                  - generic [ref=e657]: Notes
+                  - button "Notes" [ref=e658] [cursor=pointer]:
+                    - img
+                - generic [ref=e660]:
+                  - generic [ref=e661]: Progress
+                  - generic [ref=e662]: 0%
+                - generic [ref=e665]:
+                  - generic [ref=e666]:
+                    - generic [ref=e667]: Subtasks · 0/1
+                    - button "Add" [ref=e668] [cursor=pointer]:
+                      - img
+                      - text: Add
+                  - generic [ref=e671]:
+                    - generic [ref=e672]:
+                      - checkbox "new_name" [ref=e676] [cursor=pointer]
+                      - generic [ref=e678] [cursor=pointer]: new_name
+                    - generic [ref=e679]:
+                      - button "Rename" [ref=e680] [cursor=pointer]:
+                        - img
+                      - button "Set effort" [ref=e681] [cursor=pointer]: Effort
+                      - button "Notes" [ref=e682] [cursor=pointer]:
+                        - img
+                      - button "Delete subtask new_name" [ref=e683] [cursor=pointer]:
+                        - img
+          - generic [ref=e685]:
+            - generic [ref=e686]:
+              - generic:
+                - img
+              - button "Collapse goal" [expanded] [ref=e687] [cursor=pointer]:
+                - generic [ref=e690]: goal_1780732158738_byp0t
+              - generic [ref=e691]:
+                - button "Edit goal" [ref=e692] [cursor=pointer]:
+                  - img
+                - button "Duplicate goal" [ref=e693] [cursor=pointer]:
+                  - img
+                - button "Delete goal" [ref=e694] [cursor=pointer]:
+                  - img
+                - img [ref=e696]
+            - region [ref=e698]:
+              - generic [ref=e699]:
+                - generic [ref=e701]:
+                  - generic [ref=e702]: Notes
+                  - button "Notes" [ref=e703] [cursor=pointer]:
+                    - img
+                - generic [ref=e705]:
+                  - generic [ref=e706]: Progress
+                  - generic [ref=e707]: 0%
+                - generic [ref=e710]:
+                  - generic [ref=e711]:
+                    - generic [ref=e712]: Subtasks · 0/1
+                    - button "Add" [ref=e713] [cursor=pointer]:
+                      - img
+                      - text: Add
+                  - generic [ref=e716]:
+                    - generic [ref=e717]:
+                      - checkbox "sub_1780732158740_vkzmm" [ref=e721] [cursor=pointer]
+                      - generic [ref=e723] [cursor=pointer]: sub_1780732158740_vkzmm
+                    - generic [ref=e724]:
+                      - button "Rename" [ref=e725] [cursor=pointer]:
+                        - img
+                      - button "Set effort" [ref=e726] [cursor=pointer]: Effort
+                      - button "Notes" [ref=e727] [cursor=pointer]:
+                        - img
+                      - button "Delete subtask sub_1780732158740_vkzmm" [ref=e728] [cursor=pointer]:
+                        - img
+          - generic [ref=e730]:
+            - generic [ref=e731]:
+              - generic:
+                - img
+              - button "Collapse goal" [expanded] [ref=e732] [cursor=pointer]:
+                - generic [ref=e735]: goal_1780732161022_7497g
+              - generic [ref=e736]:
+                - button "Edit goal" [ref=e737] [cursor=pointer]:
+                  - img
+                - button "Duplicate goal" [ref=e738] [cursor=pointer]:
+                  - img
+                - button "Delete goal" [ref=e739] [cursor=pointer]:
+                  - img
+                - img [ref=e741]
+            - region [ref=e743]:
+              - generic [ref=e744]:
+                - generic [ref=e746]:
+                  - generic [ref=e747]: Notes
+                  - button "Notes" [ref=e748] [cursor=pointer]:
+                    - img
+                - generic [ref=e750]:
+                  - generic [ref=e751]: Progress
+                  - generic [ref=e752]: 0%
+                - generic [ref=e755]:
+                  - generic [ref=e756]:
+                    - generic [ref=e757]: Subtasks · 0/1
+                    - button "Add" [ref=e758] [cursor=pointer]:
+                      - img
+                      - text: Add
+                  - generic [ref=e761]:
+                    - generic [ref=e762]:
+                      - checkbox "sub_1780732162198_6ty3e" [ref=e766] [cursor=pointer]
+                      - generic [ref=e768] [cursor=pointer]: sub_1780732162198_6ty3e
+                    - generic [ref=e769]:
+                      - button "Rename" [ref=e770] [cursor=pointer]:
+                        - img
+                      - button "Set effort" [ref=e771] [cursor=pointer]: Effort
+                      - button "Notes" [ref=e772] [cursor=pointer]:
+                        - img
+                      - button "Delete subtask sub_1780732162198_6ty3e" [ref=e773] [cursor=pointer]:
+                        - img
+          - generic [ref=e775]:
+            - generic [ref=e776]:
+              - generic:
+                - img
+              - button "Collapse goal" [expanded] [ref=e777] [cursor=pointer]:
+                - generic [ref=e780]: goal_1780732163503_3bdke
+              - generic [ref=e781]:
+                - button "Edit goal" [ref=e782] [cursor=pointer]:
+                  - img
+                - button "Duplicate goal" [ref=e783] [cursor=pointer]:
+                  - img
+                - button "Delete goal" [ref=e784] [cursor=pointer]:
+                  - img
+                - img [ref=e786]
+            - region [ref=e788]:
+              - generic [ref=e789]:
+                - generic [ref=e791]:
+                  - generic [ref=e792]: Notes
+                  - button "Notes" [ref=e793] [cursor=pointer]:
+                    - img
+                - generic [ref=e795]:
+                  - generic [ref=e796]: Progress
+                  - generic [ref=e797]: 0%
+                - generic [ref=e800]:
+                  - generic [ref=e801]:
+                    - generic [ref=e802]: Subtasks · 0/1
+                    - button "Add" [ref=e803] [cursor=pointer]:
+                      - img
+                      - text: Add
+                  - generic [ref=e806]:
+                    - generic [ref=e807]:
+                      - checkbox "sub_1780732164763_83lf5" [ref=e811] [cursor=pointer]
+                      - generic [ref=e813] [cursor=pointer]: sub_1780732164763_83lf5
+                    - generic [ref=e814]:
+                      - button "Rename" [ref=e815] [cursor=pointer]:
+                        - img
+                      - button "Set effort" [ref=e816] [cursor=pointer]: Effort
+                      - button "Notes" [ref=e817] [cursor=pointer]:
+                        - img
+                      - button "Delete subtask sub_1780732164763_83lf5" [ref=e818] [cursor=pointer]:
+                        - img
+          - generic [ref=e820]:
+            - generic [ref=e821]:
+              - generic:
+                - img
+              - button "Collapse goal" [expanded] [ref=e822] [cursor=pointer]:
+                - generic [ref=e825]: goal_1780732165653_6kued
+              - generic [ref=e826]:
+                - button "Edit goal" [ref=e827] [cursor=pointer]:
+                  - img
+                - button "Duplicate goal" [ref=e828] [cursor=pointer]:
+                  - img
+                - button "Delete goal" [ref=e829] [cursor=pointer]:
+                  - img
+                - img [ref=e831]
+            - region [ref=e833]:
+              - generic [ref=e834]:
+                - generic [ref=e836]:
+                  - generic [ref=e837]: Notes
+                  - button "Notes" [ref=e838] [cursor=pointer]:
+                    - img
+                - generic [ref=e840]:
+                  - generic [ref=e841]: Progress
+                  - generic [ref=e842]: 0%
+                - generic [ref=e845]:
+                  - generic [ref=e846]:
+                    - generic [ref=e847]: Subtasks · —
+                    - button "Add" [ref=e848] [cursor=pointer]:
+                      - img
+                      - text: Add
+                  - generic [ref=e849]:
+                    - checkbox "Mark goal complete (no subtasks)" [ref=e851] [cursor=pointer]
+                    - generic [ref=e852] [cursor=pointer]: Mark goal complete (no subtasks)
+          - generic [ref=e854]:
+            - generic [ref=e855]:
+              - generic:
+                - img
+              - button "Collapse goal" [expanded] [ref=e856] [cursor=pointer]:
+                - generic [ref=e859]: goal_1780732166744_49fm9
+              - generic [ref=e860]:
+                - button "Edit goal" [ref=e861] [cursor=pointer]:
+                  - img
+                - button "Duplicate goal" [ref=e862] [cursor=pointer]:
+                  - img
+                - button "Delete goal" [ref=e863] [cursor=pointer]:
+                  - img
+                - img [ref=e865]
+            - region [ref=e867]:
+              - generic [ref=e868]:
+                - generic [ref=e870]:
+                  - generic [ref=e871]: Notes
+                  - button "Notes" [ref=e872] [cursor=pointer]:
+                    - img
+                - generic [ref=e874]:
+                  - generic [ref=e875]: Progress
+                  - generic [ref=e876]: 0%
+                - generic [ref=e879]:
+                  - generic [ref=e880]:
+                    - generic [ref=e881]: Subtasks · —
+                    - button "Add" [ref=e882] [cursor=pointer]:
+                      - img
+                      - text: Add
+                  - generic [ref=e883]:
+                    - checkbox "Mark goal complete (no subtasks)" [ref=e885] [cursor=pointer]
+                    - generic [ref=e886] [cursor=pointer]: Mark goal complete (no subtasks)
+          - generic [ref=e888]:
+            - generic [ref=e889]:
+              - generic:
+                - img
+              - button "Collapse goal" [expanded] [ref=e890] [cursor=pointer]:
+                - generic [ref=e893]: goal_1780732169885_5ilhx
+              - generic [ref=e894]:
+                - button "Edit goal" [ref=e895] [cursor=pointer]:
+                  - img
+                - button "Duplicate goal" [ref=e896] [cursor=pointer]:
+                  - img
+                - button "Delete goal" [ref=e897] [cursor=pointer]:
+                  - img
+                - img [ref=e899]
+            - region [ref=e901]:
+              - generic [ref=e902]:
+                - generic [ref=e904]:
+                  - generic [ref=e905]: Notes
+                  - button "Notes" [ref=e906] [cursor=pointer]:
+                    - img
+                - generic [ref=e908]:
+                  - generic [ref=e909]: Progress
+                  - generic [ref=e910]: 0%
+                - generic [ref=e913]:
+                  - generic [ref=e914]:
+                    - generic [ref=e915]: Subtasks · 0/1
+                    - button "Add" [ref=e916] [cursor=pointer]:
+                      - img
+                      - text: Add
+                  - generic [ref=e919]:
+                    - generic [ref=e920]:
+                      - checkbox "sub_1780732169887_ri1ry" [ref=e924] [cursor=pointer]
+                      - generic [ref=e926] [cursor=pointer]: sub_1780732169887_ri1ry
+                    - generic [ref=e927]:
+                      - button "Rename" [ref=e928] [cursor=pointer]:
+                        - img
+                      - button "Set effort" [ref=e929] [cursor=pointer]: Effort
+                      - button "Notes" [ref=e930] [cursor=pointer]:
+                        - img
+                      - button "Delete subtask sub_1780732169887_ri1ry" [ref=e931] [cursor=pointer]:
+                        - img
+        - generic [ref=e932]:
+          - generic [ref=e935]:
+            - img [ref=e936]
+            - generic [ref=e942]: Completed
+            - generic [ref=e943]: "4"
+          - generic [ref=e946]:
+            - generic [ref=e948]:
+              - generic [ref=e949]:
+                - button "Collapse goal" [expanded] [ref=e950] [cursor=pointer]:
+                  - img [ref=e952]
+                  - generic [ref=e960]: goal_1780732155665_eeaj6
+                - generic [ref=e961]:
+                  - button "Edit goal" [ref=e962] [cursor=pointer]:
+                    - img
+                  - button "Duplicate goal" [ref=e963] [cursor=pointer]:
+                    - img
+                  - button "Archive goal" [ref=e964] [cursor=pointer]:
+                    - generic [ref=e965]:
+                      - generic:
+                        - img
+                      - img
+                  - button "Delete goal" [ref=e966] [cursor=pointer]:
+                    - img
+                  - img [ref=e968]
+              - region [ref=e970]:
+                - generic [ref=e971]:
+                  - generic [ref=e972]:
+                    - paragraph [ref=e973]: Want to save a clip, screenshot, or link to this win? Optional — upload an image or paste a URL.
+                    - button "Link your win" [ref=e974] [cursor=pointer]:
+                      - img
+                      - text: Link your win
+                  - generic [ref=e976]:
+                    - generic [ref=e977]: Notes
+                    - button "Notes" [ref=e978] [cursor=pointer]:
+                      - img
+                  - generic [ref=e980]:
+                    - generic [ref=e981]: Progress
+                    - generic [ref=e982]: 100%
+                  - generic [ref=e986]:
+                    - generic [ref=e987]:
+                      - generic [ref=e988]: Subtasks · 1/1
+                      - button "Add" [ref=e989] [cursor=pointer]:
+                        - img
+                        - text: Add
+                    - generic [ref=e992]:
+                      - generic [ref=e993]:
+                        - checkbox "sub1" [checked] [ref=e997] [cursor=pointer]:
+                          - generic:
+                            - img
+                        - generic [ref=e999] [cursor=pointer]: sub1
+                      - generic [ref=e1000]:
+                        - button "Rename" [ref=e1001] [cursor=pointer]:
+                          - img
+                        - button "Set effort" [ref=e1002] [cursor=pointer]: Effort
+                        - button "Notes" [ref=e1003] [cursor=pointer]:
+                          - img
+                        - button "Delete subtask sub1" [ref=e1004] [cursor=pointer]:
+                          - img
+            - generic [ref=e1006]:
+              - generic [ref=e1007]:
+                - button "Collapse goal" [expanded] [ref=e1008] [cursor=pointer]:
+                  - img [ref=e1010]
+                  - generic [ref=e1018]: goal_1780732159090_atppp
+                - generic [ref=e1019]:
+                  - button "Edit goal" [ref=e1020] [cursor=pointer]:
+                    - img
+                  - button "Duplicate goal" [ref=e1021] [cursor=pointer]:
+                    - img
+                  - button "Archive goal" [ref=e1022] [cursor=pointer]:
+                    - generic [ref=e1023]:
+                      - generic:
+                        - img
+                      - img
+                  - button "Delete goal" [ref=e1024] [cursor=pointer]:
+                    - img
+                  - img [ref=e1026]
+              - region [ref=e1028]:
+                - generic [ref=e1029]:
+                  - generic [ref=e1030]:
+                    - paragraph [ref=e1031]: Want to save a clip, screenshot, or link to this win? Optional — upload an image or paste a URL.
+                    - button "Link your win" [ref=e1032] [cursor=pointer]:
+                      - img
+                      - text: Link your win
+                  - generic [ref=e1034]:
+                    - generic [ref=e1035]: Notes
+                    - button "Notes" [ref=e1036] [cursor=pointer]:
+                      - img
+                  - generic [ref=e1038]:
+                    - generic [ref=e1039]: Progress
+                    - generic [ref=e1040]: 100%
+                  - generic [ref=e1044]:
+                    - generic [ref=e1045]:
+                      - generic [ref=e1046]: Subtasks · 1/1
+                      - button "Add" [ref=e1047] [cursor=pointer]:
+                        - img
+                        - text: Add
+                    - generic [ref=e1050]:
+                      - generic [ref=e1051]:
+                        - checkbox "sub_1780732159093_th0no" [checked] [ref=e1055] [cursor=pointer]:
+                          - generic:
+                            - img
+                        - generic [ref=e1057] [cursor=pointer]: sub_1780732159093_th0no
+                      - generic [ref=e1058]:
+                        - button "Rename" [ref=e1059] [cursor=pointer]:
+                          - img
+                        - button "Set effort" [ref=e1060] [cursor=pointer]: Effort
+                        - button "Notes" [ref=e1061] [cursor=pointer]:
+                          - img
+                        - button "Delete subtask sub_1780732159093_th0no" [ref=e1062] [cursor=pointer]:
+                          - img
+            - generic [ref=e1064]:
+              - generic [ref=e1065]:
+                - button "Collapse goal" [expanded] [ref=e1066] [cursor=pointer]:
+                  - img [ref=e1068]
+                  - generic [ref=e1076]: goal_1780732161068_shzjl
+                - generic [ref=e1077]:
+                  - button "Edit goal" [ref=e1078] [cursor=pointer]:
+                    - img
+                  - button "Duplicate goal" [ref=e1079] [cursor=pointer]:
+                    - img
+                  - button "Archive goal" [ref=e1080] [cursor=pointer]:
+                    - generic [ref=e1081]:
+                      - generic:
+                        - img
+                      - img
+                  - button "Delete goal" [ref=e1082] [cursor=pointer]:
+                    - img
+                  - img [ref=e1084]
+              - region [ref=e1086]:
+                - generic [ref=e1087]:
+                  - generic [ref=e1088]:
+                    - paragraph [ref=e1089]: Want to save a clip, screenshot, or link to this win? Optional — upload an image or paste a URL.
+                    - button "Link your win" [ref=e1090] [cursor=pointer]:
+                      - img
+                      - text: Link your win
+                  - generic [ref=e1092]:
+                    - generic [ref=e1093]: Notes
+                    - button "Notes" [ref=e1094] [cursor=pointer]:
+                      - img
+                  - generic [ref=e1096]:
+                    - generic [ref=e1097]: Progress
+                    - generic [ref=e1098]: 100%
+                  - generic [ref=e1102]:
+                    - generic [ref=e1103]:
+                      - generic [ref=e1104]: Subtasks · 1/1
+                      - button "Add" [ref=e1105] [cursor=pointer]:
+                        - img
+                        - text: Add
+                    - generic [ref=e1108]:
+                      - generic [ref=e1109]:
+                        - checkbox "sub_1780732161069_dcufe" [checked] [ref=e1113] [cursor=pointer]:
+                          - generic:
+                            - img
+                        - generic [ref=e1115] [cursor=pointer]: sub_1780732161069_dcufe
+                      - generic [ref=e1116]:
+                        - button "Rename" [ref=e1117] [cursor=pointer]:
+                          - img
+                        - button "Set effort" [ref=e1118] [cursor=pointer]: Effort
+                        - button "Notes" [ref=e1119] [cursor=pointer]:
+                          - img
+                        - button "Delete subtask sub_1780732161069_dcufe" [ref=e1120] [cursor=pointer]:
+                          - img
+            - generic [ref=e1122]:
+              - generic [ref=e1123]:
+                - button "Collapse goal" [expanded] [ref=e1124] [cursor=pointer]:
+                  - img [ref=e1126]
+                  - generic [ref=e1134]: goal_1780732163447_fw2z7
+                - generic [ref=e1135]:
+                  - button "Edit goal" [ref=e1136] [cursor=pointer]:
+                    - img
+                  - button "Duplicate goal" [ref=e1137] [cursor=pointer]:
+                    - img
+                  - button "Archive goal" [ref=e1138] [cursor=pointer]:
+                    - generic [ref=e1139]:
+                      - generic:
+                        - img
+                      - img
+                  - button "Delete goal" [ref=e1140] [cursor=pointer]:
+                    - img
+                  - img [ref=e1142]
+              - region [ref=e1144]:
+                - generic [ref=e1145]:
+                  - generic [ref=e1146]:
+                    - paragraph [ref=e1147]: Want to save a clip, screenshot, or link to this win? Optional — upload an image or paste a URL.
+                    - button "Link your win" [ref=e1148] [cursor=pointer]:
+                      - img
+                      - text: Link your win
+                  - generic [ref=e1150]:
+                    - generic [ref=e1151]: Notes
+                    - button "Notes" [ref=e1152] [cursor=pointer]:
+                      - img
+                  - generic [ref=e1154]:
+                    - generic [ref=e1155]: Progress
+                    - generic [ref=e1156]: 100%
+                  - generic [ref=e1160]:
+                    - generic [ref=e1161]:
+                      - generic [ref=e1162]: Subtasks · 1/1
+                      - button "Add" [ref=e1163] [cursor=pointer]:
+                        - img
+                        - text: Add
+                    - generic [ref=e1166]:
+                      - generic [ref=e1167]:
+                        - checkbox "sub_1780732163449_8voip" [checked] [ref=e1171] [cursor=pointer]:
+                          - generic:
+                            - img
+                        - generic [ref=e1173] [cursor=pointer]: sub_1780732163449_8voip
+                      - generic [ref=e1174]:
+                        - button "Rename" [ref=e1175] [cursor=pointer]:
+                          - img
+                        - button "Set effort" [ref=e1176] [cursor=pointer]: Effort
+                        - button "Notes" [ref=e1177] [cursor=pointer]:
+                          - img
+                        - button "Delete subtask sub_1780732163449_8voip" [ref=e1178] [cursor=pointer]:
+                          - img
+      - complementary [ref=e1180]:
+        - generic [ref=e1181]:
+          - generic [ref=e1182]:
+            - generic [ref=e1183]:
+              - generic [ref=e1184]: Momentum
+              - generic [ref=e1185]: avg 21%
+            - generic [ref=e1187]:
+              - img [ref=e1188]
+              - generic [ref=e1191]:
+                - generic [ref=e1192]: "4"
+                - generic [ref=e1193]: of 23
+                - generic [ref=e1194]: achieved
+          - generic [ref=e1195]:
+            - generic [ref=e1196]: At a glance
+            - generic [ref=e1197]:
+              - generic [ref=e1198]:
+                - generic [ref=e1199]:
+                  - img [ref=e1201]
+                  - generic [ref=e1205]: Active
+                - generic [ref=e1206]: "19"
+              - generic [ref=e1207]:
+                - generic [ref=e1208]:
+                  - img [ref=e1210]
+                  - generic [ref=e1216]: Achieved
+                - generic [ref=e1217]: "4"
+              - generic [ref=e1218]:
+                - generic [ref=e1219]:
+                  - img [ref=e1221]
+                  - generic [ref=e1224]: Subtasks
+                - generic [ref=e1225]: 6/17
+              - generic [ref=e1226]:
+                - generic [ref=e1227]:
+                  - img [ref=e1229]
+                  - generic [ref=e1231]: Overdue
+                - generic [ref=e1232]: "0"
+              - generic [ref=e1233]:
+                - generic [ref=e1234]:
+                  - img [ref=e1236]
+                  - generic [ref=e1239]: Due ≤7d
+                - generic [ref=e1240]: "0"
+          - button "Insights" [ref=e1242] [cursor=pointer]:
+            - generic [ref=e1243]:
+              - img [ref=e1244]
+              - generic [ref=e1246]: Insights
+            - img [ref=e1248]
+          - generic [ref=e1250]:
+            - generic [ref=e1251]:
+              - img [ref=e1252]
+              - generic [ref=e1254]: Daily mantra
+            - paragraph [ref=e1255]: “Comparison fades when you have receipts.”
+          - button "Export goals" [ref=e1256] [cursor=pointer]:
+            - img
+            - text: Export goals

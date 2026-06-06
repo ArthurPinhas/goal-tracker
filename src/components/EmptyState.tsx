@@ -15,6 +15,7 @@ interface EmptyStateProps {
 export function EmptyState({ icon: Icon, title, description, compact = false, children, illustrationSlot }: EmptyStateProps) {
   return (
     <motion.div
+      data-testid="empty-state"
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={springContent}

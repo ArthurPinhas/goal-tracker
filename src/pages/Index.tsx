@@ -33,7 +33,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Target, LogOut, Search, Volume2, VolumeX, Check, Loader2, AlertCircle, Archive, RotateCcw, CheckSquare, Trash2, CalendarDays, SearchX, Sparkles, Trophy, FolderTree, ListChecks, Copy, ChevronsDown, ChevronsUp, Tags, ChevronDown } from "lucide-react";
+import { Target, LogOut, Search, Volume2, VolumeX, Check, Loader2, AlertCircle, Archive, RotateCcw, CheckSquare, Trash2, CalendarDays, SearchX, Sparkles, Trophy, FolderTree, FolderCog, ListChecks, Copy, ChevronsDown, ChevronsUp, Tags, ChevronDown } from "lucide-react";
 import { isSoundEnabled, toggleSound } from "@/lib/sounds";
 import { getCategoryAccent } from "@/lib/categoryColor";
 import { formatDueChip, getDueUrgency, isIncompleteForDueDate } from "@/lib/dueDateUtils";
@@ -134,7 +134,7 @@ function ArchivedGoalRow({
         ? 'Standalone · complete'
         : 'No subtasks';
   return (
-    <div className="group rounded-2xl border border-border/55 bg-card/60 backdrop-blur-sm px-4 py-4 flex gap-3 sm:gap-4 flex-col sm:flex-row sm:items-start opacity-90 hover:opacity-100 transition-all duration-300 hover:border-border/80 hover:shadow-xl hover:shadow-black/25 dark:bg-card/55 dark:hover:shadow-black/40">
+    <div id={`goal-card-${goal.id}`} className="group rounded-2xl border border-border/55 bg-card/60 backdrop-blur-sm px-4 py-4 flex gap-3 sm:gap-4 flex-col sm:flex-row sm:items-start opacity-90 hover:opacity-100 transition-all duration-300 hover:border-border/80 hover:shadow-xl hover:shadow-black/25 dark:bg-card/55 dark:hover:shadow-black/40">
       {bulkMode && (
         <div className="flex shrink-0 items-start pt-1">
           <Checkbox
@@ -179,7 +179,7 @@ function ArchivedGoalRow({
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-destructive touch-manipulation">
+              <Button aria-label="Delete goal" variant="ghost" size="icon" className="h-10 w-10 md:h-7 md:w-7 text-muted-foreground hover:text-destructive touch-manipulation">
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </AlertDialogTrigger>
@@ -325,6 +325,7 @@ const Index = () => {
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const [addGoalOpen, setAddGoalOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -957,6 +958,7 @@ const Index = () => {
               </EmptyState>
             ) : (
               <motion.div
+                data-testid="goal-list"
                 initial={ui.liteMotion ? false : { opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={ui.liteMotion ? { duration: 0 } : { duration: 0.5, ease: appleEase }}
@@ -969,6 +971,7 @@ const Index = () => {
                     <div className="relative group flex-1 min-w-0">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary/80" />
                       <Input
+                        data-testid="search-input"
                         placeholder="Search goals, subtasks, categories…"
                         className="pl-9 max-md:min-h-11 h-11 md:h-10 rounded-lg transition-all duration-300 ease-out focus-visible:ring-offset-background app-surface-input dark:focus-visible:shadow-md dark:focus-visible:shadow-primary/5"
                         value={search}
@@ -1132,29 +1135,33 @@ const Index = () => {
                           </div>
                         </PopoverContent>
                       </Popover>
-                      {categories.length > 0 ? (
-                        <ManageCategoriesDialog
-                          categories={categories}
-                          goalCountForCategory={goalCountForCategory}
-                          onRename={renameCategory}
-                          onDelete={deleteCategory}
-                        />
-                      ) : null}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="shrink-0 h-11 md:h-10 px-3 rounded-lg gap-2 border-border/60 bg-background/80 backdrop-blur-sm shadow-sm hover:bg-secondary/40 font-medium text-sm"
+                        title="Rename or delete categories"
+                        onClick={() => setCategoriesOpen(true)}
+                      >
+                        <FolderCog className="h-4 w-4 shrink-0" />
+                        <span className="hidden sm:inline">Manage</span>
+                      </Button>
                     </div>
                   </div>
                   {/* Segmented filter control */}
-                  <div className="flex flex-wrap gap-1.5 rounded-xl border border-border/50 bg-secondary/30 p-1 dark:bg-secondary/20 dark:border-border/35 backdrop-blur-sm">
-                    {([
-                      { f: 'all', label: 'All', count: displayGoals.length },
-                      { f: 'active', label: 'Active', count: activeGoalsBase.length },
-                      { f: 'done', label: 'Done', count: completedGoalsBase.length },
-                      { f: 'showcase', label: 'Display', count: showcaseCount },
-                      { f: 'archived', label: 'Archived', count: archivedGoals.length > 0 ? archivedGoals.length : null },
-                    ] as { f: Filter; label: string; count: number | null }[]).map(({ f, label, count }) => (
-                      <button
-                        key={f}
-                        type="button"
-                        onClick={() => setFilter(f)}
+                    <div role="tablist" className="flex flex-wrap gap-1.5 rounded-xl border border-border/50 bg-secondary/30 p-1 dark:bg-secondary/20 dark:border-border/35 backdrop-blur-sm">
+                      {([
+                        { f: 'all', label: 'All', count: displayGoals.length },
+                        { f: 'active', label: 'Active', count: activeGoalsBase.length },
+                        { f: 'done', label: 'Done', count: completedGoalsBase.length },
+                        { f: 'showcase', label: 'Display', count: showcaseCount },
+                        { f: 'archived', label: 'Archived', count: archivedGoals.length > 0 ? archivedGoals.length : null },
+                      ] as { f: Filter; label: string; count: number | null }[]).map(({ f, label, count }) => (
+                        <button
+                          key={f}
+                          role="tab"
+                          aria-selected={filter === f}
+                          type="button"
+                          onClick={() => setFilter(f)}
                         className={cn(
                           "relative max-md:min-h-10 min-h-9 touch-manipulation px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors duration-200 inline-flex items-center justify-center gap-1.5 flex-1 min-w-0",
                           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
@@ -1360,7 +1367,7 @@ const Index = () => {
                           Sort
                         </span>
                         <Select value={goalSortMode} onValueChange={(v) => setGoalSortMode(v as GoalSortMode)}>
-                          <SelectTrigger className="max-md:min-h-11 min-h-10 h-auto w-full max-w-full md:max-w-[220px] text-xs rounded-lg transition-all duration-300 app-surface-input">
+                          <SelectTrigger aria-label="Sort goals" className="max-md:min-h-11 min-h-10 h-auto w-full max-w-full md:max-w-[220px] text-xs rounded-lg transition-all duration-300 app-surface-input">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -1698,6 +1705,7 @@ const Index = () => {
       <AnimatePresence>
         {saveStatus !== 'idle' && (
           <motion.div
+            data-testid="save-indicator"
             initial={{ opacity: 0, y: 8, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
@@ -1717,6 +1725,15 @@ const Index = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      <ManageCategoriesDialog
+        open={categoriesOpen}
+        onOpenChange={setCategoriesOpen}
+        categories={categories}
+        goalCountForCategory={goalCountForCategory}
+        onRename={renameCategory}
+        onDelete={deleteCategory}
+        onCreate={createCategory}
+      />
     </div>
   );
 };

@@ -44,6 +44,7 @@ const GoalProgress = ({ percentage }: GoalProgressProps) => {
             ))}
           </div>
           <motion.div
+            data-testid="progress-fill"
             className="relative z-[2] h-full rounded-full overflow-hidden progress-fill-sheen"
             style={{
               backgroundColor: color,

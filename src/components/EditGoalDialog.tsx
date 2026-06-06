@@ -152,6 +152,7 @@ const EditGoalDialog = ({ goal, categories, onCreateCategory, onPatchGoalCategor
     <Dialog open={open} onOpenChange={handleOpen}>
       <DialogTrigger asChild>
         <Button
+          aria-label="Edit goal"
           variant="ghost"
           size="icon"
           className={cn(

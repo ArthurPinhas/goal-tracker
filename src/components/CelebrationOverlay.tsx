@@ -101,6 +101,7 @@ function MinimalCelebration({ onComplete }: { onComplete: () => void }) {
 
   return (
     <motion.div
+      data-testid="celebration-overlay"
       aria-hidden="true"
       className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center p-4"
       initial={{ opacity: 0 }}
@@ -134,6 +135,7 @@ function ReducedWinOverlay({ onComplete }: { onComplete: () => void }) {
 
   return (
     <motion.div
+      data-testid="celebration-overlay"
       aria-hidden="true"
       className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center p-6"
       initial={{ opacity: 0 }}
@@ -198,6 +200,7 @@ function FullWinOverlay({ onComplete }: { onComplete: () => void }) {
 
   return (
     <motion.div
+      data-testid="celebration-overlay"
       aria-hidden="true"
       className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center p-6"
       initial={{ opacity: 0 }}

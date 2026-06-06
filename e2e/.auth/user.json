@@ -1,0 +1,14 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://localhost:3000",
+      "localStorage": [
+        {
+          "name": "pocketbase_auth",
+          "value": "{\"token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb2xsZWN0aW9uSWQiOiJfcGJfdXNlcnNfYXV0aF8iLCJleHAiOjE3ODEzNTc1MDUsImlkIjoicHVzNmM4ZHJodmN2bGR1IiwicmVmcmVzaGFibGUiOnRydWUsInR5cGUiOiJhdXRoIn0.k8t7bhuSTnhW2ll-CMyY_X3V7ry06fGwcqO-BYLiSc4\",\"record\":{\"avatar\":\"\",\"collectionId\":\"_pb_users_auth_\",\"collectionName\":\"users\",\"created\":\"2026-06-06 08:02:21.668Z\",\"email\":\"e2e_user@goaltracker.local\",\"emailVisibility\":true,\"id\":\"pus6c8drhvcvldu\",\"name\":\"\",\"updated\":\"2026-06-06 08:02:21.668Z\",\"verified\":false}}"
+        }
+      ]
+    }
+  ]
+}

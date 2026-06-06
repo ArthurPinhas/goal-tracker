@@ -80,7 +80,7 @@ const AddSubtaskDialog = ({ onAdd }: AddSubtaskDialogProps) => {
             />
           </div>
           <div className="flex justify-end pt-1">
-            <Button type="submit" disabled={!title.trim()} className="min-h-11 touch-manipulation px-6 md:min-h-10 shadow-md shadow-primary/20">
+            <Button type="submit" aria-label="Add subtask" disabled={!title.trim()} className="min-h-11 touch-manipulation px-6 md:min-h-10 shadow-md shadow-primary/20">
               Add
             </Button>
           </div>
