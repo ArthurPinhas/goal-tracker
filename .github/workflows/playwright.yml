@@ -1,0 +1,52 @@
+name: Playwright Tests
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps
+
+    - name: Download and Setup PocketBase
+      run: |
+        # Download a recent version of PocketBase for linux
+        wget https://github.com/pocketbase/pocketbase/releases/download/v0.22.12/pocketbase_0.22.12_linux_amd64.zip -O pocketbase.zip
+        unzip pocketbase.zip
+        chmod +x pocketbase
+        # Start PocketBase in the background
+        ./pocketbase serve &
+        # Wait a few seconds for it to start up
+        sleep 3
+
+    - name: Run Playwright tests
+      run: npm run test:e2e
+      env:
+        # Pass any necessary environment variables here
+        VITE_POCKETBASE_URL: http://127.0.0.1:8090
+
+    - name: Upload Playwright report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-report
+        path: playwright-report/
+        retention-days: 30
