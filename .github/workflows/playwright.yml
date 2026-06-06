@@ -30,7 +30,7 @@ jobs:
       run: |
         # Download a recent version of PocketBase for linux
         mkdir -p /tmp/pb
-        wget https://github.com/pocketbase/pocketbase/releases/download/v0.22.12/pocketbase_0.22.12_linux_amd64.zip -O /tmp/pb/pocketbase.zip
+        wget https://github.com/pocketbase/pocketbase/releases/download/v0.37.4/pocketbase_0.37.4_linux_amd64.zip -O /tmp/pb/pocketbase.zip
         unzip /tmp/pb/pocketbase.zip -d /tmp/pb
         chmod +x /tmp/pb/pocketbase
         # Copy our schema migrations so the DB initializes with the right collections

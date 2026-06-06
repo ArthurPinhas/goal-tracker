@@ -46,3 +46,10 @@ pocketbase_*/
 # Markdown files (exclude all except README)
 *.md
 !README.md
+
+# Playwright
+playwright-report/
+test-results/
+playwright/.cache/
+blob-report/
+e2e/.auth/
