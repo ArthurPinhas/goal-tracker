@@ -9,8 +9,10 @@ setup('authenticate', async ({ page }) => {
     await page.request.post('http://127.0.0.1:8090/api/collections/users/records', {
       data: {
         username: 'e2e_user',
+        email: 'e2e_user@goaltracker.local',
         password: 'testing123',
-        passwordConfirm: 'testing123'
+        passwordConfirm: 'testing123',
+        emailVisibility: true
       }
     });
   } catch (e) {

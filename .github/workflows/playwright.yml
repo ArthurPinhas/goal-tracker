@@ -35,13 +35,13 @@ jobs:
         chmod +x /tmp/pb/pocketbase
         # Copy our schema migrations so the DB initializes with the right collections
         cp -r pb_migrations /tmp/pb/
-        # Start PocketBase in the background
-        /tmp/pb/pocketbase serve &
-        # Wait a few seconds for it to start up
-        sleep 3
+        # Schema is now copied. PocketBase will be started in the test step.
 
     - name: Run Playwright tests
-      run: npm run test:e2e
+      run: |
+        /tmp/pb/pocketbase serve &
+        sleep 3
+        npm run test:e2e
       env:
         # Pass any necessary environment variables here
         VITE_POCKETBASE_URL: http://127.0.0.1:8090
