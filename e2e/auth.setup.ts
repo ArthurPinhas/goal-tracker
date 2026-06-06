@@ -22,6 +22,6 @@ setup('authenticate', async ({ page }) => {
   await page.fill('#password', 'testing123');
   await page.getByRole('button', { name: /Sign in/i }).click();
   
-  await expect(page).toHaveURL('/');
+  await expect(page).toHaveURL('/login');
   await page.context().storageState({ path: authFile });
 });
